@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/waresix', function () {
     return view('welcome');
 });
+Route::get('/tj', function () {
+    return view('tj');
+});
 
 Route::get('/', function () {
     return view('new');
