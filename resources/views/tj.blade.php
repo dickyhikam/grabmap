@@ -100,7 +100,7 @@
         /* Untuk hasil pencarian */
         #results {
             margin-top: 10px;
-            max-height: 30vh;
+            max-height: 75vh;
             /* Tinggi hasil pencarian terbatas */
             overflow-y: auto;
         }
@@ -223,7 +223,7 @@
             </div>
 
             <!-- Kolom Hasil Lokasi -->
-            <div class="sidebar-locations">
+            <div class="sidebar-locations" hidden>
                 <h5>Selected Locations</h5>
                 <hr>
 
@@ -522,23 +522,23 @@
         }
 
         function deleteMarker(lon, lat, id) {
-            // Cari marker berdasarkan latlong
-            const markerToDelete = window.markers.find(marker => {
-                const markerLngLat = marker.getLngLat();
-                return markerLngLat.lng === lon && markerLngLat.lat === lat;
-            });
-            // console.log(markerToDelete);
+            // Cek jika ada marker kedua di dalam array
+            if (window.markers.length < 2) {
+                console.log('Tidak ada marker kedua untuk dihapus');
+                return; // Jika tidak ada marker kedua, hentikan fungsi
+            }
 
+            // Ambil marker kedua (indeks 1) dari array markers
+            const markerToDelete = window.markers[1];
 
-            if (markerToDelete) {
+            // Periksa apakah marker yang akan dihapus memiliki koordinat yang sesuai
+            const markerLngLat = markerToDelete.getLngLat();
+            if (markerLngLat.lng === lon && markerLngLat.lat === lat) {
                 // Hapus marker dari peta
                 markerToDelete.remove();
 
                 // Hapus data marker dari array
-                const index = window.markers.indexOf(markerToDelete);
-                if (index > -1) {
-                    window.markers.splice(index, 1);
-                }
+                window.markers.splice(1, 1); // Hapus marker kedua, indeks 1
 
                 // Akses marker pertama setelah penghapusan
                 const firstMarker = window.markers[0]; // Mengakses marker pertama
@@ -553,8 +553,8 @@
                 if (card) {
                     card.remove();
                 }
-
-
+            } else {
+                console.log('Marker kedua tidak ditemukan dengan koordinat yang sesuai');
             }
         }
 
@@ -617,7 +617,8 @@
                     },
                     body: JSON.stringify({
                         Text: search,
-                        MaxResults: 5
+                        MaxResults: 10,
+                        BiasPosition: latlong
                     }),
                 });
 
@@ -628,6 +629,7 @@
 
                 const data = await response.json();
                 const results = data['Results'] || [];
+                const dataresults = [];
                 console.log(data);
 
                 if (!results.length) {
@@ -654,25 +656,63 @@
                     const safeBody = escapeHtml(body || label);
                     const jarak = calculateStraightLD(latlong[1], latlong[0], lat, lon);
 
-                    htmlContent += `
-                        <div class="card" onclick="showLocation(${lon}, ${lat}, &quot;${safeLabel}&quot;)">
-                            <div class="card-title">${safeTitle}</div>
-                            <div class="card-address">${safeBody}</div>
-                            <div class="card-address"><b>${jarak} KM</b></div>
-                        </div>
-                    `;
+                    dataresults.push({
+                        lat: lat,
+                        lon: lon,
+                        title: safeTitle,
+                        body: safeBody,
+                        jarak: jarak
+                    });
+
+                    // htmlContent += `
+                    //     <div class="card" onclick="showLocation(${lon}, ${lat}, &quot;${safeLabel}&quot;)">
+                    //         <div class="card-title">${safeTitle}</div>
+                    //         <div class="card-address">${safeBody}</div>
+                    //         <div class="card-address"><b>${jarak} KM</b></div>
+                    //     </div>
+                    // `;
                 });
 
                 // resultsDiv.innerHTML = "<h5>This Search Data</h5><hr>" + htmlContent;
-                resultsDiv.innerHTML = htmlContent;
+                resultsDiv.innerHTML = showCard(dataresults);
 
             } catch (error) {
+                console.log(error);
+
                 resultsDiv.innerHTML = `<div class="empty">Geocoding error. Try again.</div>`;
             } finally {
                 // Menyembunyikan spinner setelah pencarian selesai
                 document.getElementById('loading').style.display = 'none'; // Menyembunyikan spinner
                 resultsDiv.style.display = 'block';
             }
+        }
+
+        function showCard(dataArray) {
+            // Mengurutkan data berdasarkan jarak terdekat
+            dataArray.sort((a, b) => a.jarak - b.jarak); // Urutkan berdasarkan jarak (ascending)
+
+            // Membuat HTML content untuk setiap hasil
+            let htmlContent = '';
+
+            dataArray.forEach((place) => {
+                const {
+                    title,
+                    body,
+                    jarak,
+                    lat,
+                    lon
+                } = place;
+
+                htmlContent += `
+                    <div class="card" onclick="showLocation(${lon}, ${lat}, &quot;${title}&quot;)">
+                        <div class="card-title">${title}</div>
+                        <div class="card-address">${body}</div>
+                        <div class="card-address"><b>${jarak} KM</b></div>
+                    </div>
+                `;
+            });
+
+            return htmlContent; // Mengembalikan HTML yang sudah diurutkan
         }
 
         // Fungsi untuk menangani pencarian dengan saran tempat menggunakan SearchPlaceIndexForSuggestions
