@@ -14,10 +14,10 @@
     <!-- External CSS libraries -->
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.x/dist/maplibre-gl.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="css/style-alert.css" />
-    <link rel="stylesheet" href="css/style-loading.css" />
-    <link rel="stylesheet" href="css/search.css" />
+    <link rel="stylesheet" href="{{ asset('css/style.css') }}" />
+    <link rel="stylesheet" href="{{ asset('css/style-alert.css') }}" />
+    <link rel="stylesheet" href="{{ asset('css/style-loading.css') }}" />
+    <link rel="stylesheet" href="{{ asset('css/search.css') }}" />
 
     <!-- Map library -->
     <script src="https://unpkg.com/maplibre-gl@4.x/dist/maplibre-gl.js"></script>
@@ -140,10 +140,10 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 
-    <script src="javascript/custom-loading.js"></script>
-    <script src="javascript/custom.js"></script>
-    <script src="javascript/maps.js"></script>
-    <script src="javascript/search-geocode.js"></script>
+    <script src="{{ asset('javascript/custom-loading.js') }}"></script>
+    <script src="{{ asset('javascript/custom.js') }}"></script>
+    <script src="{{ asset('javascript/maps.js') }}"></script>
+    <script src="{{ asset('javascript/search-geocode.js') }}"></script>
 
     <script>
         // ====== KONFIGURASI DASAR (DIISI DARI ENV/LARAVEL) ======
