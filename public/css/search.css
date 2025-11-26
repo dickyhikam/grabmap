@@ -1,0 +1,271 @@
+/* Search Options Row */
+.search-options-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.search-options {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+}
+
+/* Location Toggle Container */
+.location-toggle-container {
+    flex-shrink: 0;
+}
+
+/* Toggle Switch Styles */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+}
+
+.toggle-checkbox {
+    display: none;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 8px;
+    background: white;
+    border: 1px solid #e1e5e9;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    /* min-width: 160px; */
+    position: relative;
+    overflow: hidden;
+}
+
+.toggle-label:hover {
+    border-color: #00ba4e;
+    box-shadow: 0 2px 8px rgba(0, 186, 78, 0.1);
+}
+
+/* Toggle Handle */
+.toggle-handle {
+    width: 20px;
+    height: 20px;
+    background: #a0aec0;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    position: relative;
+    flex-shrink: 0;
+    margin-right: 10px;
+}
+
+.toggle-handle::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* Toggle Text */
+.toggle-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #718096;
+    transition: color 0.3s ease;
+    flex: 1;
+    justify-content: space-between;
+}
+
+.toggle-text i {
+    font-size: 11px;
+    transition: color 0.3s ease;
+}
+
+.toggle-label-text {
+    white-space: nowrap;
+}
+
+/* Toggle State (ON/OFF Text) */
+.toggle-state {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 8px;
+}
+
+.toggle-on,
+.toggle-off {
+    padding: 2px 6px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.toggle-on {
+    background: #00ba4e;
+    color: white;
+    opacity: 0;
+}
+
+.toggle-off {
+    background: #e2e8f0;
+    color: #718096;
+    opacity: 1;
+}
+
+/* Toggle Checked State */
+.toggle-checkbox:checked + .toggle-label {
+    background: #f0f9f0;
+    border-color: #00ba4e;
+}
+
+.toggle-checkbox:checked + .toggle-label .toggle-handle {
+    background: #00ba4e;
+    transform: translateX(8px);
+}
+
+.toggle-checkbox:checked + .toggle-label .toggle-handle::after {
+    opacity: 1;
+}
+
+.toggle-checkbox:checked + .toggle-label .toggle-text {
+    color: #00ba4e;
+}
+
+.toggle-checkbox:checked + .toggle-label .toggle-text i {
+    color: #00ba4e;
+}
+
+/* ON/OFF Text States */
+.toggle-checkbox:checked + .toggle-label .toggle-on {
+    opacity: 1;
+}
+
+.toggle-checkbox:checked + .toggle-label .toggle-off {
+    opacity: 0;
+}
+
+.toggle-checkbox:not(:checked) + .toggle-label .toggle-on {
+    opacity: 0;
+}
+
+.toggle-checkbox:not(:checked) + .toggle-label .toggle-off {
+    opacity: 1;
+}
+
+/* Active state untuk toggle */
+.toggle-label:active .toggle-handle {
+    transform: scale(0.9);
+}
+
+.toggle-checkbox:checked + .toggle-label:active .toggle-handle {
+    transform: translateX(8px) scale(0.9);
+}
+
+/* Loading state untuk location toggle */
+.toggle-label.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.toggle-label.loading .toggle-text i {
+    animation: spin 1s linear infinite;
+}
+
+.toggle-label.loading .toggle-state {
+    opacity: 0;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 768px) {
+    .search-options-row {
+        flex-direction: column;
+        gap: 10px;
+        align-items: stretch;
+    }
+
+    .search-options {
+        justify-content: center;
+    }
+
+    .location-toggle-container {
+        display: flex;
+        justify-content: center;
+    }
+
+    .toggle-label {
+        /* min-width: 140px; */
+    }
+
+    .toggle-text {
+        font-size: 11px;
+    }
+
+    .toggle-state {
+        font-size: 9px;
+    }
+}
+
+/* Tooltip Styles */
+.toggle-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: #2d3748;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.toggle-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #2d3748;
+}
+
+/* Show tooltip on hover */
+.toggle-switch:hover .toggle-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-12px);
+}
+
+/* Tooltip positioning untuk responsive */
+@media screen and (max-width: 768px) {
+    .toggle-tooltip {
+        left: 50%;
+        transform: translateX(-50%) translateY(-8px);
+    }
+
+    .toggle-switch:hover .toggle-tooltip {
+        transform: translateX(-50%) translateY(-12px);
+    }
+}

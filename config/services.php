@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'aws' => [
+        'region' => env('AWS_REGION', 'ap-southeast-1'),
+        'api_key' => env('AWS_API_KEY'),
+        'map_name' => env('AWS_MAP_NAME'),
+    ],
+
 ];

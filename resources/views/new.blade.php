@@ -81,6 +81,151 @@
 
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        // const data = [{
+        //         "departurePositions": [106.79422, -6.598411],
+        //         "departureNumber": 1,
+        //         "destinationResult": [{
+        //                 "destinationPositions": [106.806382, -6.582513],
+        //                 "distance": 2.8,
+        //                 "duration": 538,
+        //                 "destinationNumber": 2
+        //             },
+        //             {
+        //                 "destinationPositions": [106.821815, -6.584626],
+        //                 "distance": 5.103,
+        //                 "duration": 1019,
+        //                 "destinationNumber": 3
+        //             },
+        //             {
+        //                 "destinationPositions": [106.812567, -6.580683],
+        //                 "distance": 3.693,
+        //                 "duration": 743,
+        //                 "destinationNumber": 4
+        //             }
+        //         ]
+        //     },
+        //     {
+        //         "departurePositions": [106.806382, -6.582513],
+        //         "departureNumber": 2,
+        //         "destinationResult": [{
+        //                 "destinationPositions": [106.79422, -6.598411],
+        //                 "distance": 3.876,
+        //                 "duration": 705,
+        //                 "destinationNumber": 1
+        //             },
+        //             {
+        //                 "destinationPositions": [106.821815, -6.584626],
+        //                 "distance": 2.302,
+        //                 "duration": 481,
+        //                 "destinationNumber": 3
+        //             },
+        //             {
+        //                 "destinationPositions": [106.812567, -6.580683],
+        //                 "distance": 0.893,
+        //                 "duration": 205,
+        //                 "destinationNumber": 4
+        //             }
+        //         ]
+        //     },
+        //     {
+        //         "departurePositions": [106.821815, -6.584626],
+        //         "departureNumber": 3,
+        //         "destinationResult": [{
+        //                 "destinationPositions": [106.79422, -6.598411],
+        //                 "distance": 5.839,
+        //                 "duration": 1123,
+        //                 "destinationNumber": 1
+        //             },
+        //             {
+        //                 "destinationPositions": [106.806382, -6.582513],
+        //                 "distance": 4.12,
+        //                 "duration": 727,
+        //                 "destinationNumber": 2
+        //             },
+        //             {
+        //                 "destinationPositions": [106.812567, -6.580683],
+        //                 "distance": 2.542,
+        //                 "duration": 510,
+        //                 "destinationNumber": 4
+        //             }
+        //         ]
+        //     },
+        //     {
+        //         "departurePositions": [106.812567, -6.580683],
+        //         "departureNumber": 4,
+        //         "destinationResult": [{
+        //                 "destinationPositions": [106.79422, -6.598411],
+        //                 "distance": 4.848,
+        //                 "duration": 940,
+        //                 "destinationNumber": 1
+        //             },
+        //             {
+        //                 "destinationPositions": [106.806382, -6.582513],
+        //                 "distance": 1.872,
+        //                 "duration": 349,
+        //                 "destinationNumber": 2
+        //             },
+        //             {
+        //                 "destinationPositions": [106.821815, -6.584626],
+        //                 "distance": 1.522,
+        //                 "duration": 363,
+        //                 "destinationNumber": 3
+        //             }
+        //         ]
+        //     }
+        // ];
+
+        // // Fungsi untuk mencari jarak terdekat dari titik keberangkatan yang ditentukan
+        // function findClosestDestination(departureNumber, visitedDestinations) {
+        //     const departure = data.find(d => d.departureNumber === departureNumber);
+        //     const unvisitedDestinations = departure.destinationResult.filter(dest => !visitedDestinations.includes(dest.destinationNumber));
+
+        //     // Menemukan tujuan terdekat
+        //     let closest = null;
+        //     let minDistance = Infinity;
+
+        //     unvisitedDestinations.forEach(dest => {
+        //         if (dest.distance < minDistance) {
+        //             closest = dest;
+        //             minDistance = dest.distance;
+        //         }
+        //     });
+
+        //     return closest;
+        // }
+
+        // // Fungsi untuk menentukan urutan perjalanan berdasarkan jarak terdekat, tanpa tujuan terakhir
+        // function findRoute(data) {
+        //     const route = [];
+        //     let visitedDestinations = [];
+        //     let currentDepartureNumber = 1; // Mulai dari keberangkatan 1
+
+        //     while (visitedDestinations.length < data.length - 1) { // Ambil data sampai tujuan terakhir dihilangkan
+        //         const closestDestination = findClosestDestination(currentDepartureNumber, visitedDestinations);
+        //         if (closestDestination) {
+        //             // Masukkan data keberangkatan dan tujuan ke dalam hasil
+        //             route.push({
+        //                 departurePositions: data.find(d => d.departureNumber === currentDepartureNumber).departurePositions,
+        //                 departureNumber: currentDepartureNumber,
+        //                 destinationPositions: closestDestination.destinationPositions,
+        //                 destinationNumber: closestDestination.destinationNumber,
+        //                 distance: closestDestination.distance,
+        //                 duration: closestDestination.duration
+        //             });
+        //             visitedDestinations.push(closestDestination.destinationNumber);
+        //             currentDepartureNumber = closestDestination.destinationNumber; // Update keberangkatan selanjutnya
+        //         }
+        //     }
+
+        //     return route;
+        // }
+
+        // const route = findRoute();
+        // console.log("Urutan perjalanan:", route);
+    </script>
+
     <script>
         let dataDesti = [{
             "RouteMatrix": [
@@ -199,135 +344,112 @@
 
         // ====== INISIALISASI PETA ======
         $(document).ready(function() {
-            // displayRouteData(dataDesti);
-
             // Fungsi untuk menyimpan dan mengelompokkan data berdasarkan Departure Coordinates
             const routeDataArray = storeRouteData(dataDesti);
-
-            // Fungsi untuk memilih rute dengan jarak terdekat dari setiap Departure Coordinates
-            // const closestRouteData = selectClosestRoute(routeDataArray);
-
             createTableFromRouteData(routeDataArray);
-
-            // Tampilkan data setelah memilih rute terdekat
-            // console.log(closestRouteData);
-
         });
 
-        // Fungsi untuk menampilkan data ke dalam tabel
-        function displayRouteData(data) {
+        // Fungsi untuk menampilkan data dan memasukkan ke dalam array berdasarkan Departure Coordinates
+        function storeRouteData(data) {
             const routeMatrix = data[0].RouteMatrix;
             const departurePositions = data[0].SnappedDeparturePositions;
             const destinationPositions = data[0].SnappedDestinationPositions;
 
-            const tableBody = document.querySelector("#route-table tbody");
-            tableBody.innerHTML = ''; // Kosongkan tabel sebelumnya
+            let routeDataArray = []; // Array untuk menyimpan data berdasarkan Departure Coordinates
 
-            // Iterasi melalui seluruh RouteMatrix dan masukkan ke dalam tabel
+            // Iterasi melalui seluruh RouteMatrix dan masukkan ke dalam array
             for (let i = 0; i < routeMatrix.length; i++) {
                 for (let j = 0; j < routeMatrix[i].length; j++) {
                     const routeData = routeMatrix[i][j];
                     const distance = routeData.Distance;
                     const duration = routeData.DurationSeconds;
 
+                    const departureCoords = departurePositions[i];
+                    const destinationCoords = destinationPositions[j];
+
                     // Cek jika jaraknya lebih besar dari 0
                     if (distance > 0) {
-                        const departureCoords = departurePositions[i];
-                        const destinationCoords = destinationPositions[j];
+                        // const formattedDuration = formatDuration(duration);
+                        // const formattedDistance = formatDistance(distance);
 
-                        // Format durasi dan jarak
-                        const formattedDuration = formatDuration(duration);
-                        const formattedDistance = formatDistance(distance);
+                        // Cari apakah Departure Coordinates sudah ada dalam array
+                        const existingEntry = routeDataArray.find(entry =>
+                            JSON.stringify(entry.departurePositions) === JSON.stringify(departureCoords)
+                        );
 
-                        // Tambahkan baris baru ke dalam tabel
-                        const row = document.createElement("tr");
-                        row.innerHTML = `
-                            <td>${departureCoords[0]}, ${departureCoords[1]}</td>
-                            <td>${destinationCoords[0]}, ${destinationCoords[1]}</td>
-                            <td>${formattedDistance}</td>
-                            <td>${formattedDuration}</td>
-                        `;
-                        tableBody.appendChild(row);
+                        // Jika ditemukan, tambahkan data ke dalam array yang sudah ada
+                        if (existingEntry) {
+                            existingEntry.destinationResult.push({
+                                destinationPositions: destinationCoords,
+                                distance: distance,
+                                duration: duration,
+                                destinationNumber: j + 1 // Menambahkan nomor untuk Destination
+                            });
+                        } else {
+                            // Jika belum ada, buat entry baru untuk Departure Coordinates tersebut
+                            routeDataArray.push({
+                                departurePositions: departureCoords,
+                                departureNumber: i + 1, // Menambahkan nomor untuk Departure
+                                destinationResult: [{
+                                    destinationPositions: destinationCoords,
+                                    distance: distance,
+                                    duration: duration,
+                                    destinationNumber: j + 1 // Menambahkan nomor untuk Destination
+                                }]
+                            });
+                        }
                     }
                 }
             }
-        }
-
-        // Fungsi untuk menampilkan data dan memasukkan ke dalam array berdasarkan Departure Coordinates
-        // function storeRouteData(data) {
-        //     const routeMatrix = data[0].RouteMatrix;
-        //     const departurePositions = data[0].SnappedDeparturePositions;
-        //     const destinationPositions = data[0].SnappedDestinationPositions;
-
-        //     let routeDataArray = []; // Array untuk menyimpan data berdasarkan Departure Coordinates
-
-        //     // Iterasi melalui seluruh RouteMatrix dan masukkan ke dalam array
-        //     for (let i = 0; i < routeMatrix.length; i++) {
-        //         for (let j = 0; j < routeMatrix[i].length; j++) {
-        //             const routeData = routeMatrix[i][j];
-        //             const distance = routeData.Distance;
-        //             const duration = routeData.DurationSeconds;
-
-        //             const departureCoords = departurePositions[i];
-        //             const destinationCoords = destinationPositions[j];
-
-        //             // Cek jika jaraknya lebih besar dari 0
-        //             if (distance > 0) {
-        //                 // const formattedDuration = formatDuration(duration);
-        //                 // const formattedDistance = formatDistance(distance);
-
-        //                 // Cari apakah Departure Coordinates sudah ada dalam array
-        //                 const existingEntry = routeDataArray.find(entry =>
-        //                     JSON.stringify(entry.departurePositions) === JSON.stringify(departureCoords)
-        //                 );
-
-        //                 // Jika ditemukan, tambahkan data ke dalam array yang sudah ada
-        //                 if (existingEntry) {
-        //                     existingEntry.destinationResult.push({
-        //                         destinationPositions: destinationCoords,
-        //                         distance: distance,
-        //                         duration: duration,
-        //                         destinationNumber: j + 1 // Menambahkan nomor untuk Destination
-        //                     });
-        //                 } else {
-        //                     // Jika belum ada, buat entry baru untuk Departure Coordinates tersebut
-        //                     routeDataArray.push({
-        //                         departurePositions: departureCoords,
-        //                         departureNumber: i + 1, // Menambahkan nomor untuk Departure
-        //                         destinationResult: [{
-        //                             destinationPositions: destinationCoords,
-        //                             distance: distance,
-        //                             duration: duration,
-        //                             destinationNumber: j + 1 // Menambahkan nomor untuk Destination
-        //                         }]
-        //                     });
-        //                 }
-        //             }
-        //         }
-        //     }
-
-        //     // Tampilkan array yang sudah terisi
-        //     console.log(routeDataArray);
-        //     return routeDataArray;
-        // }
-
-        // Fungsi untuk memilih rute terdekat untuk setiap Departure Coordinates
-        function selectClosestRoute(routeDataArray) {
-            // Iterasi melalui routeDataArray untuk memilih rute terdekat
-            routeDataArray.forEach(entry => {
-                // Mengurutkan destinationResult berdasarkan distance (jarak terdekat)
-                entry.destinationResult.sort((a, b) => a.distance - b.distance);
-
-                // Ambil hanya rute pertama (terdekat)
-                const closestRoute = entry.destinationResult[0];
-
-                // Simpan hanya rute terdekat
-                entry.destinationResult = [closestRoute];
-            });
 
             // Tampilkan array yang sudah terisi
-            console.log(routeDataArray);
-            return routeDataArray;
+            // console.log(findRoute(routeDataArray));
+            return findRoute(routeDataArray);
+        }
+
+        // Fungsi untuk mencari jarak terdekat dari titik keberangkatan yang ditentukan
+        function findClosestDestination(dataRoute, departureNumber, visitedDestinations) {
+            const departure = dataRoute.find(d => d.departureNumber === departureNumber);
+            const unvisitedDestinations = departure.destinationResult.filter(dest => !visitedDestinations.includes(dest.destinationNumber));
+
+            // Menemukan tujuan terdekat
+            let closest = null;
+            let minDistance = Infinity;
+
+            unvisitedDestinations.forEach(dest => {
+                if (dest.distance < minDistance) {
+                    closest = dest;
+                    minDistance = dest.distance;
+                }
+            });
+
+            return closest;
+        }
+
+        // Fungsi untuk menentukan urutan perjalanan berdasarkan jarak terdekat, tanpa tujuan terakhir
+        function findRoute(dataRoute) {
+            const route = [];
+            let visitedDestinations = [];
+            let currentDepartureNumber = 1; // Mulai dari keberangkatan 1
+
+            while (visitedDestinations.length < dataRoute.length - 1) { // Ambil data sampai tujuan terakhir dihilangkan
+                const closestDestination = findClosestDestination(dataRoute, currentDepartureNumber, visitedDestinations);
+                if (closestDestination) {
+                    // Masukkan data keberangkatan dan tujuan ke dalam hasil
+                    route.push({
+                        departurePositions: dataRoute.find(d => d.departureNumber === currentDepartureNumber).departurePositions,
+                        departureNumber: currentDepartureNumber,
+                        destinationPositions: closestDestination.destinationPositions,
+                        destinationNumber: closestDestination.destinationNumber,
+                        distance: closestDestination.distance,
+                        duration: closestDestination.duration
+                    });
+                    visitedDestinations.push(closestDestination.destinationNumber);
+                    currentDepartureNumber = closestDestination.destinationNumber; // Update keberangkatan selanjutnya
+                }
+            }
+
+            return route;
         }
 
         // Fungsi untuk membuat tabel berdasarkan routeDataArray
@@ -339,38 +461,35 @@
             routeDataArray.forEach(entry => {
                 const departureCoords = entry.departurePositions;
 
-                // Untuk setiap Departure Coordinates, iterasi melalui routes
-                entry.destinationResult.forEach(route => {
-                    const destinationCoords = route.destinationPositions;
-                    const distance = route.distance;
-                    const duration = route.duration;
+                const destinationCoords = entry.destinationPositions;
+                const distance = formatDistance(entry.distance);
+                const duration = formatDuration(entry.duration);
 
-                    // Membuat baris baru untuk tabel
-                    const row = document.createElement("tr");
+                // Membuat baris baru untuk tabel
+                const row = document.createElement("tr");
 
-                    // Tambahkan kolom Departure Coordinates dengan nomor
-                    const departureCell = document.createElement("td");
-                    departureCell.textContent = `Departure ${entry.departureNumber}: ${departureCoords[0]}, ${departureCoords[1]}`;
-                    row.appendChild(departureCell);
+                // Tambahkan kolom Departure Coordinates dengan nomor
+                const departureCell = document.createElement("td");
+                departureCell.textContent = `Departure ${entry.departureNumber}: ${departureCoords[0]}, ${departureCoords[1]}`;
+                row.appendChild(departureCell);
 
-                    // Tambahkan kolom Destination Coordinates dengan nomor
-                    const destinationCell = document.createElement("td");
-                    destinationCell.textContent = `Destination ${route.destinationNumber}: ${destinationCoords[0]}, ${destinationCoords[1]}`;
-                    row.appendChild(destinationCell);
+                // Tambahkan kolom Destination Coordinates dengan nomor
+                const destinationCell = document.createElement("td");
+                destinationCell.textContent = `Destination ${entry.destinationNumber}: ${destinationCoords[0]}, ${destinationCoords[1]}`;
+                row.appendChild(destinationCell);
 
-                    // Tambahkan kolom Distance
-                    const distanceCell = document.createElement("td");
-                    distanceCell.textContent = distance;
-                    row.appendChild(distanceCell);
+                // Tambahkan kolom Distance
+                const distanceCell = document.createElement("td");
+                distanceCell.textContent = distance;
+                row.appendChild(distanceCell);
 
-                    // Tambahkan kolom Duration
-                    const durationCell = document.createElement("td");
-                    durationCell.textContent = duration;
-                    row.appendChild(durationCell);
+                // Tambahkan kolom Duration
+                const durationCell = document.createElement("td");
+                durationCell.textContent = duration;
+                row.appendChild(durationCell);
 
-                    // Tambahkan baris ke dalam body tabel
-                    tableBody.appendChild(row);
-                });
+                // Tambahkan baris ke dalam body tabel
+                tableBody.appendChild(row);
             });
         }
 

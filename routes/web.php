@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\MapController;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
@@ -11,8 +12,13 @@ Route::get('/tj', function () {
 });
 
 Route::get('/', function () {
-    return view('new');
-});
+    return view('index');
+})->name('pageHome');
+
+Route::get('/map', [MapController::class, 'showMap']);
+Route::get('/api/map-style', [MapController::class, 'getMapStyle']);
+Route::get('/api/map-style-simple', [MapController::class, 'getMapStyleSimple']);
+Route::get('/api/map-style-clean', [MapController::class, 'getMapStyleClean']); // New endpoint
 
 //route API
 Route::get('/map-style', function () {
@@ -28,4 +34,12 @@ Route::get('/map-style', function () {
 
     // Kembalikan data JSON ke frontend
     return response()->json($response->json());
+});
+
+Route::get('/map-config', function () {
+    return response()->json([
+        'region' => env('AWS_REGION'),
+        'apiKey' => env('AWS_API_KEY'),
+        'mapName' => env('AWS_MAP_NAME')
+    ]);
 });
