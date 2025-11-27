@@ -65,6 +65,22 @@ const languageTexts = {
             "There was an error while searching. Please check your connection and try again.",
         location: "Location",
         detailsAvailable: "Details available",
+
+        selectedLocations: "Marker Selected",
+        select: "Select",
+        clearAll: "Clear All",
+        planRoute: "Plan Route",
+        noSelectedLocations: "No location selected",
+        noSelectedLocationsDes: "Please select a location first",
+        confirmClearAll:
+            "Are you sure you want to clear all selected locations?",
+        allLocationsCleared: "All locations cleared",
+        needAtLeastTwoLocations: "Need at least 2 locations to plan a route",
+        view: "View",
+
+        searching: "Searching...",
+
+        displayNearestMarkers: "Displaying nearest markers",
     },
     id: {
         resetMaps: "Reset Peta",
@@ -128,6 +144,23 @@ const languageTexts = {
             "Terjadi kesalahan saat mencari. Periksa koneksi Anda dan coba lagi.",
         location: "Lokasi",
         detailsAvailable: "Detail tersedia",
+
+        selectedLocations: "Maps Terpilih",
+        select: "Pilih",
+        clearAll: "Hapus Semua",
+        planRoute: "Rencanakan Rute",
+        noSelectedLocations: "Lokasi belum dipilih",
+        noSelectedLocationsDes: "Silakan pilih lokasi terlebih dahulu",
+        confirmClearAll:
+            "Apakah Anda yakin ingin menghapus semua lokasi yang dipilih?",
+        allLocationsCleared: "Semua lokasi telah dihapus",
+        needAtLeastTwoLocations:
+            "Perlu setidaknya 2 lokasi untuk merencanakan rute",
+        view: "Lihat",
+
+        searching: "Sedang mencari...",
+
+        displayNearestMarkers: "Menampilkan marker terdekat",
     },
 };
 
@@ -180,6 +213,8 @@ function updateLanguage() {
 
     // Update header button
     $(".button.btn-success").text(texts.resetMaps);
+
+    $(".toggle-tooltip").text(texts.displayNearestMarkers);
 
     // Update search elements
     $("#searchInput").attr("placeholder", texts.searchPlaceholder);

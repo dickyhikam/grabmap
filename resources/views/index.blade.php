@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="{{ asset('css/style-alert.css') }}" />
     <link rel="stylesheet" href="{{ asset('css/style-loading.css') }}" />
     <link rel="stylesheet" href="{{ asset('css/search.css') }}" />
+    <link rel="stylesheet" href="{{ asset('css/tab.css') }}" />
 
     <!-- Map library -->
     <script src="https://unpkg.com/maplibre-gl@4.x/dist/maplibre-gl.js"></script>
@@ -69,6 +70,16 @@
 
                 <!-- Search Options Row -->
                 <div class="search-options-row">
+                    <!-- Vehicle Type Selection -->
+                    <div class="search-options">
+                        <div class="search-option active" data-type="car">
+                            <i class="fas fa-car"></i>
+                        </div>
+                        <div class="search-option" data-type="motorcycle">
+                            <i class="fas fa-motorcycle"></i>
+                        </div>
+                    </div>
+
                     <!-- Current Location Toggle dengan ON/OFF -->
                     <div class="location-toggle-container">
                         <div class="toggle-switch">
@@ -83,19 +94,9 @@
                                 </span>
                             </label>
                             <!-- Tooltip Element -->
-                            <div class="toggle-tooltip">
+                            <div class="toggle-tooltip" id="txt-loc-markers">
                                 Search nearest location from selected maker
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Vehicle Type Selection -->
-                    <div class="search-options">
-                        <div class="search-option active" data-type="car">
-                            <i class="fas fa-car"></i>
-                        </div>
-                        <div class="search-option" data-type="motorcycle">
-                            <i class="fas fa-motorcycle"></i>
                         </div>
                     </div>
                 </div>
@@ -157,6 +158,9 @@
         let currentMap = null;
         let locFirst = [106.8456, -6.2088]; // Default coordinates (Jakarta)
 
+        // Global variables untuk selected locations
+        let selectedLocations = [];
+
         // Initialize when document is ready
         $(document).ready(function() {
             initializeMap();
@@ -165,6 +169,7 @@
             initLanguage();
 
             showWelcomeMessage();
+            // performSearch();
         });
 
         // Location selection handler

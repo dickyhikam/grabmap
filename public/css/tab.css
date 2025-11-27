@@ -1,0 +1,373 @@
+/* Results Container */
+.results-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    margin: -15px;
+}
+
+/* Tabs Navigation */
+.results-tabs {
+    display: flex;
+    background: #f8f9fa;
+    /* border-radius: 12px 12px 0 0; */
+    /* padding: 4px; */
+    /* margin-bottom: 0; */
+    margin-top: -5px;
+}
+
+.search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.tab-button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #718096;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.tab-button:hover {
+    color: #00ba4e;
+    background: rgba(0, 186, 78, 0.05);
+}
+
+.tab-button.active {
+    background: white;
+    color: #00ba4e;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tab-button i {
+    font-size: 12px;
+}
+
+.selected-count {
+    background: #00ba4e;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* Tab Content */
+.tab-content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+.tab-pane {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.tab-pane.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Search Header */
+.search-header {
+    padding: 15px 20px 10px;
+    border-bottom: 1px solid #e1e5e9;
+}
+
+.search-summary {
+    margin: 0;
+    color: #718096;
+    font-size: 14px;
+}
+
+/* Selected Locations Header */
+.selected-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e1e5e9;
+    background: #f8f9fa;
+    display: none;
+}
+
+.selected-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+}
+
+.btn-outline.small,
+.btn-primary.small {
+    padding: 6px 12px;
+    font-size: 12px;
+    flex: 1;
+}
+
+/* Selected Location Item */
+.selected-location-item {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 10px;
+    border: 1px solid #e1e5e9;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.selected-location-item:hover {
+    border-color: #00ba4e;
+    box-shadow: 0 2px 8px rgba(0, 186, 78, 0.1);
+}
+
+.selected-location-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.selected-location-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0;
+    flex: 1;
+}
+
+.selected-location-remove {
+    background: none;
+    border: none;
+    color: #f56565;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.selected-location-remove:hover {
+    background: #fed7d7;
+}
+
+.selected-location-address {
+    font-size: 12px;
+    color: #718096;
+    margin: 0 0 10px 0;
+    line-height: 1.3;
+}
+
+.selected-location-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.selected-location-actions .btn-outline,
+.selected-location-actions .btn-primary {
+    padding: 4px 8px;
+    font-size: 11px;
+    flex: 1;
+}
+
+/* Active state untuk selected items */
+.selected-location-item.active {
+    border-color: #00ba4e;
+    background: #f0f9f0;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 768px) {
+    .tab-button {
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+
+    .tab-button i {
+        font-size: 11px;
+    }
+
+    .search-header,
+    .selected-header {
+        padding: 12px 15px;
+    }
+
+    .selected-actions {
+        flex-direction: column;
+        gap: 6px;
+    }
+}
+
+/* Error State Styles */
+.error-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #718096;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.error-state i {
+    font-size: 48px;
+    margin-bottom: 20px;
+    color: #f56565;
+    opacity: 0.8;
+}
+
+.error-state h4 {
+    margin: 0 0 12px 0;
+    color: #2d3748;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.error-state p {
+    margin: 0 0 25px 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #718096;
+    max-width: 300px;
+}
+
+/* Retry Button */
+.retry-btn {
+    background: linear-gradient(135deg, #00ba4e, #009c41);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 186, 78, 0.2);
+}
+
+.retry-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 186, 78, 0.3);
+}
+
+.retry-btn:active {
+    transform: translateY(0);
+}
+
+/* Empty State (untuk konsistensi) */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #718096;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 20px;
+    color: #a0aec0;
+    opacity: 0.6;
+}
+
+.empty-state h4 {
+    margin: 0 0 12px 0;
+    color: #2d3748;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #718096;
+    max-width: 300px;
+}
+
+/* Loading State dalam Result Box */
+.results-loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: #718096;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 70%;
+}
+
+.results-loading i {
+    font-size: 32px;
+    margin-bottom: 16px;
+    color: #00ba4e;
+    animation: spin 1s linear infinite;
+}
+
+.results-loading p {
+    margin: 0;
+    font-size: 14px;
+    color: #718096;
+}
+
+/* Animasi untuk loading spinner */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive Design */
+@media screen and (max-width: 768px) {
+    .error-state,
+    .empty-state,
+    .results-loading {
+        padding: 30px 15px;
+    }
+
+    .error-state i,
+    .empty-state i {
+        font-size: 40px;
+        margin-bottom: 16px;
+    }
+
+    .error-state h4,
+    .empty-state h4 {
+        font-size: 16px;
+    }
+
+    .error-state p,
+    .empty-state p {
+        font-size: 13px;
+        max-width: 250px;
+    }
+
+    .retry-btn {
+        padding: 10px 20px;
+        font-size: 13px;
+    }
+}

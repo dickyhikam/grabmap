@@ -229,13 +229,6 @@ body {
     line-height: 1.4;
 }
 
-.search-results {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 15px;
-}
-
 .result-item {
     background: white;
     border-radius: 12px;
