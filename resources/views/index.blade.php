@@ -163,12 +163,12 @@
 
         // Initialize when document is ready
         $(document).ready(function() {
-            initializeMap();
+            // initializeMap();
             setupSearchEvents();
 
             initLanguage();
 
-            showWelcomeMessage();
+            // showWelcomeMessage();
             // performSearch();
         });
 

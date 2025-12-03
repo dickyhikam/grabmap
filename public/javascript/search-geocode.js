@@ -41,7 +41,7 @@ function performSearch() {
 async function displayGeocodeResults(search) {
     const resultBox = document.getElementById("resultBox");
     const texts = languageTexts[currentLanguage];
-    let resSearch;
+    let resSearch, resSelected;
 
     if (search.length < 3) {
         resSearch = `
@@ -52,8 +52,9 @@ async function displayGeocodeResults(search) {
             </div>`;
     } else {
         resSearch = await searchGeocode(search, texts);
-        console.log(resSearch);
     }
+
+    resSelected = displaySelectedMarkers(texts);
 
     let htmlContent = `
             <div class="results-container">
@@ -90,12 +91,8 @@ async function displayGeocodeResults(search) {
                                 </button>
                             </div>
                         </div>
-                        <div class="search-results" id="selected-results-list">
-                            <div class="empty-state">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <h4>${texts.noSelectedLocations}</h4>
-                                <p>${texts.noSelectedLocations}</p>
-                            </div>
+                        <div class="selected-results">
+                            ${resSelected}
                         </div>
                     </div>
                 </div>
@@ -161,15 +158,16 @@ function displaySearch(results, texts) {
         const lon = Number(pt[0]);
         const lat = Number(pt[1]);
 
-        const { title, address } = splitLabel(label);
+        const { title, body } = splitLabel(label);
         const features = "";
 
         const res_label = escapeHtml(label);
         const res_title = escapeHtml(title || label);
-        const res_address = escapeHtml(address || label);
+        const res_address = escapeHtml(body || label);
+        // console.log(splitLabel(label));
 
         htmlContent += `
-            <div class="result-item" onclick="showLocation(${lon}, ${lat}, &quot;${res_label}&quot;)">
+            <div class="result-item" onclick="showLocation(${lon}, ${lat}, &quot;${res_title}&quot;, &quot;${res_address}&quot;)">
                 <div class="result-header">
                     <h4 class="result-title">${res_title}</h4>
                     <span class="result-distance">10KM</span>
@@ -183,6 +181,73 @@ function displaySearch(results, texts) {
                         <i class="fas fa-plus"></i> ${texts.select}
                     </button>
                     <button class="btn-primary" onclick="event.stopPropagation(); getDirectionsTo(${lon}, ${lat}, '${res_label}')">
+                        <i class="fas fa-route"></i> ${texts.directions}
+                    </button>
+                </div>
+            </div>`;
+    });
+
+    return htmlContent;
+}
+
+function refreshSelectedLocationsList() {
+    const selectedList = document.querySelector(".selected-results");
+    const texts = languageTexts[currentLanguage];
+
+    if (selectedLocations.length === 0) {
+        selectedList.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-map-marker-alt"></i>
+                <h4>${texts.noSelectedLocations}</h4>
+                <p>${texts.noSelectedLocations}</p>
+            </div>`;
+        return;
+    }
+    console.log(displaySelectedMarkers(texts));
+
+    selectedList.innerHTML = displaySelectedMarkers(texts);
+}
+
+function displaySelectedMarkers(texts) {
+    if (!selectedLocations || selectedLocations.length === 0) {
+        return `
+            <div class="empty-state">
+                <i class="fas fa-map-marker-alt"></i>
+                <h4>${texts.noSelectedLocations}</h4>
+                <p>${texts.noSelectedLocations}</p>
+            </div>`;
+    }
+
+    let htmlContent = "";
+
+    selectedLocations.forEach((location, index) => {
+        // PERBAIKAN: Gunakan struktur data yang konsisten
+        const lon = Number(location.latlong[0]);
+        const lat = Number(location.latlong[1]);
+        const res_title = escapeHtml(
+            location.label || location.title || "Unknown"
+        );
+        const res_address = escapeHtml(
+            location.address || location.body || "No address"
+        );
+
+        htmlContent += `
+            <div class="result-item selected-location-item" onclick="showLocation(${lon}, ${lat}, '${res_title}', '${res_address}')">
+                <div class="result-header">
+                    <h4 class="result-title">${res_title}</h4>
+                    <span class="result-distance">10KM</span>
+                </div>
+                <p class="result-address">${res_address}</p>
+                <div class="result-features">
+                    <span class="result-feature">
+                        <i class="fas fa-bookmark"></i> Saved
+                    </span>
+                </div>
+                <div class="result-actions">
+                    <button class="btn-outline" onclick="event.stopPropagation(); removeFromSelectedLocations(${location.id})">
+                        <i class="fas fa-trash"></i> ${texts.remove}
+                    </button>
+                    <button class="btn-primary" onclick="event.stopPropagation(); getDirectionsTo(${lon}, ${lat}, '${res_title}')">
                         <i class="fas fa-route"></i> ${texts.directions}
                     </button>
                 </div>
@@ -228,6 +293,8 @@ function initResultsTabs() {
     const tabPanes = document.querySelectorAll(".tab-pane");
 
     tabButtons.forEach((button) => {
+        console.log(button);
+
         button.addEventListener("click", function () {
             const targetTab = this.getAttribute("data-tab");
 
@@ -240,9 +307,59 @@ function initResultsTabs() {
             document.getElementById(targetTab).classList.add("active");
 
             // Jika pindah ke selected tab, refresh list
-            if (targetTab === "selected-locations") {
-                refreshSelectedLocationsList();
-            }
+            // if (targetTab === "selected-locations") {
+            //     refreshSelectedLocationsList();
+            // }
         });
     });
+}
+
+// Function untuk switch ke Search Results tab
+function switchToSearchResultsTab() {
+    console.log("Attempting to switch to Search Results tab...");
+
+    // Method 1: Gunakan event click pada tab button
+    const searchTabButton = document.querySelector(
+        '.tab-button[data-tab="search-results"]'
+    );
+
+    if (searchTabButton) {
+        console.log("Found search tab button, triggering click...");
+        searchTabButton.click(); // Trigger click event
+        return true;
+    }
+
+    // Method 2: Manual switching jika Method 1 gagal
+    const selectedTabButton = document.querySelector(
+        '.tab-button[data-tab="selected-locations"]'
+    );
+    const searchTabPane = document.getElementById("search-results");
+    const selectedTabPane = document.getElementById("selected-locations");
+
+    if (
+        searchTabButton &&
+        selectedTabButton &&
+        searchTabPane &&
+        selectedTabPane
+    ) {
+        console.log("Manual tab switching...");
+
+        // Remove active class dari semua tabs
+        document.querySelectorAll(".tab-button").forEach((btn) => {
+            btn.classList.remove("active");
+        });
+        document.querySelectorAll(".tab-pane").forEach((pane) => {
+            pane.classList.remove("active");
+        });
+
+        // Add active class ke search tab
+        searchTabButton.classList.add("active");
+        searchTabPane.classList.add("active");
+
+        console.log("Tab switched successfully");
+        return true;
+    }
+
+    console.error("Tab elements not found");
+    return false;
 }

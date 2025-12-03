@@ -68,6 +68,19 @@ async function initializeMap(styleEndpoint = "/api/map-style-clean") {
                     "bottom-right"
                 );
                 currentMap.addControl(new maplibregl.GeolocateControl());
+                // Listen for geolocate event to capture coordinates
+                currentMap.on("geolocate", (e) => {
+                    console.log(e);
+
+                    const longitude = e.coords.longitude;
+                    const latitude = e.coords.latitude;
+                    console.log("Longitude:", longitude);
+                    console.log("Latitude:", latitude);
+
+                    // You can now use the longitude and latitude as needed
+                    // For example, you could set the map's center based on these coordinates
+                    currentMap.setCenter([longitude, latitude]);
+                });
 
                 // Show success and hide
                 setLoadingSuccess("Maps Loaded Successfully");
@@ -86,12 +99,9 @@ async function initializeMap(styleEndpoint = "/api/map-style-clean") {
 }
 
 // ====== SHOW LOCATION ON MAP ======
-function showLocation(lon, lat, label = "") {
-    console.log("Showing location:", { lon, lat, label });
-
+function showLocation(lon, lat, label = "", address = "") {
     // Pastikan map sudah siap
     if (!currentMap) {
-        console.error("Map not initialized");
         showToast("Map is not ready yet", "error");
         return;
     }
@@ -109,33 +119,58 @@ function showLocation(lon, lat, label = "") {
     const coordinates = [LON, LAT];
 
     try {
-        // Clear existing markers terlebih dahulu
-        clearMarkers();
+        // 1. Switch tab ke Search Results
+        switchToSearchResultsTab();
 
-        // Add marker baru
-        addMarkerToMap(coordinates, label);
+        // 2. Clear existing markers terlebih dahulu
+        // clearMarkers();
 
-        // Fly to location
-        currentMap.flyTo({
-            center: coordinates,
-            zoom: 16, // Zoom level lebih dekat
-            speed: 1.5,
-            curve: 1.2,
-            essential: true,
-        });
+        // 3. Add marker baru
+        // addMarkerToMap(coordinates, label, address);
 
-        // Show success message
+        // 4. Fly to location
+        // flyLocation(LON, LAT);
+
+        // 5. Show success message
         if (label) {
             showToast(`Showing: ${label}`, "success");
         }
+
+        // 6. Update list selected location
+        refreshSelectedLocationsList();
     } catch (error) {
         console.error("Error showing location:", error);
         showToast("Failed to show location on map", "error");
     }
 }
 
+function flyLocation(lon, lat) {
+    const ll = [lon, lat]; // Menyimpan koordinat lon dan lat dalam array ll
+
+    // Mengarahkan kamera ke lokasi marker yang sudah ada
+    currentMap.flyTo({
+        center: ll,
+        zoom: 15, // level zoom dapat disesuaikan
+        speed: 1.2,
+        curve: 1,
+        essential: true,
+    });
+
+    // Mencari marker berdasarkan koordinat dan menampilkan popup
+    selectedLocations.forEach((marker) => {
+        const markerLngLat = marker.latlong;
+        if (markerLngLat.lng === lon && markerLngLat.lat === lat) {
+            setTimeout(() => {
+                marker.togglePopup();
+            }, 1000);
+        }
+    });
+}
+
 // Function untuk menambahkan marker
-function addMarkerToMap(coordinates, title = "") {
+function addMarkerToMap(coordinates, title = "", address = "") {
+    const markerId = selectedLocations.length + 1;
+
     if (!currentMap) return null;
 
     // Create popup content
@@ -145,7 +180,7 @@ function addMarkerToMap(coordinates, title = "") {
 
     // Create marker dengan popup
     const marker = new maplibregl.Marker({
-        color: "#00ba4e",
+        color: "#00b14f",
         draggable: false,
     })
         .setLngLat(coordinates)
@@ -162,6 +197,12 @@ function addMarkerToMap(coordinates, title = "") {
         window.markers = [];
     }
     window.markers.push(marker);
+    selectedLocations.push({
+        id: markerId,
+        latlong: coordinates,
+        title: escapeHtml(title),
+        address: escapeHtml(address),
+    });
 
     // Auto open popup
     setTimeout(() => {

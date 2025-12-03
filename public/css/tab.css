@@ -22,6 +22,12 @@
     gap: 12px;
     margin-top: 15px;
 }
+.selected-results {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 15px;
+}
 
 .tab-button {
     flex: 1;
@@ -125,7 +131,7 @@
     background: white;
     border-radius: 8px;
     padding: 15px;
-    margin: 10px;
+    /* margin: 10px; */
     border: 1px solid #e1e5e9;
     transition: all 0.3s ease;
     position: relative;

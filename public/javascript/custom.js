@@ -81,6 +81,8 @@ const languageTexts = {
         searching: "Searching...",
 
         displayNearestMarkers: "Displaying nearest markers",
+
+        //toast
     },
     id: {
         resetMaps: "Reset Peta",

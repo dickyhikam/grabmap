@@ -308,7 +308,6 @@
         // const straightDistanceEl = document.getElementById('straight-distance');
         const cardLocations = document.getElementById('cardLocations');
 
-
         let vehicleType = "Car"; // using Car or Motorcycle
         let dataDesti = [];
         let dataAddress = [];
