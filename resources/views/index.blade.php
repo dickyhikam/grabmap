@@ -51,7 +51,7 @@
             </div>
 
             <!-- Reset Maps Button -->
-            <button class="button btn btn-success" onclick="resetMaps();">Reset Maps</button>
+            <button class="button btn btn-success" onclick="resetMaps();" id="btnResetMaps">Reset Maps</button>
         </div>
     </div>
 
@@ -163,12 +163,12 @@
 
         // Initialize when document is ready
         $(document).ready(function() {
-            // initializeMap();
+            initializeMap();
             setupSearchEvents();
 
             initLanguage();
 
-            // showWelcomeMessage();
+            showWelcomeMessage();
             // performSearch();
         });
 

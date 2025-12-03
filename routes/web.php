@@ -15,6 +15,10 @@ Route::get('/', function () {
     return view('index');
 })->name('pageHome');
 
+Route::get('/address', function () {
+    return view('address');
+})->name('pageHome');
+
 Route::get('/map', [MapController::class, 'showMap']);
 Route::get('/api/map-style', [MapController::class, 'getMapStyle']);
 Route::get('/api/map-style-simple', [MapController::class, 'getMapStyleSimple']);

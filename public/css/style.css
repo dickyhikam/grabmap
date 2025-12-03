@@ -489,3 +489,101 @@ body {
 .language-text {
     font-weight: 600;
 }
+
+/* --- LAYOUT TENGAH (CENTERED) --- */
+
+.centered-layout {
+    /* Membuat container memenuhi sisa layar */
+    width: 100%;
+    height: calc(100% - var(--sizeHeader));
+    background-color: #ffffff; /* Bisa diganti #f0f4f9 jika ingin abu-abu muda */
+
+    /* KUNCI POSISI TENGAH: */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Tengah Vertikal */
+    align-items: center; /* Tengah Horizontal */
+}
+
+.search-center-wrapper {
+    width: 100%;
+    max-width: 700px; /* Batas lebar agar tidak terlalu panjang */
+    padding: 0 20px;
+    box-sizing: border-box;
+    margin-bottom: 100px; /* Sedikit naik ke atas (visual balance) */
+}
+
+.search-header-text h2 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 30px;
+    font-weight: 500;
+    font-size: 28px;
+}
+
+/* --- STYLE INPUT (GEMINI) --- */
+
+.gemini-input-group.big-search {
+    background-color: #f0f4f9;
+    border-radius: 30px; /* Lebih bulat */
+    padding: 12px 20px;
+    display: flex;
+    align-items: flex-start; /* Agar icon tetap di atas jika text bertambah baris */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* Shadow halus */
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.gemini-input-group.big-search:focus-within {
+    background-color: white;
+    box-shadow: 0 1px 15px rgba(0, 0, 0, 0.15); /* Shadow lebih tebal saat aktif */
+    border-color: #e0e0e0;
+}
+
+.gemini-textarea {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 18px;
+    color: #333;
+
+    /* --- TAMBAHAN PENTING --- */
+    resize: none; /* Matikan tarik manual */
+    overflow-y: hidden; /* Hilangkan scrollbar agar tidak kedip */
+    line-height: 1.5; /* Jarak antar baris konsisten */
+    padding: 10px 0; /* Padding atas bawah */
+    max-height: 200px; /* Batas maksimal tinggi */
+    box-sizing: border-box;
+}
+
+.gemini-textarea::placeholder {
+    color: #8da3b3;
+}
+
+.gemini-send-btn {
+    background: #00ba4e; /* Tombol warna hijau Grab */
+    border: none;
+    color: white;
+    cursor: pointer;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    margin-left: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    flex-shrink: 0;
+}
+
+.gemini-send-btn:hover {
+    background-color: #009c41;
+}
+
+.gemini-helper {
+    margin-top: 15px;
+    color: #999;
+    font-size: 13px;
+    text-align: center;
+}

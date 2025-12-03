@@ -4,8 +4,15 @@ let currentLanguage = "en"; // Default language: English
 // Language texts
 const languageTexts = {
     en: {
+        // --- TEXT KHUSUS TAMPILAN GEMINI ---
+        heroTitle: "Verify Your Address Here",
+        pressEnterHelper: "Press <b>Enter</b> to search",
+        searchPlaceholder: "Search for address...",
+
+        // --- TEXT LAMA (TETAP DIPERTAHANKAN) ---
         resetMaps: "Reset Maps",
-        searchPlaceholder: "Search for address, place, or location...",
+        resetSearch: "Reset Search",
+        // searchPlaceholder: "Search for address, place, or location...",
         enterKeywords: "Please enter search keywords",
         welcomeTitle: "Welcome to<br>GrabMaps!",
         searchFeature: "Search Location",
@@ -82,11 +89,28 @@ const languageTexts = {
 
         displayNearestMarkers: "Displaying nearest markers",
 
-        //toast
+        //verif address
+        verifSuccessTitle: "Address Verified",
+        verifSuccessDesc: "Location found in database.",
+        verifFailedTitle: "Address Not Found",
+        verifFailedDesc:
+            "We couldn't verify this location. Please check your spelling.",
+        coordinate: "Coordinate",
+        confidence: "Match Accuracy",
+        searching: "Verifying address...",
+
+        textToastAddress:
+            "Please enter a complete address (minimum 10 characters)",
     },
     id: {
+        // --- TEXT KHUSUS TAMPILAN GEMINI ---
+        heroTitle: "Verifikasi Alamat Anda di Sini",
+        pressEnterHelper: "Tekan <b>Enter</b> untuk mencari",
+
+        // --- TEXT LAMA (TETAP DIPERTAHANKAN) ---
         resetMaps: "Reset Peta",
-        searchPlaceholder: "Cari alamat, tempat, atau lokasi...",
+        resetSearch: "Reset Pencarian",
+        searchPlaceholder: "Cari alamat...",
         enterKeywords: "Masukkan kata kunci pencarian",
         welcomeTitle: "Selamat Datang di<br>GrabMaps!",
         searchFeature: "Cari Lokasi",
@@ -163,13 +187,24 @@ const languageTexts = {
         searching: "Sedang mencari...",
 
         displayNearestMarkers: "Menampilkan marker terdekat",
+
+        //verif address
+        verifSuccessTitle: "Alamat Terverifikasi",
+        verifSuccessDesc: "Lokasi ditemukan dalam database.",
+        verifFailedTitle: "Alamat Tidak Ditemukan",
+        verifFailedDesc:
+            "Kami tidak dapat memverifikasi lokasi ini. Mohon periksa ejaan Anda.",
+        coordinate: "Koordinat",
+        confidence: "Akurasi Cocok",
+        searching: "Sedang memverifikasi alamat...",
+
+        textToastAddress: "Mohon masukkan alamat lengkap (minimal 10 karakter)",
     },
 };
 
 // Initialize language functionality
 function initLanguage() {
     setupLanguageEvents();
-    // updateLanguage();
 }
 
 // Setup language dropdown events
@@ -214,7 +249,8 @@ function updateLanguage() {
     const texts = languageTexts[currentLanguage];
 
     // Update header button
-    $(".button.btn-success").text(texts.resetMaps);
+    $("#btnResetMaps").text(texts.resetMaps);
+    $("#btnResetSearch").text(texts.resetMaps);
 
     $(".toggle-tooltip").text(texts.displayNearestMarkers);
 
@@ -241,9 +277,24 @@ function updateLanguage() {
 
     // Update content based on current view
     updateContentLanguage();
+
+    // Update content based on current view address
+    updateContentLanguageAddress(texts);
 }
 
 // Update content based on current language
+function updateContentLanguageAddress(texts) {
+    // UPDATE ELEMENT TAMPILAN GEMINI (TENGAH)
+    $(".search-header-text h2").text(texts.heroTitle); // Judul Besar
+    $("#geminiSearchInput").attr("placeholder", texts.searchPlaceholder); // Placeholder Textarea
+    $(".gemini-helper small").html(texts.pressEnterHelper); // Helper di bawah input (pakai .html agar <b> terbaca)
+
+    if (lastSearchStatus !== null) {
+        // Panggil ulang fungsi render.
+        // Karena 'currentLanguage' sudah berubah, teks di dalamnya otomatis ganti.
+        renderVerificationResult(lastSearchStatus, lastSearchData);
+    }
+}
 function updateContentLanguage() {
     const texts = languageTexts[currentLanguage];
 

@@ -51,7 +51,8 @@ async function displayGeocodeResults(search) {
                 <p>${texts.tryDifferentKeywords}</p>
             </div>`;
     } else {
-        resSearch = await searchGeocode(search, texts);
+        resSearch = await searchGeocode(search, 10);
+        displaySearch(resSearch, texts);
     }
 
     resSelected = displaySelectedMarkers(texts);
@@ -104,7 +105,7 @@ async function displayGeocodeResults(search) {
 }
 
 // ====== SEARCH GEOCODING (teks -> daftar tempat) ======
-async function searchGeocode(search, texts) {
+async function searchGeocode(search, countResult) {
     if (search.length < 3) {
         // hindari call API terlalu sering saat input pendek
         return;
@@ -120,7 +121,7 @@ async function searchGeocode(search, texts) {
             },
             body: JSON.stringify({
                 Text: search,
-                MaxResults: 10,
+                MaxResults: countResult,
             }),
         });
 
@@ -132,7 +133,8 @@ async function searchGeocode(search, texts) {
         const results = data["Results"] || [];
 
         // Render results ke HTML
-        return displaySearch(results, texts);
+        // return displaySearch(results, texts);
+        return results;
     } catch (error) {
         console.error("Geocoding error:", error);
         displayGeocodeError();
