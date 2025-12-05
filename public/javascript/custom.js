@@ -101,6 +101,9 @@ const languageTexts = {
 
         textToastAddress:
             "Please enter a complete address (minimum 10 characters)",
+
+        labelBasemap: "Maps",
+        labelManyData: "Multiple Data",
     },
     id: {
         // --- TEXT KHUSUS TAMPILAN GEMINI ---
@@ -199,6 +202,9 @@ const languageTexts = {
         searching: "Sedang memverifikasi alamat...",
 
         textToastAddress: "Mohon masukkan alamat lengkap (minimal 10 karakter)",
+
+        labelBasemap: "Peta",
+        labelManyData: "Banyak Data",
     },
 };
 
@@ -250,7 +256,7 @@ function updateLanguage() {
 
     // Update header button
     $("#btnResetMaps").text(texts.resetMaps);
-    $("#btnResetSearch").text(texts.resetMaps);
+    $("#btnResetSearch").text(texts.resetSearch);
 
     $(".toggle-tooltip").text(texts.displayNearestMarkers);
 
@@ -288,6 +294,10 @@ function updateContentLanguageAddress(texts) {
     $(".search-header-text h2").text(texts.heroTitle); // Judul Besar
     $("#geminiSearchInput").attr("placeholder", texts.searchPlaceholder); // Placeholder Textarea
     $(".gemini-helper small").html(texts.pressEnterHelper); // Helper di bawah input (pakai .html agar <b> terbaca)
+
+    // Update element label ON OFF
+    $("#labelBasemap").text(texts.labelBasemap);
+    $("#labelManyData").text(texts.labelManyData);
 
     if (lastSearchStatus !== null) {
         // Panggil ulang fungsi render.

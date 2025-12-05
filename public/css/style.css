@@ -492,33 +492,95 @@ body {
 
 /* --- LAYOUT TENGAH (CENTERED) --- */
 
+/* --- LAYOUT UTAMA --- */
 .centered-layout {
-    /* Membuat container memenuhi sisa layar */
+    position: relative; /* Penting sebagai acuan absolute */
     width: 100%;
-    height: calc(100% - var(--sizeHeader));
-    background-color: #ffffff; /* Bisa diganti #f0f4f9 jika ingin abu-abu muda */
+    height: calc(100vh - 70px); /* Full layar minus header */
+    background-color: #ffffff; /* Warna background saat map belum muncul */
 
-    /* KUNCI POSISI TENGAH: */
+    /* Flexbox untuk menengahkan konten saat awal */
     display: flex;
-    flex-direction: column;
-    justify-content: center; /* Tengah Vertikal */
-    align-items: center; /* Tengah Horizontal */
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* Mencegah scrollbar muncul saat animasi */
 }
 
+/* --- MAP BACKGROUND (Awalnya Sembunyi) --- */
+.background-map {
+    display: none;
+}
+
+.background-map.active {
+    opacity: 1; /* MUNCUL */
+    pointer-events: auto; /* Bisa digeser-geser */
+}
+
+/* --- SEARCH WRAPPER (DEFAULT / TENGAH) --- */
 .search-center-wrapper {
+    /* 1. POSISI AWAL (TENGAH ABSOLUT) */
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%); /* Kunci agar pas di tengah */
+
+    /* 2. UKURAN AWAL */
     width: 100%;
-    max-width: 700px; /* Batas lebar agar tidak terlalu panjang */
-    padding: 0 20px;
-    box-sizing: border-box;
-    margin-bottom: 100px; /* Sedikit naik ke atas (visual balance) */
+    max-width: 700px;
+    height: auto;
+    max-height: 80vh;
+
+    /* 3. STYLE */
+    padding: 30px;
+    background: white;
+    border-radius: 24px;
+    box-shadow: none;
+    z-index: 10;
+
+    /* 4. ANIMASI TRANSISI (CUBIC BEZIER STANDARD) */
+    /* cubic-bezier(0.4, 0, 0.2, 1) adalah standar Google/Material Design.
+       Gerakannya: Cepat di awal, lalu mendarat perlahan tanpa membal. */
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.search-header-text h2 {
-    text-align: center;
-    color: #333;
-    margin-bottom: 30px;
-    font-weight: 500;
-    font-size: 28px;
+/* --- SEARCH WRAPPER (MODE SIDEBAR) --- */
+.search-center-wrapper.sidebar-mode {
+    /* 1. PINDAH POSISI KE KIRI ATAS */
+    left: 20px;
+    top: 20px;
+
+    /* 2. RESET TRANSFORM (Hapus centering) */
+    transform: translate(0, 0);
+
+    /* 3. UBAH UKURAN JADI SIDEBAR */
+    width: 380px;
+    height: calc(100% - 40px); /* Full height dengan margin */
+
+    /* 4. STYLE SIDEBAR */
+    margin: 0;
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.15);
+    border-radius: 16px;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+/* Kecilkan judul saat jadi sidebar agar rapi */
+.search-center-wrapper.sidebar-mode .search-header-text h2 {
+    font-size: 20px;
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+/* Scrollbar cantik untuk sidebar */
+.search-center-wrapper.sidebar-mode::-webkit-scrollbar {
+    width: 5px;
+}
+.search-center-wrapper.sidebar-mode::-webkit-scrollbar-track {
+    background: transparent;
+}
+.search-center-wrapper.sidebar-mode::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
 }
 
 /* --- STYLE INPUT (GEMINI) --- */
@@ -581,9 +643,113 @@ body {
     background-color: #009c41;
 }
 
+/* Container Helper */
 .gemini-helper {
     margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.helper-text {
     color: #999;
     font-size: 13px;
-    text-align: center;
+}
+
+.helper-actions-toggles {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* --- CSS SWITCH DENGAN TEKS DI DALAM --- */
+
+/* 1. Ukuran Wadah (Lebih Lebar) */
+.switch.wide-switch {
+    position: relative;
+    display: inline-block;
+    width: 120px; /* Lebar diperbesar agar muat teks */
+    height: 34px; /* Tinggi sedikit ditambah */
+}
+
+/* 2. Sembunyikan Checkbox */
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* 3. Slider (Background) */
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #e0e0e0; /* Warna OFF (Abu muda) */
+    transition: 0.4s;
+    border-radius: 34px;
+
+    /* Flexbox untuk mengatur posisi teks di tengah vertikal */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden; /* Agar teks tidak keluar batas */
+}
+
+/* 4. Bulatan Saklar (Circle) */
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+    z-index: 2; /* Di atas teks */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 5. Teks di Dalam */
+.text-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    z-index: 1;
+    transition: 0.4s;
+
+    /* Trik Posisi: Geser teks ke kanan sedikit saat OFF */
+    padding-left: 20px;
+}
+
+/* --- STATE: ON (CHECKED) --- */
+
+/* Warna Background jadi Hijau */
+input:checked + .slider {
+    background-color: #00ba4e;
+}
+
+/* Geser Bulatan ke Kanan */
+input:checked + .slider:before {
+    transform: translateX(
+        86px
+    ); /* 120px (width) - 26px (circle) - 8px (margins) */
+}
+
+/* Ubah Style Teks saat ON */
+input:checked + .slider .text-label {
+    color: white;
+    /* Geser teks ke kiri agar tidak ketabrak bulatan */
+    padding-left: 0;
+    padding-right: 20px;
+}
+
+/* Efek Focus */
+input:focus + .slider {
+    box-shadow: 0 0 1px #00ba4e;
 }

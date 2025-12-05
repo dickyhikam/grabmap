@@ -82,7 +82,7 @@
 
                     <!-- Current Location Toggle dengan ON/OFF -->
                     <div class="location-toggle-container">
-                        <div class="toggle-switch">
+                        <!-- <div class="toggle-switch">
                             <input type="checkbox" id="locationToggle" class="toggle-checkbox">
                             <label for="locationToggle" class="toggle-label">
                                 <span class="toggle-text">
@@ -93,11 +93,20 @@
                                     </span>
                                 </span>
                             </label>
+                            <div class="toggle-tooltip" id="txt-loc-markers">
+                                Search nearest location from selected maker
+                            </div>
+                        </div> -->
+                        <label class="switch wide-switch">
+                            <input type="checkbox" id="checkBasemap" onchange="handleBasemap(this)">
+                            <span class="slider round">
+                                <span class="text-label">NearLoc</span>
+                            </span>
                             <!-- Tooltip Element -->
                             <div class="toggle-tooltip" id="txt-loc-markers">
                                 Search nearest location from selected maker
                             </div>
-                        </div>
+                        </label>
                     </div>
                 </div>
             </div>
