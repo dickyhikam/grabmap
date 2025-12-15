@@ -1,0 +1,375 @@
+:root {
+    /* --- DIMENSI & LAYOUT --- */
+    --sizeHeader: 70px;
+    --sizeSidebar: 300px;
+    --sizeSidebarMobile: 250px;
+
+    /* --- WARNA UTAMA (GRAB GREEN) --- */
+    --color-primary: #00ba4e;
+    --color-primary-dark: #009c41;
+    --color-primary-darker: #005825;
+    --color-primary-light: #e8f5e8;
+
+    /* --- WARNA BACKGROUND & BORDER --- */
+    --bg-body: #ffffff;
+    --bg-light: #f8f9fa;
+    --bg-input: #f0f4f9;
+    --border-color: #e1e5e9;
+
+    /* --- WARNA TEXT --- */
+    --text-main: #333333;
+    --text-secondary: #666666;
+    --text-placeholder: #8da3b3;
+
+    /* --- SHADOWS --- */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 15px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.2);
+
+    /* --- TRANSISI --- */
+    --trans-fast: 0.2s ease;
+    --trans-smooth: 0.3s ease;
+    --trans-bounce: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- RESET & BASE --- */
+html,
+body {
+    height: 100%;
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    overflow: hidden; /* Prevent body scrolling */
+    background-color: var(--bg-body);
+}
+
+/* --- HEADER STYLE --- */
+#header {
+    height: var(--sizeHeader);
+    padding: 0 20px;
+    background-color: white;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 1000;
+}
+
+#header img {
+    height: 35px;
+    width: auto;
+}
+
+/* Header Buttons Area */
+.header-buttons {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Language Dropdown & Button */
+.language-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: var(--trans-smooth);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+.language-btn:hover {
+    border-color: var(--color-primary);
+    background-color: var(--bg-light);
+}
+
+.language-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px;
+    margin-top: 5px;
+    box-shadow: var(--shadow-md);
+    display: none;
+    z-index: 1001;
+    min-width: 140px;
+}
+
+.language-dropdown.show {
+    display: block;
+}
+
+.language-option {
+    padding: 10px 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.language-option:hover {
+    background-color: var(--bg-light);
+}
+.language-option.active {
+    background-color: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+/* --- MAIN LAYOUT & MAP --- */
+.container-result {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - var(--sizeHeader));
+    background-color: var(--bg-body);
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+    background: #e5e5e5; /* Placeholder color before map loads */
+}
+
+/* Map Visibility Control */
+.background-map {
+    display: none;
+    width: 100%;
+    height: 100%;
+}
+.background-map.active {
+    display: block;
+}
+
+/* --- SEARCH WRAPPER (PUSAT INTERAKSI) --- */
+.search-center-wrapper {
+    /* Posisi Awal: Tengah Layar */
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 90%;
+    max-width: 700px;
+    height: auto;
+
+    padding: 30px;
+    background: white;
+    border-radius: 24px;
+    z-index: 100; /* Di atas map */
+
+    /* Animasi Halus saat berpindah */
+    transition: all var(--trans-bounce);
+}
+
+/* State: Mode Sidebar (Setelah search) */
+.search-center-wrapper.sidebar-mode {
+    left: 20px;
+    top: 20px;
+    transform: translate(0, 0); /* Reset centering */
+
+    width: 380px;
+    max-height: calc(100% - 40px); /* Full height minus margin */
+
+    margin: 0;
+    padding: 20px;
+    box-shadow: var(--shadow-lg);
+    border-radius: 16px;
+    overflow-y: auto;
+}
+
+/* Judul Header */
+.search-header-text h2 {
+    color: var(--text-main);
+    text-align: center;
+    margin-bottom: 20px;
+    transition: var(--trans-smooth);
+}
+
+.search-center-wrapper.sidebar-mode .search-header-text h2 {
+    text-align: left;
+    font-size: 20px;
+    margin-bottom: 15px;
+}
+
+/* --- GEMINI INPUT STYLE --- */
+.gemini-input-group.big-search {
+    background-color: var(--bg-input);
+    border-radius: 30px;
+    padding: 12px 20px;
+    display: flex;
+    align-items: flex-start;
+    box-shadow: var(--shadow-sm);
+    transition: var(--trans-smooth);
+    border: 1px solid transparent;
+}
+
+.gemini-input-group.big-search:focus-within {
+    background-color: white;
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-color);
+}
+
+.gemini-textarea {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    color: var(--text-main);
+    resize: none;
+    line-height: 1.5;
+    padding: 10px 0;
+    max-height: 200px;
+}
+
+.gemini-textarea::placeholder {
+    color: var(--text-placeholder);
+}
+
+.gemini-send-btn {
+    background: var(--color-primary);
+    border: none;
+    color: white;
+    cursor: pointer;
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    margin-left: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--trans-fast);
+    flex-shrink: 0;
+}
+
+.gemini-send-btn:hover {
+    background-color: var(--color-primary-dark);
+}
+.gemini-send-btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* --- HELPER TEXT --- */
+.gemini-helper {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+.helper-text {
+    color: #999;
+    font-size: 13px;
+}
+
+/* --- SWITCH TOGGLE (Custom) --- */
+.switch.wide-switch {
+    position: relative;
+    display: inline-block;
+    width: 120px;
+    height: 34px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #e0e0e0;
+    transition: 0.4s;
+    border-radius: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+    z-index: 2;
+    box-shadow: var(--shadow-sm);
+}
+
+.text-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    z-index: 1;
+    transition: 0.4s;
+    padding-left: 20px;
+}
+
+/* Switch ON State */
+input:checked + .slider {
+    background-color: var(--color-primary);
+}
+input:checked + .slider:before {
+    transform: translateX(86px);
+}
+input:checked + .slider .text-label {
+    color: white;
+    padding-left: 0;
+    padding-right: 20px;
+}
+
+/* --- RESULT CARD / HISTORY --- */
+.history-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* max-height handled by JS or parent */
+}
+
+/* --- MEDIA QUERY (RESPONSIVE) --- */
+@media screen and (max-width: 768px) {
+    :root {
+        --sizeHeader: 60px;
+    }
+
+    /* Adjust layout for mobile */
+    .container-result {
+        flex-direction: column;
+    }
+
+    /* When sidebar mode active on mobile */
+    .search-center-wrapper.sidebar-mode {
+        width: 90%;
+        left: 5%;
+        top: 10px;
+        max-height: 60vh; /* Don't cover full map on mobile */
+    }
+
+    #header img {
+        height: 30px;
+    }
+}

@@ -58,7 +58,7 @@
     <!-- Main container for map and sidebar -->
     <div class="container-result">
         <!-- Sidebar section -->
-        <div class="container-box">
+        <div class="sidebar-panel">
             <div class="search-box">
                 <!-- Search Input Section -->
                 <div class="search-input-group">
@@ -162,10 +162,6 @@
         const mapPlace = "{{ env('AWS_MAP_PLACE') }}";
         const mapRoute = "{{ env('AWS_MAP_ROUTE') }}";
         const apiKey = "{{ env('AWS_API_KEY') }}";
-
-        // Global variables
-        let currentMap = null;
-        let locFirst = [106.8456, -6.2088]; // Default coordinates (Jakarta)
 
         // Global variables untuk selected locations
         let selectedLocations = [];

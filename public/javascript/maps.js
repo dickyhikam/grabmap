@@ -1,3 +1,7 @@
+// Global variables
+let currentMap = null;
+let locFirst = [106.8456, -6.2088]; // Default coordinates (Jakarta)
+
 // Switch map style (for future use)
 async function switchStyle(styleType) {
     const endpoints = {

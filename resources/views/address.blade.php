@@ -24,47 +24,6 @@
     <script src="https://unpkg.com/maplibre-gl@4.x/dist/maplibre-gl.js"></script>
 
     <style>
-        /* Container Hasil di bawah search box */
-        .verification-container {
-            margin-top: 25px;
-            width: 100%;
-            animation: fadeIn 0.4s ease-out;
-
-            /* --- TAMBAHAN UNTUK SCROLL --- */
-            max-height: 400px;
-            /* 1. Batasi tingginya (bisa pakai px atau vh, misal 50vh) */
-            overflow-y: auto;
-            /* 2. Munculkan scrollbar vertikal jika konten panjang */
-
-            /* Optional: Agar scrollbar tidak nempel banget sama card */
-            padding-right: 5px;
-            padding-bottom: 10px;
-            /* Ruang nafas di bawah */
-        }
-
-        /* --- PERCANTIK SCROLLBAR (Opsional tapi Recommended) --- */
-        .verification-container::-webkit-scrollbar {
-            width: 6px;
-            /* Lebar scrollbar kecil */
-        }
-
-        .verification-container::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            /* Warna track belakang */
-            border-radius: 4px;
-        }
-
-        .verification-container::-webkit-scrollbar-thumb {
-            background: #ccc;
-            /* Warna batang scroll */
-            border-radius: 4px;
-        }
-
-        .verification-container::-webkit-scrollbar-thumb:hover {
-            background: #bbb;
-            /* Warna saat di-hover */
-        }
-
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -75,109 +34,6 @@
                 opacity: 1;
                 transform: translateY(0);
             }
-        }
-
-        /* Base Style untuk Kartu Hasil */
-        .result-card {
-            padding: 20px;
-            margin-bottom: 10px;
-            border-radius: 16px;
-            display: flex;
-            align-items: flex-start;
-            gap: 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            background: white;
-            border: 1px solid transparent;
-        }
-
-        /* Style untuk SUKSES (Ada) */
-        .result-card.success {
-            background-color: #e6f9ed;
-            /* Hijau sangat muda */
-            border-color: #bcebd0;
-        }
-
-        .result-card.success .icon-box {
-            background-color: #00ba4e;
-            color: white;
-        }
-
-        .result-card.success .res-title {
-            color: #008a3a;
-        }
-
-        /* Style untuk GAGAL (Tidak Ada) */
-        .result-card.error {
-            background-color: #fff5f5;
-            /* Merah sangat muda */
-            border-color: #fed7d7;
-        }
-
-        .result-card.error .icon-box {
-            background-color: #e53e3e;
-            color: white;
-        }
-
-        .result-card.error .res-title {
-            color: #c53030;
-        }
-
-        /* --- Style untuk NORMAL (Pilihan/List Data) --- */
-        /* Gunakan ini saat menampilkan banyak data di list */
-        .result-card.normal {
-            background-color: #ffffff;
-            border-color: #e0e0e0;
-            /* Abu-abu tipis */
-            cursor: pointer;
-            /* Menandakan bisa diklik */
-            transition: all 0.2s ease;
-        }
-
-        /* Efek saat mouse diarahkan (Hover) */
-        .result-card.normal:hover {
-            border-color: #00ba4e;
-            /* Berubah hijau saat hover */
-            background-color: #f9fdfa;
-            /* Hijau sangat tipis */
-            transform: translateY(-2px);
-            /* Naik sedikit */
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
-        }
-
-        .result-card.normal .icon-box {
-            background-color: #f1f3f5;
-            /* Abu-abu muda */
-            color: #6c757d;
-            /* Icon abu-abu tua */
-        }
-
-        .result-card.normal .res-title {
-            color: #333;
-            /* Hitam standar */
-        }
-
-
-        /* --- Style untuk TERPILIH (Selected) --- */
-        /* Gunakan ini saat user mengklik salah satu list */
-        .result-card.selected {
-            background-color: #ffffff;
-            border: 2px solid #00ba4e;
-            /* Border LEBIH TEBAL & HIJAU */
-            box-shadow: 0 4px 15px rgba(0, 186, 78, 0.15);
-            /* Bayangan hijau halus */
-            position: relative;
-            /* Agar z-index border di atas */
-        }
-
-        .result-card.selected .icon-box {
-            background-color: #00ba4e;
-            /* Hijau Grab */
-            color: white;
-        }
-
-        .result-card.selected .res-title {
-            color: #00ba4e;
-            /* Judul ikut hijau */
         }
 
         /* Ikon Bulat */
@@ -266,7 +122,7 @@
         <div class="search-center-wrapper">
 
             <div class="search-header-text">
-                <h2>Verify Your Address Here</h2>
+                <h2 id="titleVerify">Verify Your Address Here</h2>
             </div>
 
             <div class="gemini-input-group big-search">
@@ -325,8 +181,8 @@
         let lastSearchStatus = null; // Menyimpan status terakhir (success/error)
         let lastSearchData = null; // Menyimpan data alamat terakhir
         let lastSelectedData = null;
-        let lastBasemap = 'OFF';
-        let lastManyData = 'OFF';
+        let lastBasemap = "OFF";
+        let lastManyData = "OFF";
 
         let map;
         let mapMarkers = []; // <--- Variable baru untuk menampung marker
@@ -355,10 +211,6 @@
         });
 
         function initMap() {
-            const mapName = "{{ env('AWS_MAP_NAME') }}";
-            const region = "{{ env('AWS_REGION') }}";
-            const apiKey = "{{ env('AWS_API_KEY') }}";
-
             // Style URL untuk AWS Location Service / GrabMaps
             const styleUrl = `https://maps.geo.${region}.amazonaws.com/maps/v0/maps/${mapName}/style-descriptor?key=${apiKey}`;
 
@@ -471,7 +323,7 @@
             resultContainer.show().html(`
                 <div class="results-loading">
                     <i class="fas fa-spinner"></i>
-                    <p>${texts.searching || "Searching..."}</p>
+                    <p>${texts.searchingAddress || "Searching..."}</p>
                 </div>`);
 
             // get data address with geocode

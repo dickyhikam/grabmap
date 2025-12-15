@@ -16,7 +16,8 @@ function setupSearchEvents() {
 
 // Perform search function
 function performSearch() {
-    const searchText = $("#searchInput").val().trim();
+    const $input = $("#searchInput");
+    const searchText = ($input.val() || "").toString().trim();
     const activeType = $(".search-option.active").data("type");
 
     const searchGroup = $(".search-input-group");
@@ -24,16 +25,11 @@ function performSearch() {
 
     if (!searchText) {
         showToast(texts.validationEmpty, "error");
-        // Focus on input
-        $("#searchInput").focus();
-
+        $input.focus();
         return false;
     }
 
-    // Show loading state
     showResultsLoading();
-
-    // Logic geocoding search
     displayGeocodeResults(searchText);
 }
 
@@ -123,6 +119,42 @@ async function searchGeocode(search, countResult) {
                 Text: search,
                 MaxResults: countResult,
             }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const results = data["Results"] || [];
+
+        // Render results ke HTML
+        // return displaySearch(results, texts);
+        return results;
+    } catch (error) {
+        console.error("Geocoding error:", error);
+        displayGeocodeError();
+    }
+}
+// ====== LOCATION GEOCODING (teks -> daftar tempat) ======
+async function locationGeocode(lat, lon, countResult) {
+    // if (search.length < 3) {
+    //     // hindari call API terlalu sering saat input pendek
+    //     return;
+    // }
+
+    const url = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${mapPlace}/search/position?key=${apiKey}`;
+
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                Position: [lon, lat],
+                MaxResults: countResult,
+            }), // ⚠️ urutan [lon, lat]
         });
 
         if (!response.ok) {

@@ -17,7 +17,18 @@ Route::get('/', function () {
 
 Route::get('/address', function () {
     return view('address');
-})->name('pageHome');
+})->name('pageAddress');
+
+Route::get('/scrap-test', function () {
+    return view('scraping/scrap-test');
+})->name('pageScrapTest');
+Route::get('/scrap', function () {
+    return view('scraping/index');
+})->name('pageScrap');
+
+Route::get('/tests', function () {
+    return view('scraping/test');
+})->name('pageScrap');
 
 Route::get('/map', [MapController::class, 'showMap']);
 Route::get('/api/map-style', [MapController::class, 'getMapStyle']);

@@ -5,7 +5,7 @@ let currentLanguage = "en"; // Default language: English
 const languageTexts = {
     en: {
         // --- TEXT KHUSUS TAMPILAN GEMINI ---
-        heroTitle: "Verify Your Address Here",
+        heroTitleVerify: "Verify Your Address Here",
         pressEnterHelper: "Press <b>Enter</b> to search",
         searchPlaceholder: "Search for address...",
 
@@ -97,17 +97,39 @@ const languageTexts = {
             "We couldn't verify this location. Please check your spelling.",
         coordinate: "Coordinate",
         confidence: "Match Accuracy",
-        searching: "Verifying address...",
+        searchingAddress: "Verifying address...",
 
         textToastAddress:
             "Please enter a complete address (minimum 10 characters)",
 
         labelBasemap: "Maps",
         labelManyData: "Multiple Data",
+
+        // --- SCRAPING TEXTS ---
+        heroTitleScrap: "POI Data Scraping",
+        heroDescripScrap:
+            "Search for an address and select a location to collect data from the surrounding area.",
+        tagRadius: "Radius: 100m",
+        tagMax: "Max: 50 POIs",
+        historyTitle: "Recent Activity",
+        // Quota & Status
+        quotaExceeded: "Quota limit reached (0/5). Please try again tomorrow.",
+        quotaRestored: "System Reset: Quota restored & History cleared!",
+        scrapingSuccess: "Data extraction completed successfully.",
+        inputEmpty: "Please enter an address first.",
+        downloading: "Downloading CSV for:",
+        // Loading Steps
+        stepInit: "Initializing...",
+        stepConnect: "Connecting to Maps API...",
+        stepExtract: "Extracting Points of Interest...",
+        stepVerify: "Verifying Data...",
+        stepDone: "Completed.",
+        // --- SCRAPING TEXTS ---
     },
     id: {
         // --- TEXT KHUSUS TAMPILAN GEMINI ---
-        heroTitle: "Verifikasi Alamat Anda di Sini",
+        heroTitleVerify: "Verifikasi Alamat Anda Di Sini",
+        heroTitleScrap: "Scraping Data POI",
         pressEnterHelper: "Tekan <b>Enter</b> untuk mencari",
 
         // --- TEXT LAMA (TETAP DIPERTAHANKAN) ---
@@ -199,12 +221,33 @@ const languageTexts = {
             "Kami tidak dapat memverifikasi lokasi ini. Mohon periksa ejaan Anda.",
         coordinate: "Koordinat",
         confidence: "Akurasi Cocok",
-        searching: "Sedang memverifikasi alamat...",
+        searchingAddress: "Sedang memverifikasi alamat...",
 
         textToastAddress: "Mohon masukkan alamat lengkap (minimal 10 karakter)",
 
         labelBasemap: "Peta",
         labelManyData: "Banyak Data",
+
+        // --- SCRAPING TEXTS ---
+        heroTitleScrap: "Scraping Data POI",
+        heroDescripScrap:
+            "Cari alamat dan pilih lokasi untuk melakukan pengambilan data di sekitarnya.",
+        tagRadius: "Radius: 100m",
+        tagMax: "Maks: 50 POI",
+        historyTitle: "Aktivitas Terkini",
+        // Quota & Status
+        quotaExceeded: "Kuota habis (0/5). Silakan coba lagi besok.",
+        quotaRestored: "System Reset: Kuota dipulihkan & Riwayat dihapus!",
+        scrapingSuccess: "Ekstraksi data berhasil diselesaikan.",
+        inputEmpty: "Mohon masukkan alamat terlebih dahulu.",
+        downloading: "Mengunduh CSV untuk:",
+        // Loading Steps
+        stepInit: "Memulai...",
+        stepConnect: "Menghubungkan ke Maps API...",
+        stepExtract: "Mengambil Point of Interest...",
+        stepVerify: "Memverifikasi Data...",
+        stepDone: "Selesai.",
+        // --- SCRAPING TEXTS ---
     },
 };
 
@@ -285,13 +328,15 @@ function updateLanguage() {
     updateContentLanguage();
 
     // Update content based on current view address
-    updateContentLanguageAddress(texts);
+    updateContentLanguageAddress(texts, lastSearchStatus);
+
+    updateContentLanguageScrap(texts);
 }
 
 // Update content based on current language
-function updateContentLanguageAddress(texts) {
+function updateContentLanguageAddress(texts, lastSearchStatus = null) {
     // UPDATE ELEMENT TAMPILAN GEMINI (TENGAH)
-    $(".search-header-text h2").text(texts.heroTitle); // Judul Besar
+    $("#titleVerify").text(texts.heroTitleVerify); // Judul Besar
     $("#geminiSearchInput").attr("placeholder", texts.searchPlaceholder); // Placeholder Textarea
     $(".gemini-helper small").html(texts.pressEnterHelper); // Helper di bawah input (pakai .html agar <b> terbaca)
 
@@ -304,6 +349,26 @@ function updateContentLanguageAddress(texts) {
         // Karena 'currentLanguage' sudah berubah, teks di dalamnya otomatis ganti.
         renderVerificationResult(lastSearchStatus, lastSearchData);
     }
+}
+function updateContentLanguageScrap(texts) {
+    // 1. Update Judul
+    $("#titleScrap").text(texts.heroTitleScrap);
+    $("#descripScrap").text(texts.heroDescripScrap);
+
+    // 2. Update Tag Radius (Tag Pertama)
+    // Kita pakai .html() supaya icon <i class="fas..."> tetap ada/ditulis ulang
+    $(".specs-tags .tag")
+        .eq(0)
+        .html(`<i class="fas fa-bullseye"></i> ${texts.tagRadius}`);
+
+    // 3. Update Tag Max POI (Tag Kedua)
+    $(".specs-tags .tag")
+        .eq(1)
+        .html(`<i class="fas fa-list-ol"></i> ${texts.tagMax}`);
+
+    $(".history-header span").html(
+        `<i class="fas fa-history"></i> ${texts.historyTitle}`
+    );
 }
 function updateContentLanguage() {
     const texts = languageTexts[currentLanguage];
@@ -413,4 +478,21 @@ function splitLabel(label = "") {
         title,
         body,
     };
+}
+
+// ====== Fungsi untuk mendapatkan kode unik pada setiap device yg akses web ======
+function getOrCreateDeviceId() {
+    let id = localStorage.getItem("device_id");
+    if (!id) {
+        if (window.crypto && window.crypto.randomUUID) {
+            id = crypto.randomUUID();
+        } else {
+            id =
+                "dev-" +
+                Math.random().toString(36).slice(2) +
+                Date.now().toString(36);
+        }
+        localStorage.setItem("device_id", id);
+    }
+    return id;
 }
