@@ -159,9 +159,12 @@
         .locations-panel {
             position: fixed;
             top: 100px;
-            right: 20px;
+
+            /* GANTI INI (Dari right jadi left) */
+            left: 20px;
+            /* right: 20px; HAPUS ATAU KOMENTAR BARIS INI */
+
             width: 320px;
-            /* Sedikit lebih lebar */
             max-height: calc(100vh - 120px);
 
             /* Glassmorphism Effect */
@@ -175,7 +178,6 @@
             z-index: var(--z-panel);
             display: none;
             overflow: hidden;
-            /* Penting untuk border-radius */
             animation: slideInPanel 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
@@ -202,21 +204,95 @@
             z-index: 10;
         }
 
-        /* Tombol Hapus Semua */
-        .btn-clear-all {
-            font-size: 0.75rem;
-            background: #fff0f0;
-            color: #dc3545;
-            padding: 4px 10px;
-            border-radius: 20px;
+        /* 3. Tombol Hitung Rute (Gradient & Glowing) */
+        .btn-action-primary {
+            background: linear-gradient(135deg, #00B14F 0%, #009543 100%);
+            color: white;
             border: none;
-            font-weight: 600;
-            transition: 0.2s;
+            font-weight: 700;
+            font-size: 0.95rem;
+            letter-spacing: 0.3px;
+            border-radius: 12px;
+            padding: 12px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 177, 79, 0.25);
+            /* Glow hijau */
+            position: relative;
+            overflow: hidden;
         }
 
-        .btn-clear-all:hover {
-            background: #dc3545;
+        .btn-action-primary:hover {
+            transform: translateY(-2px);
+            /* Efek naik saat hover */
+            box-shadow: 0 6px 15px rgba(0, 177, 79, 0.35);
             color: white;
+        }
+
+        .btn-action-primary:active {
+            transform: translateY(1px);
+            /* Efek tekan */
+            box-shadow: 0 2px 5px rgba(0, 177, 79, 0.2);
+        }
+
+        /* Style untuk Toggle Button Mode Kendaraan */
+        .mode-switch-container {
+            background-color: #f1f3f5;
+            /* Abu-abu muda sebagai track */
+            padding: 4px;
+            border-radius: 12px;
+            /* Pill shape */
+            display: flex;
+            position: relative;
+        }
+
+        .btn-mode-switch {
+            background: transparent;
+            color: #adb5bd;
+            /* Teks abu-abu saat tidak aktif */
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: none;
+            padding: 8px;
+            border-radius: 10px;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .btn-mode-switch:hover {
+            color: var(--grab-green);
+        }
+
+        /* Saat Radio Checked -> Label berubah jadi Putih & Shadow */
+        .btn-check:checked+.btn-mode-switch {
+            background-color: white;
+            color: var(--grab-green);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            /* Shadow halus */
+            transform: scale(1.02);
+            /* Sedikit membesar */
+        }
+
+        /* Tombol Hapus Semua */
+        .btn-reset-minimal {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6c757d;
+            background: white;
+            border: 1px solid #e9ecef;
+            padding: 5px 12px;
+            border-radius: 30px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-reset-minimal:hover {
+            color: #dc3545;
+            /* Merah */
+            border-color: #dc3545;
+            background: #fff5f5;
+            box-shadow: 0 2px 5px rgba(220, 53, 69, 0.15);
         }
 
         /* Badge Count */
@@ -274,6 +350,21 @@
             cursor: pointer;
             position: relative;
             overflow: hidden;
+        }
+
+        /* Style untuk Item yang Sedang Aktif */
+        .location-item.active {
+            border: 2px solid var(--grab-green);
+            /* Border Hijau */
+            background-color: #f0fdf4;
+            /* Background Hijau Sangat Muda */
+            transform: translateX(5px);
+            /* Geser sedikit ke kanan biar estetik */
+        }
+
+        /* Ubah warna ikon koordinat saat active */
+        .location-item.active .loc-coord i {
+            color: var(--grab-green);
         }
 
         /* Garis Hijau di kiri item */
@@ -353,6 +444,49 @@
             margin-top: 80px;
         }
     </style>
+
+    <style>
+        /* --- STYLE KARTU HASIL RUTE --- */
+        .route-result-card {
+            background: #f0fdf4;
+            /* Hijau sangat muda */
+            border: 1px dashed var(--grab-green);
+            /* Garis putus-putus estetik */
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 15px;
+            /* Jarak dari tombol hitung */
+            display: none;
+            /* Default sembunyi */
+            animation: fadeIn 0.3s ease;
+        }
+
+        .route-stat-box {
+            text-align: center;
+            flex: 1;
+            /* Agar lebar rata */
+        }
+
+        .route-label {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+
+        .route-value {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--grab-green);
+        }
+
+        .route-divider {
+            width: 1px;
+            background-color: #d1fae5;
+            margin: 0 10px;
+        }
+    </style>
 </head>
 
 <body>
@@ -376,14 +510,50 @@
     </div>
 
     <div class="locations-panel" id="locationsPanel">
-        <div class="panel-header d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-                <h6 class="m-0 fw-bold text-dark">Daftar Lokasi</h6>
-                <span class="badge-count shadow-sm" id="locCount">0</span>
+        <div class="panel-header">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="m-0 fw-bold text-dark d-flex align-items-center">
+                    Daftar Lokasi
+                    <span class="badge-count shadow-sm ms-2" id="locCount">0</span>
+                </h6>
+                <button class="btn-reset-minimal" onclick="clearAllMarkers()">
+                    <i class="bi bi-trash3 me-1"></i> Reset
+                </button>
             </div>
-            <button class="btn-clear-all shadow-sm" onclick="clearAllMarkers()">
-                <i class="bi bi-trash3-fill me-1"></i>Reset
+
+            <div class="mode-switch-container mb-3">
+                <input type="radio" class="btn-check" name="travelMode" id="modeCar" value="Car" checked>
+                <label class="btn-mode-switch flex-grow-1" for="modeCar">
+                    <i class="bi bi-car-front-fill me-2"></i> Mobil
+                </label>
+
+                <input type="radio" class="btn-check" name="travelMode" id="modeBike" value="Motorcycle">
+                <label class="btn-mode-switch flex-grow-1" for="modeBike">
+                    <i class="bi bi-scooter me-2"></i> Motor
+                </label>
+            </div>
+
+            <button class="btn btn-action-primary w-100" onclick="calculateRoute()">
+                <i class="bi bi-sign-turn-right-fill me-2"></i> Hitung Rute
             </button>
+
+            <div id="routeResultCard" class="route-result-card">
+                <div class="d-flex justify-content-between align-items-center">
+
+                    <div class="route-stat-box">
+                        <div class="route-label"><i class="bi bi-rulers"></i> Jarak</div>
+                        <div class="route-value" id="resDistance">-</div>
+                    </div>
+
+                    <div class="route-divider align-self-stretch"></div>
+
+                    <div class="route-stat-box">
+                        <div class="route-label"><i class="bi bi-stopwatch"></i> Waktu</div>
+                        <div class="route-value" id="resDuration">-</div>
+                    </div>
+
+                </div>
+            </div>
         </div>
 
         <div id="listContainer">
@@ -403,6 +573,7 @@
         const mapName = "{{ env('AWS_MAP_NAME') }}";
         const placeIndex = "{{ env('AWS_MAP_PLACE') }}";
         const apiKey = "{{ env('AWS_API_KEY') }}";
+        const routeCalculator = "{{ env('AWS_MAP_ROUTE') }}";
 
         let map = null;
         let markersData = []; // Array penyimpanan data lokasi
@@ -410,6 +581,8 @@
         // --- 1. TOAST ---
         function showToast(title, message, type = 'info') {
             const container = document.getElementById('toastContainer');
+
+            // Setup Icon & Warna
             let bgClass, iconClass;
             switch (type) {
                 case 'success':
@@ -428,20 +601,58 @@
                     bgClass = 'text-bg-primary';
                     iconClass = 'bi-info-circle-fill';
             }
+
+            // Buat Elemen Wrapper
             const wrapper = document.createElement('div');
-            wrapper.innerHTML = `<div class="toast align-items-start ${bgClass} border-0 mb-2 shadow" role="alert" aria-live="assertive" aria-atomic="true"><div class="d-flex"><div class="toast-body text-white"><i class="${iconClass} me-2 fs-5"></i><strong>${title}</strong><div class="mt-1 small">${message}</div></div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div>`;
-            container.appendChild(wrapper.firstElementChild);
-            const t = new bootstrap.Toast(wrapper.firstElementChild);
-            t.show();
-            setTimeout(() => {
-                if (wrapper.firstElementChild) t.hide();
-            }, 5000);
-            wrapper.firstElementChild.addEventListener('hidden.bs.toast', () => wrapper.firstElementChild.remove());
+
+            // Masukkan HTML
+            wrapper.innerHTML = `
+                <div class="toast align-items-start ${bgClass} border-0 mb-2 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body text-white">
+                            <i class="${iconClass} me-2 fs-5"></i>
+                            <strong>${title}</strong>
+                            <div class="mt-1 small">${message}</div>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>`;
+
+            // 1. Append dulu ke container (PENTING: Harus masuk DOM dulu sebelum di-init Bootstrap)
+            const toastElement = wrapper.firstElementChild;
+            container.appendChild(toastElement);
+
+            // 2. Gunakan requestAnimationFrame untuk memastikan DOM sudah siap
+            requestAnimationFrame(() => {
+                try {
+                    const t = new bootstrap.Toast(toastElement, {
+                        autohide: false
+                    });
+                    t.show();
+
+                    // Auto hide manual
+                    setTimeout(() => {
+                        if (toastElement && document.body.contains(toastElement)) {
+                            t.hide();
+                        }
+                    }, 5000);
+
+                    // Hapus dari DOM setelah animasi hide selesai
+                    toastElement.addEventListener('hidden.bs.toast', () => {
+                        toastElement.remove();
+                    });
+                } catch (error) {
+                    console.error("Gagal init toast:", error);
+                    // Fallback jika bootstrap error: hapus elemen agar tidak nyangkut
+                    toastElement.remove();
+                }
+            });
         }
 
         // --- 2. INIT MAP ---
         function initMap() {
             if (!apiKey) return showToast('Error', 'API Key Missing', 'error');
+
             map = new maplibregl.Map({
                 container: 'map',
                 style: `https://maps.geo.${region}.amazonaws.com/maps/v0/maps/${mapName}/style-descriptor?key=${apiKey}`,
@@ -449,27 +660,111 @@
                 zoom: 13,
                 attributionControl: false
             });
-            map.addControl(new maplibregl.NavigationControl(), 'top-left');
+
+            map.addControl(new maplibregl.NavigationControl(), 'top-right');
             map.addControl(new maplibregl.AttributionControl({
                 customAttribution: '© Grab, © AWS'
             }), 'bottom-right');
+
+            // --- FITUR BARU: KLIK PETA UNTUK TAMBAH LOKASI ---
+            map.on('click', async (e) => {
+                // 1. Ambil koordinat klik
+                const coords = [e.lngLat.lng, e.lngLat.lat];
+
+                // 2. Tambahkan Marker SECARA LANGSUNG (Optimistic UI)
+                // Kita beri nama sementara dulu supaya user merasa responsif
+                addLocation(coords, "Memuat alamat...");
+
+                // Ambil ID dari marker yang baru saja dibuat (Logic: dia jadi selectedMarkerId)
+                const currentId = selectedMarkerId;
+
+                try {
+                    // 3. Panggil API Reverse Geocoding (Cari nama jalan)
+                    const addressName = await getPlaceNameByCoords(coords);
+
+                    // 4. Jika nama ditemukan, update Marker & List
+                    if (addressName) {
+                        // Cari data marker di array berdasarkan ID
+                        const item = markersData.find(m => m.id === currentId);
+
+                        if (item) {
+                            item.name = addressName; // Update Nama
+
+                            // Update Popup di Peta
+                            item.marker.setPopup(new maplibregl.Popup({
+                                offset: 25
+                            }).setText(addressName));
+
+                            // Render ulang List Panel
+                            renderLocationList();
+
+                            showToast('Lokasi Ditemukan', addressName, 'success');
+                        }
+                    } else {
+                        // Jika tidak ketemu nama jalan (misal di tengah laut)
+                        const item = markersData.find(m => m.id === currentId);
+                        if (item) {
+                            item.name = `Lokasi (${coords[1].toFixed(4)}, ${coords[0].toFixed(4)})`;
+                            renderLocationList();
+                        }
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            });
         }
 
         // --- 3. CORE FUNCTION: ADD LOCATION & RENDER LIST ---
         function addLocation(coords, label) {
-            // A. Buat Marker di Peta
+            const id = Date.now(); // ID Unik
+
+            // A. Buat Marker di Peta (Pastikan draggable: true)
             const newMarker = new maplibregl.Marker({
-                    color: '#00B14F'
+                    color: '#00B14F',
+                    draggable: true // Fitur geser aktif
                 })
                 .setLngLat(coords)
                 .setPopup(new maplibregl.Popup({
                     offset: 25
                 }).setText(label))
                 .addTo(map);
+
             newMarker.togglePopup();
 
+            // --- TAMBAHAN LOGIC UPDATE SAAT DRAG ---
+            newMarker.on('dragend', async () => {
+                const lngLat = newMarker.getLngLat();
+                const updatedCoords = [lngLat.lng, lngLat.lat];
+
+                // 1. Update data lokal dulu (biar cepat)
+                const item = markersData.find(m => m.id === id);
+                if (item) {
+                    item.coords = updatedCoords;
+                    // renderLocationList(); // Update angka koordinat di panel
+
+                    showToast('Memuat...', 'Mencari alamat baru...', 'info');
+
+                    // 2. PANGGIL FUNGSI HELPER (Code lebih bersih!)
+                    const newName = await getPlaceNameByCoords(updatedCoords);
+
+                    // 3. Update UI jika nama ditemukan
+                    if (newName) {
+                        item.name = newName; // Update data
+                        newMarker.setPopup(new maplibregl.Popup({
+                            offset: 25
+                        }).setText(newName)); // Update Popup
+                        renderLocationList(); // Update List Panel
+                        showToast('Lokasi Terupdate', newName, 'success');
+                    } else {
+                        showToast('Info', 'Nama lokasi tidak ditemukan.', 'warning');
+                    }
+                }
+            });
+            // ----------------------------------------
+
+            selectedMarkerId = id;
+
             // B. Simpan ke Array
-            const id = Date.now();
             markersData.push({
                 id,
                 marker: newMarker,
@@ -485,6 +780,150 @@
                 center: coords,
                 zoom: 15
             });
+        }
+
+        // --- 5. LOGIC RUTE (ROUTING) ---
+        async function calculateRoute() {
+            if (markersData.length < 2) {
+                return showToast('Kurang Data', 'Tambahkan minimal 2 lokasi.', 'warning');
+            }
+
+            const origin = markersData[0].coords;
+            const destination = markersData[1].coords;
+            const selectedMode = document.querySelector('input[name="travelMode"]:checked').value;
+
+            // Tampilkan loading di button atau toast kecil
+            showToast('Memproses...', 'Menghitung rute...', 'info');
+
+            try {
+                const url = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${routeCalculator}/calculate/route?key=${apiKey}`;
+
+                const body = {
+                    DeparturePosition: origin,
+                    DestinationPosition: destination,
+                    TravelMode: selectedMode,
+                    DistanceUnit: "Kilometers",
+                    DepartNow: true,
+                    IncludeLegGeometry: true
+                };
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (!response.ok) throw new Error('Gagal menghitung rute');
+
+                const data = await response.json();
+
+                if (data.Legs && data.Legs.length > 0 && data.Legs[0].Geometry) {
+                    // 1. Gambar Garis
+                    const points = data.Legs[0].Geometry.LineString;
+                    const geoJsonGeometry = {
+                        type: 'LineString',
+                        coordinates: points
+                    };
+                    drawRouteOnMap(geoJsonGeometry);
+
+                    // 2. Olah Data Jarak & Waktu
+                    const summary = data.Summary;
+                    const distance = summary.Distance.toFixed(1) + ' km';
+
+                    // Format Waktu (Contoh: 65 min -> 1 jam 5 mnt)
+                    const totalMinutes = Math.round(summary.DurationSeconds / 60);
+                    let durationText = totalMinutes + ' mnt';
+                    if (totalMinutes >= 60) {
+                        const hrs = Math.floor(totalMinutes / 60);
+                        const mins = totalMinutes % 60;
+                        durationText = `${hrs} jam ${mins} mnt`;
+                    }
+
+                    // 3. TAMPILKAN KE CARD (Manipulasi DOM)
+                    document.getElementById('resDistance').innerText = distance;
+                    document.getElementById('resDuration').innerText = durationText;
+
+                    // Munculkan Card
+                    document.getElementById('routeResultCard').style.display = 'block';
+
+                } else {
+                    showToast('Error', 'Jalur rute tidak ditemukan.', 'error');
+                }
+
+            } catch (error) {
+                console.error(error);
+                if (selectedMode === 'Motorcycle') {
+                    showToast('Info', 'Mode Motor belum tersedia. Coba Mobil.', 'warning');
+                } else {
+                    showToast('Error', 'Gagal mengambil rute API.', 'error');
+                }
+            }
+        }
+
+        function drawRouteOnMap(lineStringGeometry) {
+            // Hapus layer rute lama jika ada
+            removeRouteLayer();
+
+            // Tambahkan Source GeoJSON
+            map.addSource('routeSource', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'properties': {},
+                    'geometry': lineStringGeometry
+                }
+            });
+
+            // Tambahkan Layer Garis (Line)
+            map.addLayer({
+                'id': 'routeLayer',
+                'type': 'line',
+                'source': 'routeSource',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    'line-color': '#00B14F', // Warna Grab Green
+                    'line-width': 5,
+                    'line-opacity': 0.8
+                }
+            });
+
+            // Tambahkan Layer Panah/Outline (Opsional biar cantik)
+            map.addLayer({
+                'id': 'routeLayerOutline',
+                'type': 'line',
+                'source': 'routeSource',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    'line-color': '#ffffff',
+                    'line-width': 2,
+                    'line-gap-width': 5,
+                    'line-opacity': 0.5
+                }
+            });
+
+            // Fit Bounds (Zoom peta agar seluruh rute terlihat)
+            const coordinates = lineStringGeometry.coordinates;
+            const bounds = coordinates.reduce((bounds, coord) => {
+                return bounds.extend(coord);
+            }, new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+
+            map.fitBounds(bounds, {
+                padding: 50
+            });
+        }
+
+        function removeRouteLayer() {
+            if (map.getLayer('routeLayer')) map.removeLayer('routeLayer');
+            if (map.getLayer('routeLayerOutline')) map.removeLayer('routeLayerOutline');
+            if (map.getSource('routeSource')) map.removeSource('routeSource');
         }
 
         // --- 4. FUNCTION RENDER LIST SIDEBAR ---
@@ -506,7 +945,15 @@
             markersData.forEach((item, index) => {
                 const div = document.createElement('div');
                 div.className = 'location-item';
-                // Animasi masuk per item (staggered)
+
+                // --- LOGIC ACTIVE ---
+                // Jika ID item ini sama dengan ID yang sedang dipilih, tambahkan class 'active'
+                if (item.id === selectedMarkerId) {
+                    div.classList.add('active');
+                }
+                // --------------------
+
+                // Animasi masuk
                 div.style.animation = `slideInPanel 0.3s ease forwards ${index * 0.05}s`;
 
                 const lat = item.coords[1].toFixed(5);
@@ -531,11 +978,19 @@
         function zoomToLocation(id) {
             const item = markersData.find(m => m.id === id);
             if (item) {
+                // 1. Set ID ini sebagai yang aktif
+                selectedMarkerId = id;
+
                 map.flyTo({
                     center: item.coords,
                     zoom: 17
                 });
                 item.marker.togglePopup();
+
+                // showToast('Edit Mode', 'Marker terpilih.', 'info');
+
+                // 2. RENDER ULANG LIST (Supaya class .active berpindah)
+                renderLocationList();
             }
         }
 
@@ -549,8 +1004,15 @@
         function clearAllMarkers() {
             markersData.forEach(m => m.marker.remove());
             markersData = [];
+            selectedMarkerId = null;
+
+            removeRouteLayer(); // Hapus garis
             renderLocationList();
-            showToast('Reset', 'Semua marker dihapus.', 'info');
+
+            // SEMBUNYIKAN CARD HASIL RUTE
+            document.getElementById('routeResultCard').style.display = 'none';
+
+            showToast('Reset', 'Semua marker dan rute dihapus.', 'info');
         }
 
         // --- SEARCH LOGIC ---
@@ -589,6 +1051,40 @@
                 console.error(err);
             }
         }, 300));
+
+        // --- HELPER FUNCTION: REVERSE GEOCODING ---
+        // Menerima array koordinat [lng, lat], mengembalikan String Nama Lokasi atau null
+        async function getPlaceNameByCoords(coords) {
+            try {
+                const url = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIndex}/search/position?key=${apiKey}`;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        Position: coords,
+                        MaxResults: 1,
+                        Language: 'id'
+                    })
+                });
+
+                if (!response.ok) throw new Error('AWS API Error');
+
+                const data = await response.json();
+
+                // Cek jika ada hasil
+                if (data.Results && data.Results.length > 0) {
+                    return data.Results[0].Place.Label;
+                }
+                return null; // Tidak ditemukan
+
+            } catch (error) {
+                console.error("Gagal reverse geocode:", error);
+                return null;
+            }
+        }
 
         function renderSuggestions(results) {
             list.innerHTML = '';
