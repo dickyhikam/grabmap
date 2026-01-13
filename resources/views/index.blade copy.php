@@ -155,184 +155,93 @@
             color: white;
         }
 
-        /* --- PANEL LIST LOKASI (MODERN STYLE) --- */
+        /* --- PANEL LIST LOKASI (FIXED) --- */
         .locations-panel {
             position: fixed;
             top: 100px;
+            /* Di bawah header */
             right: 20px;
-            width: 320px;
-            /* Sedikit lebih lebar */
+            /* Pojok Kanan */
+            width: 300px;
             max-height: calc(100vh - 120px);
-
-            /* Glassmorphism Effect */
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-
-            border-radius: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            background: white;
+            border-radius: 15px;
+            box-shadow: var(--shadow-soft);
             z-index: var(--z-panel);
+            /* Pastikan ini 1050 */
+            overflow-y: auto;
             display: none;
-            overflow: hidden;
-            /* Penting untuk border-radius */
-            animation: slideInPanel 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            /* Default sembunyi, muncul via JS */
+            animation: fadeIn 0.3s ease;
         }
 
-        /* Animasi Muncul Panel */
-        @keyframes slideInPanel {
+        @keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(20px) scale(0.95);
+                transform: translateY(10px);
             }
 
             to {
                 opacity: 1;
-                transform: translateY(0) scale(1);
+                transform: translateY(0);
             }
         }
 
-        /* Header Panel */
         .panel-header {
-            padding: 15px 20px;
-            background: rgba(255, 255, 255, 0.9);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            background: #f8f9fa;
             position: sticky;
             top: 0;
-            z-index: 10;
+            z-index: 2;
         }
 
-        /* Tombol Hapus Semua */
-        .btn-clear-all {
-            font-size: 0.75rem;
-            background: #fff0f0;
-            color: #dc3545;
-            padding: 4px 10px;
-            border-radius: 20px;
-            border: none;
-            font-weight: 600;
-            transition: 0.2s;
-        }
-
-        .btn-clear-all:hover {
-            background: #dc3545;
-            color: white;
-        }
-
-        /* Badge Count */
         .badge-count {
             background: var(--grab-green);
             color: white;
-            min-width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
             margin-left: 5px;
         }
 
-        /* List Container dengan Custom Scrollbar */
-        #listContainer {
-            overflow-y: auto;
-            max-height: calc(100vh - 180px);
-            padding: 10px;
-        }
-
-        /* Scrollbar Cantik */
-        #listContainer::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        #listContainer::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        #listContainer::-webkit-scrollbar-thumb {
-            background: #ccc;
-            border-radius: 10px;
-        }
-
-        #listContainer::-webkit-scrollbar-thumb:hover {
-            background: #bbb;
-        }
-
-        /* ITEM LOKASI (CARD STYLE) */
         .location-item {
-            background: white;
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 10px;
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
-            border: 1px solid transparent;
-            transition: all 0.2s ease;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* Garis Hijau di kiri item */
-        .location-item::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 4px;
-            background: var(--grab-green);
-            opacity: 0;
             transition: 0.2s;
+            cursor: pointer;
         }
 
         .location-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            border-color: var(--grab-green);
-        }
-
-        .location-item:hover::before {
-            opacity: 1;
+            background-color: #f0ffff;
         }
 
         .loc-info {
             flex-grow: 1;
-            padding-left: 8px;
             padding-right: 10px;
         }
 
         .loc-name {
-            font-weight: 700;
-            font-size: 0.9rem;
-            color: #222;
+            font-weight: 600;
+            font-size: 0.95rem;
             display: block;
-            margin-bottom: 2px;
-
-            /* Izinkan teks turun ke bawah */
-            white-space: normal;
-            word-wrap: break-word;
         }
 
         .loc-coord {
             font-size: 0.75rem;
             color: #888;
-            display: flex;
-            align-items: center;
-            gap: 4px;
         }
 
-        /* Tombol Sampah */
         .btn-delete-item {
-            color: #999;
-            background: #f8f9fa;
-            border: 1px solid #eee;
-            width: 32px;
-            height: 32px;
-            border-radius: 10px;
+            color: #dc3545;
+            background: #fff5f5;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -342,7 +251,6 @@
         .btn-delete-item:hover {
             background: #dc3545;
             color: white;
-            border-color: #dc3545;
         }
 
         .toast-container {
@@ -377,17 +285,10 @@
 
     <div class="locations-panel" id="locationsPanel">
         <div class="panel-header d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center">
-                <h6 class="m-0 fw-bold text-dark">Daftar Lokasi</h6>
-                <span class="badge-count shadow-sm" id="locCount">0</span>
-            </div>
-            <button class="btn-clear-all shadow-sm" onclick="clearAllMarkers()">
-                <i class="bi bi-trash3-fill me-1"></i>Reset
-            </button>
+            <h6 class="m-0 fw-bold"><i class="bi bi-list-check me-2"></i>Daftar Lokasi <span class="badge-count" id="locCount">0</span></h6>
+            <button class="btn btn-sm btn-link text-danger text-decoration-none p-0" onclick="clearAllMarkers()" style="font-size:0.85rem;">Hapus Semua</button>
         </div>
-
-        <div id="listContainer">
-        </div>
+        <div id="listContainer"></div>
     </div>
 
     <div id="map"></div>
@@ -493,7 +394,7 @@
             const container = document.getElementById('listContainer');
             const countBadge = document.getElementById('locCount');
 
-            // Tampilkan/Sembunyikan Panel dengan efek fade
+            // Logic: Jika ada data, TAMPILKAN panel. Jika tidak, SEMBUNYIKAN.
             if (markersData.length > 0) {
                 panel.style.display = 'block';
             } else {
@@ -503,24 +404,19 @@
             countBadge.innerText = markersData.length;
             container.innerHTML = '';
 
-            markersData.forEach((item, index) => {
+            markersData.forEach((item) => {
                 const div = document.createElement('div');
                 div.className = 'location-item';
-                // Animasi masuk per item (staggered)
-                div.style.animation = `slideInPanel 0.3s ease forwards ${index * 0.05}s`;
-
-                const lat = item.coords[1].toFixed(5);
-                const lng = item.coords[0].toFixed(5);
+                const lat = item.coords[1].toFixed(4);
+                const lng = item.coords[0].toFixed(4);
 
                 div.innerHTML = `
                     <div class="loc-info" onclick="zoomToLocation(${item.id})">
-                        <span class="loc-name text-truncate" title="${item.name}">${item.name}</span>
-                        <span class="loc-coord">
-                            <i class="bi bi-crosshair"></i> ${lat}, ${lng}
-                        </span>
+                        <span class="loc-name text-truncate">${item.name}</span>
+                        <span class="loc-coord"><i class="bi bi-geo-alt me-1"></i>${lat}, ${lng}</span>
                     </div>
-                    <button class="btn-delete-item shadow-sm" onclick="event.stopPropagation(); removeLocation(${item.id})" title="Hapus">
-                        <i class="bi bi-x-lg"></i>
+                    <button class="btn-delete-item shadow-sm" onclick="removeLocation(${item.id})" title="Hapus">
+                        <i class="bi bi-trash"></i>
                     </button>
                 `;
                 container.appendChild(div);

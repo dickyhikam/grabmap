@@ -10,6 +10,13 @@ Route::get('/waresix', function () {
 Route::get('/tj', function () {
     return view('tj');
 });
+Route::get('/otto', function () {
+    return view('otto');
+});
+
+Route::get('/doc-web', function () {
+    return view('documents.web');
+});
 
 Route::get('/', function () {
     return view('index');
