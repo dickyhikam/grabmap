@@ -245,16 +245,7 @@
             overflow-y: auto;
             max-height: calc(100vh - 350px);
             padding: 10px;
-            /* Merged padding logic */
-            /* padding-bottom: 20px; */
         }
-
-        /* #segmentListContainer {
-            margin-top: 15px;
-            max-height: 250px;
-            display: none;
-            padding-right: 5px;
-        } */
 
         /* Custom Scrollbar Style (Shared) */
         #listContainer::-webkit-scrollbar,
@@ -538,6 +529,24 @@
             box-shadow: 0 2px 5px rgba(220, 53, 69, 0.15);
         }
 
+        /* Help Button (Minimal - Header) */
+        .btn-help-minimal {
+            background: transparent;
+            border: none;
+            color: #adb5bd;
+            font-size: 1.1rem;
+            padding: 0;
+            line-height: 1;
+            transition: color 0.2s ease;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        .btn-help-minimal:hover {
+            color: var(--grab-green);
+            transform: scale(1.1);
+        }
+
         /* Delete Item Button */
         .btn-delete-item {
             color: #999;
@@ -613,6 +622,79 @@
             font-weight: bold;
             margin-left: 5px;
         }
+
+        /* =========================================
+       10. MODAL & INFO STYLE (NEW)
+       ========================================= */
+        .modal-content-pro {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .modal-header-pro {
+            background: linear-gradient(135deg, #00B14F 0%, #009543 100%);
+            color: white;
+            padding: 20px 25px;
+            border-bottom: none;
+        }
+
+        .modal-body-pro {
+            padding: 25px;
+            background: #f8f9fa;
+        }
+
+        /* Info Section Item (Inside Modal) */
+        .info-section {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #f0f0f0;
+            display: flex;
+            gap: 15px;
+            transition: transform 0.2s;
+        }
+
+        .info-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border-color: #d1fae5;
+        }
+
+        .info-icon-box {
+            width: 40px;
+            height: 40px;
+            background: #f0fdf4;
+            color: var(--grab-green);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .info-content h6 {
+            margin: 0 0 4px 0;
+            font-weight: 700;
+            color: #333;
+            font-size: 0.95rem;
+        }
+
+        .info-content p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .modal-footer-pro {
+            background: white;
+            padding: 15px 25px;
+            border-top: 1px solid #eee;
+        }
     </style>
 </head>
 
@@ -638,9 +720,13 @@
     <div class="locations-panel" id="locationsPanel">
         <div class="panel-header">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="m-0 fw-bold text-dark d-flex align-items-center">
-                    Location Manager
-                </h6>
+                <div class="d-flex align-items-center">
+                    <h6 class="m-0 fw-bold text-dark">Location Manager</h6>
+                    <button class="btn-help-minimal" data-bs-toggle="modal" data-bs-target="#helpModal" title="Guide & Information">
+                        <i class="bi bi-question-circle-fill"></i>
+                    </button>
+                </div>
+
                 <button class="btn-reset-minimal" onclick="clearAllMarkers()">
                     <i class="bi bi-trash3 me-1"></i> Reset
                 </button>
@@ -649,16 +735,15 @@
             <div class="mode-switch-container mb-2">
                 <input type="radio" class="btn-check" name="travelMode" id="modeCar" value="Car" checked>
                 <label class="btn-mode-switch flex-grow-1" for="modeCar"><i class="bi bi-car-front-fill me-2"></i> Car</label>
-
                 <input type="radio" class="btn-check" name="travelMode" id="modeBike" value="Motorcycle">
                 <label class="btn-mode-switch flex-grow-1" for="modeBike"><i class="bi bi-scooter me-2"></i> Motorcycle</label>
             </div>
+
             <div class="mode-switch-container mb-3">
                 <input type="radio" class="btn-check" name="optMode" id="optFast" value="fast" checked>
                 <label class="btn-mode-switch flex-grow-1" for="optFast" title="Sort by direct distance (Faster)">
                     <i class="bi bi-rulers me-2"></i> Straight Line
                 </label>
-
                 <input type="radio" class="btn-check" name="optMode" id="optPrecise" value="real">
                 <label class="btn-mode-switch flex-grow-1" for="optPrecise" title="Sort by actual driving route (More Accurate)">
                     <i class="bi bi-sign-turn-slight-right-fill me-2"></i> Real Road
@@ -669,7 +754,6 @@
                 <button class="btn btn-action-primary flex-grow-1 d-flex align-items-center justify-content-center py-2" onclick="calculateRoute()" title="Hitung Rute A ke B">
                     <i class="bi bi-sign-turn-right-fill me-2"></i> A&rarr;B
                 </button>
-
                 <button class="btn btn-action-secondary flex-grow-1 d-flex align-items-center justify-content-center py-2" onclick="calculateMultiRoute()" title="Hitung Rute Multi-Stop">
                     <i class="bi bi-diagram-3-fill me-2"></i> Multi
                 </button>
@@ -723,6 +807,130 @@
 
             </div>
 
+        </div>
+    </div>
+
+    <div class="modal fade" id="helpModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content modal-content-pro">
+                <div class="modal-header modal-header-pro">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-info-circle-fill fs-4"></i>
+                        <h5 class="modal-title fw-bold mb-0">Features & Guide</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body modal-body-pro">
+
+                    <p class="text-uppercase fw-bold text-muted small mb-2 ms-1">Basic Controls</p>
+                    <div class="bg-white p-3 rounded border mb-4">
+                        <div class="row g-3 text-center">
+                            <div class="col-4 border-end">
+                                <i class="bi bi-geo-alt-fill text-danger fs-5 d-block mb-1"></i>
+                                <div class="small fw-bold text-dark">Add</div>
+                                <div class="text-muted" style="font-size: 0.7rem;">Click Map / Search</div>
+                            </div>
+                            <div class="col-4 border-end">
+                                <i class="bi bi-arrows-move text-primary fs-5 d-block mb-1"></i>
+                                <div class="small fw-bold text-dark">Move</div>
+                                <div class="text-muted" style="font-size: 0.7rem;">Drag Marker</div>
+                            </div>
+                            <div class="col-4">
+                                <i class="bi bi-x-circle text-secondary fs-5 d-block mb-1"></i>
+                                <div class="small fw-bold text-dark">Remove</div>
+                                <div class="text-muted" style="font-size: 0.7rem;">Click 'X' in List</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="text-uppercase fw-bold text-muted small mb-2 ms-1">1. Optimization Methods</p>
+                    <div class="p-3 bg-white rounded border mb-3">
+                        <table class="table table-borderless table-sm small mb-0">
+                            <thead class="text-muted border-bottom">
+                                <tr>
+                                    <th class="pb-2">Feature</th>
+                                    <th class="pb-2 text-center text-primary">Straight Line</th>
+                                    <th class="pb-2 text-center text-success">Real Road</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="py-2 fw-semibold text-secondary">Accuracy</td>
+                                    <td class="py-2 text-center">Low (Flight)</td>
+                                    <td class="py-2 text-center">High (Traffic)</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 fw-semibold text-secondary">Best For</td>
+                                    <td class="py-2 text-center">Estimates</td>
+                                    <td class="py-2 text-center">Delivery</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="mt-2 pt-2 border-top d-flex align-items-start gap-2">
+                            <i class="bi bi-lightbulb-fill text-warning mt-1"></i>
+                            <p class="small text-muted mb-0" style="font-size: 0.75rem;">
+                                <strong>Tip:</strong> Use "Straight Line" to list points quickly, then "Real Road" to finalize.
+                            </p>
+                        </div>
+                    </div>
+
+                    <p class="text-uppercase fw-bold text-muted small mb-2 ms-1">2. Travel Modes</p>
+                    <div class="row g-2 mb-4">
+                        <div class="col-6">
+                            <div class="p-2 border rounded bg-white d-flex align-items-center gap-2">
+                                <div class="bg-light rounded-circle p-2 text-success">
+                                    <i class="bi bi-car-front-fill"></i>
+                                </div>
+                                <div style="line-height: 1.2;">
+                                    <div class="small fw-bold text-dark">Car</div>
+                                    <div class="text-muted" style="font-size: 0.65rem;">Standard Routes</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 border rounded bg-white d-flex align-items-center gap-2">
+                                <div class="bg-light rounded-circle p-2 text-success">
+                                    <i class="bi bi-scooter"></i>
+                                </div>
+                                <div style="line-height: 1.2;">
+                                    <div class="small fw-bold text-dark">Motorcycle</div>
+                                    <div class="text-muted" style="font-size: 0.65rem;">Faster ETA</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="text-uppercase fw-bold text-muted small mb-2 ms-1">3. Calculation Actions</p>
+
+                    <div class="info-section py-2 mb-2">
+                        <div class="info-icon-box" style="background: #e0f2fe; color: #007bff; width: 32px; height: 32px; font-size: 1rem;">
+                            <i class="bi bi-sign-turn-right-fill"></i>
+                        </div>
+                        <div class="info-content">
+                            <h6 style="font-size: 0.9rem;">Single Route (A&rarr;B)</h6>
+                            <p style="font-size: 0.8rem;">Direct path from the first to the second location only.</p>
+                        </div>
+                    </div>
+
+                    <div class="info-section py-2 mb-0">
+                        <div class="info-icon-box" style="background: #e0f2fe; color: #007bff; width: 32px; height: 32px; font-size: 1rem;">
+                            <i class="bi bi-diagram-3-fill"></i>
+                        </div>
+                        <div class="info-content">
+                            <h6 style="font-size: 0.9rem;">Multi-Stop (Optimized)</h6>
+                            <p style="font-size: 0.8rem;">Automatically <b>reorders</b> all stops to find the most efficient path.</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer-pro text-center">
+                    <button type="button" class="btn btn-action-primary w-100 py-2" data-bs-dismiss="modal">
+                        Got it, thanks!
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
