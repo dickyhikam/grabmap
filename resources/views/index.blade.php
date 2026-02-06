@@ -932,6 +932,8 @@
 
             switchTab('locations');
             showToast('Reset', 'All markers and route cleared.', 'info');
+
+            document.getElementById('locationsPanel').style.display = 'none';
         }
 
         function zoomToLocation(id) {
@@ -1048,6 +1050,119 @@
         }
 
         // --- Multi-Stop Route (Batching Support) ---
+        // async function calculateMultiRoute() {
+        //     if (markersData.length < 2) return showToast('Insufficient Data', 'Add at least 2 locations.', 'warning');
+
+        //     const selectedMode = document.querySelector('input[name="travelMode"]:checked').value;
+        //     const colors = ['#00B14F', '#007bff', '#dc3545', '#fd7e14', '#6f42c1', '#e83e8c', '#17a2b8'];
+        //     const MAX_STOPS = 25;
+
+        //     let totalDistance = 0;
+        //     let totalDuration = 0;
+        //     let allRouteFeatures = [];
+        //     let globalLegIndex = 0;
+        //     let segmentDetails = [];
+
+        //     showToast('Processing...', `Calculating detailed route...`, 'info');
+
+        //     try {
+        //         for (let i = 0; i < markersData.length - 1; i += (MAX_STOPS - 1)) {
+        //             const chunk = markersData.slice(i, i + MAX_STOPS);
+        //             const origin = chunk[0].coords;
+        //             const destination = chunk[chunk.length - 1].coords;
+        //             const waypoints = chunk.length > 2 ? chunk.slice(1, -1).map(m => m.coords) : [];
+
+        //             const url = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${routeCalculator}/calculate/route?key=${apiKey}`;
+        //             const body = {
+        //                 DeparturePosition: origin,
+        //                 DestinationPosition: destination,
+        //                 WaypointPositions: waypoints,
+        //                 TravelMode: selectedMode,
+        //                 DistanceUnit: "Kilometers",
+        //                 DepartNow: true,
+        //                 IncludeLegGeometry: true
+        //             };
+
+        //             const response = await fetch(url, {
+        //                 method: 'POST',
+        //                 headers: {
+        //                     'Content-Type': 'application/json'
+        //                 },
+        //                 body: JSON.stringify(body)
+        //             });
+
+        //             if (!response.ok) throw new Error(`Batch error`);
+        //             const data = await response.json();
+
+        //             totalDistance += data.Summary.Distance;
+        //             totalDuration += data.Summary.DurationSeconds;
+
+        //             if (data.Legs && data.Legs.length > 0) {
+        //                 data.Legs.forEach((leg, legIndexInBatch) => {
+        //                     if (leg.Geometry && leg.Geometry.LineString) {
+        //                         const segmentColor = colors[globalLegIndex % colors.length];
+
+        //                         // 1. Feature for Map
+        //                         allRouteFeatures.push({
+        //                             'type': 'Feature',
+        //                             'properties': {
+        //                                 'color': segmentColor
+        //                             },
+        //                             'geometry': {
+        //                                 'type': 'LineString',
+        //                                 'coordinates': leg.Geometry.LineString
+        //                             }
+        //                         });
+
+        //                         // 2. Data for List
+        //                         const startNode = markersData[i + legIndexInBatch];
+        //                         const endNode = markersData[i + legIndexInBatch + 1];
+
+        //                         segmentDetails.push({
+        //                             from: startNode.name || 'Unknown Point',
+        //                             to: endNode.name || 'Unknown Point',
+        //                             distance: leg.Distance,
+        //                             duration: leg.DurationSeconds,
+        //                             color: segmentColor,
+        //                             geometry: leg.Geometry.LineString
+        //                         });
+
+        //                         globalLegIndex++;
+        //                     }
+        //                 });
+        //             }
+        //         }
+
+        //         // Render Results
+        //         if (allRouteFeatures.length > 0) {
+        //             const featureCollection = {
+        //                 'type': 'FeatureCollection',
+        //                 'features': allRouteFeatures
+        //             };
+        //             drawRouteOnMap(featureCollection);
+
+        //             const finalDist = totalDistance.toFixed(1) + ' km';
+        //             const finalDur = formatDuration(totalDuration);
+
+        //             document.getElementById('resDistance').innerText = finalDist;
+        //             document.getElementById('resDuration').innerText = finalDur;
+        //             document.getElementById('routeEmptyState').style.display = 'none';
+        //             document.getElementById('routeResultCard').style.display = 'block';
+        //             document.getElementById('segmentListContainer').style.display = 'block';
+
+        //             renderSegmentList(segmentDetails);
+        //             switchTab('routes');
+        //             showToast('Success', `Multi-stop route calculated!`, 'success');
+        //         } else {
+        //             showToast('Error', 'Route geometry missing.', 'error');
+        //         }
+
+        //     } catch (error) {
+        //         console.error(error);
+        //         showToast('Error', 'Failed to calculate route.', 'error');
+        //     }
+        // }
+
         async function calculateMultiRoute() {
             if (markersData.length < 2) return showToast('Insufficient Data', 'Add at least 2 locations.', 'warning');
 
@@ -1055,17 +1170,32 @@
             const colors = ['#00B14F', '#007bff', '#dc3545', '#fd7e14', '#6f42c1', '#e83e8c', '#17a2b8'];
             const MAX_STOPS = 25;
 
+            // --- STEP 1: OPTIMASI URUTAN ---
+            showToast('Optimizing...', 'Reordering stops for shortest path...', 'info');
+
+            // Salin array agar aman, lalu urutkan
+            const optimizedData = optimizeMarkersOrder([...markersData]);
+
+            // Update data global agar List di sidebar ikut berubah urutannya
+            markersData = optimizedData;
+            renderLocationList();
+
+            // Gunakan data yang sudah diurutkan untuk perhitungan
+            const workingData = markersData;
+            // -------------------------------
+
             let totalDistance = 0;
             let totalDuration = 0;
             let allRouteFeatures = [];
             let globalLegIndex = 0;
             let segmentDetails = [];
 
-            showToast('Processing...', `Calculating detailed route...`, 'info');
+            showToast('Processing...', `Calculating route for ${workingData.length} stops...`, 'info');
 
             try {
-                for (let i = 0; i < markersData.length - 1; i += (MAX_STOPS - 1)) {
-                    const chunk = markersData.slice(i, i + MAX_STOPS);
+                // Gunakan workingData, bukan markersData langsung (meskipun isinya sama skrg)
+                for (let i = 0; i < workingData.length - 1; i += (MAX_STOPS - 1)) {
+                    const chunk = workingData.slice(i, i + MAX_STOPS);
                     const origin = chunk[0].coords;
                     const destination = chunk[chunk.length - 1].coords;
                     const waypoints = chunk.length > 2 ? chunk.slice(1, -1).map(m => m.coords) : [];
@@ -1113,8 +1243,9 @@
                                 });
 
                                 // 2. Data for List
-                                const startNode = markersData[i + legIndexInBatch];
-                                const endNode = markersData[i + legIndexInBatch + 1];
+                                // Ambil info dari workingData yg sudah urut
+                                const startNode = workingData[i + legIndexInBatch];
+                                const endNode = workingData[i + legIndexInBatch + 1];
 
                                 segmentDetails.push({
                                     from: startNode.name || 'Unknown Point',
@@ -1150,7 +1281,7 @@
 
                     renderSegmentList(segmentDetails);
                     switchTab('routes');
-                    showToast('Success', `Multi-stop route calculated!`, 'success');
+                    showToast('Success', `Optimized route calculated!`, 'success');
                 } else {
                     showToast('Error', 'Route geometry missing.', 'error');
                 }
@@ -1159,6 +1290,63 @@
                 console.error(error);
                 showToast('Error', 'Failed to calculate route.', 'error');
             }
+        }
+
+        // --- HELPER: MENGHITUNG JARAK ANTARA 2 KOORDINAT (Haversine) ---
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            var R = 6371; // Radius bumi dalam km
+            var dLat = deg2rad(lat2 - lat1);
+            var dLon = deg2rad(lon2 - lon1);
+            var a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            var d = R * c; // Jarak dalam km
+            return d;
+        }
+
+        function deg2rad(deg) {
+            return deg * (Math.PI / 180);
+        }
+
+        // --- FUNGSI OPTIMASI URUTAN (Nearest Neighbor) ---
+        function optimizeMarkersOrder(originalData) {
+            if (originalData.length <= 2) return originalData; // Kalau cuma 2 titik, gak perlu diurutkan
+
+            // 1. Ambil titik awal (Fixed, tidak boleh pindah)
+            let sorted = [originalData[0]];
+
+            // 2. Sisa titik yang belum dikunjungi
+            let remaining = originalData.slice(1);
+
+            // 3. Looping cari yang terdekat
+            while (remaining.length > 0) {
+                let current = sorted[sorted.length - 1]; // Titik terakhir yang sudah fix
+                let nearestIndex = -1;
+                let minDistance = Infinity;
+
+                // Bandingkan jarak ke semua sisa titik
+                remaining.forEach((point, index) => {
+                    // Ingat: coords[1] = lat, coords[0] = lng
+                    let dist = getDistanceFromLatLonInKm(
+                        current.coords[1], current.coords[0],
+                        point.coords[1], point.coords[0]
+                    );
+
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        nearestIndex = index;
+                    }
+                });
+
+                // Pindahkan titik terdekat ke array sorted
+                sorted.push(remaining[nearestIndex]);
+                // Hapus dari remaining
+                remaining.splice(nearestIndex, 1);
+            }
+
+            return sorted;
         }
 
 
