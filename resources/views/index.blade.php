@@ -653,6 +653,17 @@
                 <input type="radio" class="btn-check" name="travelMode" id="modeBike" value="Motorcycle">
                 <label class="btn-mode-switch flex-grow-1" for="modeBike"><i class="bi bi-scooter me-2"></i> Motorcycle</label>
             </div>
+            <div class="mode-switch-container mb-3">
+                <input type="radio" class="btn-check" name="optMode" id="optFast" value="fast" checked>
+                <label class="btn-mode-switch flex-grow-1" for="optFast" title="Sort by direct distance (Faster)">
+                    <i class="bi bi-rulers me-2"></i> Straight Line
+                </label>
+
+                <input type="radio" class="btn-check" name="optMode" id="optPrecise" value="real">
+                <label class="btn-mode-switch flex-grow-1" for="optPrecise" title="Sort by actual driving route (More Accurate)">
+                    <i class="bi bi-sign-turn-slight-right-fill me-2"></i> Real Road
+                </label>
+            </div>
 
             <div class="d-flex gap-2 mb-3">
                 <button class="btn btn-action-primary flex-grow-1 d-flex align-items-center justify-content-center py-2" onclick="calculateRoute()" title="Hitung Rute A ke B">
@@ -1049,140 +1060,41 @@
             }
         }
 
-        // --- Multi-Stop Route (Batching Support) ---
-        // async function calculateMultiRoute() {
-        //     if (markersData.length < 2) return showToast('Insufficient Data', 'Add at least 2 locations.', 'warning');
-
-        //     const selectedMode = document.querySelector('input[name="travelMode"]:checked').value;
-        //     const colors = ['#00B14F', '#007bff', '#dc3545', '#fd7e14', '#6f42c1', '#e83e8c', '#17a2b8'];
-        //     const MAX_STOPS = 25;
-
-        //     let totalDistance = 0;
-        //     let totalDuration = 0;
-        //     let allRouteFeatures = [];
-        //     let globalLegIndex = 0;
-        //     let segmentDetails = [];
-
-        //     showToast('Processing...', `Calculating detailed route...`, 'info');
-
-        //     try {
-        //         for (let i = 0; i < markersData.length - 1; i += (MAX_STOPS - 1)) {
-        //             const chunk = markersData.slice(i, i + MAX_STOPS);
-        //             const origin = chunk[0].coords;
-        //             const destination = chunk[chunk.length - 1].coords;
-        //             const waypoints = chunk.length > 2 ? chunk.slice(1, -1).map(m => m.coords) : [];
-
-        //             const url = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${routeCalculator}/calculate/route?key=${apiKey}`;
-        //             const body = {
-        //                 DeparturePosition: origin,
-        //                 DestinationPosition: destination,
-        //                 WaypointPositions: waypoints,
-        //                 TravelMode: selectedMode,
-        //                 DistanceUnit: "Kilometers",
-        //                 DepartNow: true,
-        //                 IncludeLegGeometry: true
-        //             };
-
-        //             const response = await fetch(url, {
-        //                 method: 'POST',
-        //                 headers: {
-        //                     'Content-Type': 'application/json'
-        //                 },
-        //                 body: JSON.stringify(body)
-        //             });
-
-        //             if (!response.ok) throw new Error(`Batch error`);
-        //             const data = await response.json();
-
-        //             totalDistance += data.Summary.Distance;
-        //             totalDuration += data.Summary.DurationSeconds;
-
-        //             if (data.Legs && data.Legs.length > 0) {
-        //                 data.Legs.forEach((leg, legIndexInBatch) => {
-        //                     if (leg.Geometry && leg.Geometry.LineString) {
-        //                         const segmentColor = colors[globalLegIndex % colors.length];
-
-        //                         // 1. Feature for Map
-        //                         allRouteFeatures.push({
-        //                             'type': 'Feature',
-        //                             'properties': {
-        //                                 'color': segmentColor
-        //                             },
-        //                             'geometry': {
-        //                                 'type': 'LineString',
-        //                                 'coordinates': leg.Geometry.LineString
-        //                             }
-        //                         });
-
-        //                         // 2. Data for List
-        //                         const startNode = markersData[i + legIndexInBatch];
-        //                         const endNode = markersData[i + legIndexInBatch + 1];
-
-        //                         segmentDetails.push({
-        //                             from: startNode.name || 'Unknown Point',
-        //                             to: endNode.name || 'Unknown Point',
-        //                             distance: leg.Distance,
-        //                             duration: leg.DurationSeconds,
-        //                             color: segmentColor,
-        //                             geometry: leg.Geometry.LineString
-        //                         });
-
-        //                         globalLegIndex++;
-        //                     }
-        //                 });
-        //             }
-        //         }
-
-        //         // Render Results
-        //         if (allRouteFeatures.length > 0) {
-        //             const featureCollection = {
-        //                 'type': 'FeatureCollection',
-        //                 'features': allRouteFeatures
-        //             };
-        //             drawRouteOnMap(featureCollection);
-
-        //             const finalDist = totalDistance.toFixed(1) + ' km';
-        //             const finalDur = formatDuration(totalDuration);
-
-        //             document.getElementById('resDistance').innerText = finalDist;
-        //             document.getElementById('resDuration').innerText = finalDur;
-        //             document.getElementById('routeEmptyState').style.display = 'none';
-        //             document.getElementById('routeResultCard').style.display = 'block';
-        //             document.getElementById('segmentListContainer').style.display = 'block';
-
-        //             renderSegmentList(segmentDetails);
-        //             switchTab('routes');
-        //             showToast('Success', `Multi-stop route calculated!`, 'success');
-        //         } else {
-        //             showToast('Error', 'Route geometry missing.', 'error');
-        //         }
-
-        //     } catch (error) {
-        //         console.error(error);
-        //         showToast('Error', 'Failed to calculate route.', 'error');
-        //     }
-        // }
-
         async function calculateMultiRoute() {
             if (markersData.length < 2) return showToast('Insufficient Data', 'Add at least 2 locations.', 'warning');
 
             const selectedMode = document.querySelector('input[name="travelMode"]:checked').value;
+
+            //Ambil mode optimasi (Fast / Precise)
+            const optimizationMode = document.querySelector('input[name="optMode"]:checked').value;
+
             const colors = ['#00B14F', '#007bff', '#dc3545', '#fd7e14', '#6f42c1', '#e83e8c', '#17a2b8'];
             const MAX_STOPS = 25;
 
-            // --- STEP 1: OPTIMASI URUTAN ---
-            showToast('Optimizing...', 'Reordering stops for shortest path...', 'info');
+            // --- STEP 1: LOGIKA PEMILIHAN OPTIMASI ---
+            let optimizedData = [];
 
-            // Salin array agar aman, lalu urutkan
-            const optimizedData = optimizeMarkersOrder([...markersData]);
+            if (optimizationMode === 'real') {
+                // A. Mode Precise (Real Road)
+                showToast('Optimizing...', 'Analyzing traffic & road restrictions...', 'info');
+                try {
+                    optimizedData = await optimizeMarkersOrderReal([...markersData]);
+                } catch (e) {
+                    console.error(e);
+                    showToast('Warning', 'Optimization failed, fallback to default.', 'warning');
+                    optimizedData = [...markersData];
+                }
+            } else {
+                // B. Mode Fast (Straight Line)
+                showToast('Optimizing...', 'Reordering stops (Straight Line)...', 'info');
+                optimizedData = optimizeMarkersOrder([...markersData]);
+            }
 
-            // Update data global agar List di sidebar ikut berubah urutannya
+            // Update data global & UI List
             markersData = optimizedData;
             renderLocationList();
-
-            // Gunakan data yang sudah diurutkan untuk perhitungan
             const workingData = markersData;
-            // -------------------------------
+            // ------------------------------------------
 
             let totalDistance = 0;
             let totalDuration = 0;
@@ -1190,10 +1102,10 @@
             let globalLegIndex = 0;
             let segmentDetails = [];
 
-            showToast('Processing...', `Calculating route for ${workingData.length} stops...`, 'info');
+            showToast('Processing...', `Calculating final route path...`, 'info');
 
             try {
-                // Gunakan workingData, bukan markersData langsung (meskipun isinya sama skrg)
+                // Loop Batching (Sama seperti sebelumnya)
                 for (let i = 0; i < workingData.length - 1; i += (MAX_STOPS - 1)) {
                     const chunk = workingData.slice(i, i + MAX_STOPS);
                     const origin = chunk[0].coords;
@@ -1230,7 +1142,6 @@
                             if (leg.Geometry && leg.Geometry.LineString) {
                                 const segmentColor = colors[globalLegIndex % colors.length];
 
-                                // 1. Feature for Map
                                 allRouteFeatures.push({
                                     'type': 'Feature',
                                     'properties': {
@@ -1242,8 +1153,6 @@
                                     }
                                 });
 
-                                // 2. Data for List
-                                // Ambil info dari workingData yg sudah urut
                                 const startNode = workingData[i + legIndexInBatch];
                                 const endNode = workingData[i + legIndexInBatch + 1];
 
@@ -1346,6 +1255,86 @@
                 remaining.splice(nearestIndex, 1);
             }
 
+            return sorted;
+        }
+
+        // --- HELPER: PANGGIL AWS MATRIX (REAL ROAD DISTANCE) ---
+        async function getRouteMatrix(departure, destinations) {
+            // Pastikan pakai endpoint route-matrix
+            const url = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${routeCalculator}/calculate/route-matrix?key=${apiKey}`;
+
+            const body = {
+                DeparturePositions: [departure], // 1 Titik Asal
+                DestinationPositions: destinations, // Banyak Titik Tujuan
+                TravelMode: "Car", // Mode Mobil (Penting untuk satu arah/tol)
+                DistanceUnit: "Kilometers"
+            };
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) throw new Error("Matrix API Error");
+            return await response.json();
+        }
+
+        // --- LOGIKA PENGURUTAN REAL (ASYNC / PRECISE) ---
+        async function optimizeMarkersOrderReal(originalData) {
+            if (originalData.length <= 2) return originalData;
+
+            // 1. Mulai dari titik pertama (Start Fixed)
+            let sorted = [originalData[0]];
+            let remaining = originalData.slice(1);
+
+            // 2. Loop sampai semua titik masuk rute
+            while (remaining.length > 0) {
+                let current = sorted[sorted.length - 1];
+
+                // Update Toast biar user tau prosesnya
+                showToast('Optimizing...', `Checking roads from Stop ${sorted.length}...`, 'info');
+
+                // Siapkan koordinat
+                const currentCoords = current.coords;
+                const destCoords = remaining.map(m => m.coords);
+
+                try {
+                    // PANGGIL API MATRIX
+                    const matrixData = await getRouteMatrix(currentCoords, destCoords);
+
+                    // AWS Matrix mengembalikan array "RouteMatrix[0]" (karena 1 origin)
+                    const results = matrixData.RouteMatrix[0];
+
+                    let bestIndex = -1;
+                    let minDuration = Infinity; // Cari WAKTU tercepat
+
+                    results.forEach((res, idx) => {
+                        if (res && res.DurationSeconds !== undefined) { // Cek validitas
+                            if (res.DurationSeconds < minDuration) {
+                                minDuration = res.DurationSeconds;
+                                bestIndex = idx;
+                            }
+                        }
+                    });
+
+                    if (bestIndex !== -1) {
+                        sorted.push(remaining[bestIndex]);
+                        remaining.splice(bestIndex, 1);
+                    } else {
+                        // Fallback jika API gagal kalkulasi rute (misal beda pulau)
+                        sorted.push(remaining[0]);
+                        remaining.shift();
+                    }
+
+                } catch (err) {
+                    console.error("Matrix Optimization Failed:", err);
+                    // Jika error (misal internet putus), kembalikan sisa apa adanya
+                    return sorted.concat(remaining);
+                }
+            }
             return sorted;
         }
 
