@@ -448,6 +448,33 @@
             margin-top: 80px;
         }
     </style>
+
+    <style>
+        /* Tombol Secondary (Multi Route) - Outline Style */
+        .btn-action-secondary {
+            background: transparent;
+            color: var(--grab-green);
+            border: 2px solid var(--grab-green);
+            font-weight: 700;
+            font-size: 0.95rem;
+            letter-spacing: 0.3px;
+            border-radius: 12px;
+            padding: 10px;
+            transition: all 0.2s ease;
+            margin-top: 10px;
+            /* Jarak dari tombol utama */
+        }
+
+        .btn-action-secondary:hover {
+            background: #f0fdf4;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 177, 79, 0.15);
+        }
+
+        .btn-action-secondary:active {
+            transform: translateY(1px);
+        }
+    </style>
 </head>
 
 <body>
@@ -494,7 +521,11 @@
             </div>
 
             <button class="btn btn-action-primary w-100" onclick="calculateRoute()">
-                <i class="bi bi-sign-turn-right-fill me-2"></i> Calculate Route
+                <i class="bi bi-sign-turn-right-fill me-2"></i> Calculate Route (A &rarr; B)
+            </button>
+
+            <button class="btn btn-action-secondary w-100" onclick="calculateMultiRoute()">
+                <i class="bi bi-diagram-3-fill me-2"></i> Multi-Stop Route
             </button>
 
             <div id="routeResultCard" class="route-result-card">
@@ -696,19 +727,16 @@
 
         // --- 5. CALCULATE ROUTE ---
         async function calculateRoute() {
-            if (markersData.length < 2) {
-                return showToast('Insufficient Data', 'Add at least 2 locations.', 'warning');
-            }
+            if (markersData.length < 2) return showToast('Insufficient Data', 'Add at least 2 locations.', 'warning');
 
             const origin = markersData[0].coords;
             const destination = markersData[1].coords;
             const selectedMode = document.querySelector('input[name="travelMode"]:checked').value;
 
-            showToast('Processing...', 'Calculating route...', 'info');
+            showToast('Processing...', 'Calculating single route...', 'info');
 
             try {
                 const url = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${routeCalculator}/calculate/route?key=${apiKey}`;
-
                 const body = {
                     DeparturePosition: origin,
                     DestinationPosition: destination,
@@ -725,23 +753,151 @@
                     },
                     body: JSON.stringify(body)
                 });
-
-                if (!response.ok) throw new Error('Failed to calculate route');
-
+                if (!response.ok) throw new Error('Failed');
                 const data = await response.json();
 
                 if (data.Legs && data.Legs.length > 0 && data.Legs[0].Geometry) {
-                    const points = data.Legs[0].Geometry.LineString;
-                    const geoJsonGeometry = {
-                        type: 'LineString',
-                        coordinates: points
+
+                    // BUAT FEATURE COLLECTION UNTUK SINGLE ROUTE (Warna Hijau Grab Saja)
+                    const featureCollection = {
+                        'type': 'FeatureCollection',
+                        'features': [{
+                            'type': 'Feature',
+                            'properties': {
+                                'color': '#00B14F'
+                            }, // Satu warna
+                            'geometry': {
+                                'type': 'LineString',
+                                'coordinates': data.Legs[0].Geometry.LineString
+                            }
+                        }]
                     };
-                    drawRouteOnMap(geoJsonGeometry);
 
+                    drawRouteOnMap(featureCollection);
+
+                    // Summary UI
                     const summary = data.Summary;
-                    const distance = summary.Distance.toFixed(1) + ' km';
+                    document.getElementById('resDistance').innerText = summary.Distance.toFixed(1) + ' km';
+                    document.getElementById('resDuration').innerText = Math.round(summary.DurationSeconds / 60) + ' min';
+                    document.getElementById('routeResultCard').style.display = 'block';
 
-                    const totalMinutes = Math.round(summary.DurationSeconds / 60);
+                } else {
+                    showToast('Error', 'Path not found.', 'error');
+                }
+
+            } catch (e) {
+                console.error(e);
+                showToast('Error', 'Failed.', 'error');
+            }
+        }
+
+        // --- 6. LOGIC MULTI-STOP ROUTE (UNLIMITED STOPS / BATCHING) ---
+        async function calculateMultiRoute() {
+            if (markersData.length < 2) {
+                return showToast('Insufficient Data', 'Add at least 2 locations.', 'warning');
+            }
+
+            const selectedMode = document.querySelector('input[name="travelMode"]:checked').value;
+
+            // --- PALET WARNA (Akan diulang jika titiknya banyak) ---
+            const colors = [
+                '#00B14F', // Hijau Grab (Segmen 1)
+                '#007bff', // Biru (Segmen 2)
+                '#dc3545', // Merah (Segmen 3)
+                '#fd7e14', // Orange (Segmen 4)
+                '#6f42c1', // Ungu (Segmen 5)
+                '#e83e8c', // Pink (Segmen 6)
+                '#17a2b8' // Cyan (Segmen 7)
+            ];
+
+            let totalDistance = 0;
+            let totalDuration = 0;
+
+            // Kita tampung Feature GeoJSON di sini
+            let allRouteFeatures = [];
+            let globalLegIndex = 0; // Untuk index warna
+
+            const MAX_STOPS_PER_REQUEST = 25;
+
+            showToast('Processing...', `Calculating colorful route...`, 'info');
+
+            try {
+                for (let i = 0; i < markersData.length - 1; i += (MAX_STOPS_PER_REQUEST - 1)) {
+                    const chunk = markersData.slice(i, i + MAX_STOPS_PER_REQUEST);
+                    const origin = chunk[0].coords;
+                    const destination = chunk[chunk.length - 1].coords;
+                    const waypoints = chunk.length > 2 ? chunk.slice(1, -1).map(m => m.coords) : [];
+
+                    const url = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${routeCalculator}/calculate/route?key=${apiKey}`;
+
+                    const body = {
+                        DeparturePosition: origin,
+                        DestinationPosition: destination,
+                        WaypointPositions: waypoints,
+                        TravelMode: selectedMode,
+                        DistanceUnit: "Kilometers",
+                        DepartNow: true,
+                        IncludeLegGeometry: true
+                    };
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (!response.ok) throw new Error(`Failed at batch index ${i}`);
+                    const data = await response.json();
+
+                    // Aggregation Data
+                    totalDistance += data.Summary.Distance;
+                    totalDuration += data.Summary.DurationSeconds;
+
+                    // --- PROSES WARNA PER SEGMENT ---
+                    if (data.Legs && data.Legs.length > 0) {
+                        data.Legs.forEach(leg => {
+                            if (leg.Geometry && leg.Geometry.LineString) {
+
+                                // Pilih warna berdasarkan urutan segmen
+                                // Gunakan modulus (%) agar warna berulang jika segmen > jumlah warna
+                                const segmentColor = colors[globalLegIndex % colors.length];
+
+                                // Buat Feature GeoJSON untuk segmen ini
+                                const feature = {
+                                    'type': 'Feature',
+                                    'properties': {
+                                        'color': segmentColor, // Properti warna ini dibaca oleh map
+                                        'description': `Leg ${globalLegIndex + 1}`
+                                    },
+                                    'geometry': {
+                                        'type': 'LineString',
+                                        'coordinates': leg.Geometry.LineString
+                                    }
+                                };
+
+                                allRouteFeatures.push(feature);
+                                globalLegIndex++; // Lanjut ke segmen berikutnya
+                            }
+                        });
+                    }
+                }
+
+                // --- GAMBAR KE PETA ---
+                if (allRouteFeatures.length > 0) {
+
+                    // Bungkus jadi FeatureCollection
+                    const featureCollection = {
+                        'type': 'FeatureCollection',
+                        'features': allRouteFeatures
+                    };
+
+                    drawRouteOnMap(featureCollection);
+
+                    // Update Card UI
+                    const finalDistance = totalDistance.toFixed(1) + ' km';
+                    const totalMinutes = Math.round(totalDuration / 60);
                     let durationText = totalMinutes + ' min';
                     if (totalMinutes >= 60) {
                         const hrs = Math.floor(totalMinutes / 60);
@@ -749,51 +905,32 @@
                         durationText = `${hrs} hr ${mins} min`;
                     }
 
-                    document.getElementById('resDistance').innerText = distance;
+                    document.getElementById('resDistance').innerText = finalDistance;
                     document.getElementById('resDuration').innerText = durationText;
                     document.getElementById('routeResultCard').style.display = 'block';
 
+                    showToast('Success', `Multi-color route calculated!`, 'success');
                 } else {
-                    showToast('Error', 'Route path not found.', 'error');
+                    showToast('Error', 'Route geometry missing.', 'error');
                 }
 
             } catch (error) {
                 console.error(error);
-                if (selectedMode === 'Motorcycle') {
-                    showToast('Info', 'Motorcycle mode not available. Try Car mode.', 'warning');
-                } else {
-                    showToast('Error', 'Failed to fetch route API.', 'error');
-                }
+                showToast('Error', 'Failed to calculate complex route.', 'error');
             }
         }
 
-        function drawRouteOnMap(lineStringGeometry) {
+        function drawRouteOnMap(geoJsonFeatureCollection) {
+            // Hapus layer lama jika ada
             removeRouteLayer();
 
+            // Tambahkan Source
             map.addSource('routeSource', {
                 'type': 'geojson',
-                'data': {
-                    'type': 'Feature',
-                    'properties': {},
-                    'geometry': lineStringGeometry
-                }
+                'data': geoJsonFeatureCollection
             });
 
-            map.addLayer({
-                'id': 'routeLayer',
-                'type': 'line',
-                'source': 'routeSource',
-                'layout': {
-                    'line-join': 'round',
-                    'line-cap': 'round'
-                },
-                'paint': {
-                    'line-color': '#00B14F',
-                    'line-width': 5,
-                    'line-opacity': 0.8
-                }
-            });
-
+            // 1. Layer Outline (Putih) - Agar garis lebih kontras dan rapi
             map.addLayer({
                 'id': 'routeLayerOutline',
                 'type': 'line',
@@ -804,23 +941,48 @@
                 },
                 'paint': {
                     'line-color': '#ffffff',
-                    'line-width': 2,
-                    'line-gap-width': 5,
-                    'line-opacity': 0.5
+                    'line-width': 6,
+                    'line-opacity': 0.8
                 }
             });
 
-            const coordinates = lineStringGeometry.coordinates;
-            const bounds = coordinates.reduce((bounds, coord) => {
-                return bounds.extend(coord);
-            }, new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+            // 2. Layer Utama (Warna-Warni)
+            map.addLayer({
+                'id': 'routeLayer',
+                'type': 'line',
+                'source': 'routeSource',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    // LOGIC WARNA: Ambil dari properti 'color' yang kita set di JS
+                    'line-color': ['get', 'color'],
+                    'line-width': 4,
+                    'line-opacity': 0.9
+                }
+            });
 
+            // --- SAYA MENGHAPUS LAYER 'routeArrows' DISINI AGAR TIDAK ERROR FONT ---
+
+            // Fit Bounds (Zoom otomatis agar seluruh rute terlihat)
+            const bounds = new maplibregl.LngLatBounds();
+
+            // Loop untuk mencari batas koordinat (Bounding Box)
+            geoJsonFeatureCollection.features.forEach(feature => {
+                feature.geometry.coordinates.forEach(coord => {
+                    bounds.extend(coord);
+                });
+            });
+
+            // Zoom peta ke area rute
             map.fitBounds(bounds, {
                 padding: 50
             });
         }
 
         function removeRouteLayer() {
+            // if (map.getLayer('routeArrows')) map.removeLayer('routeArrows');
             if (map.getLayer('routeLayer')) map.removeLayer('routeLayer');
             if (map.getLayer('routeLayerOutline')) map.removeLayer('routeLayerOutline');
             if (map.getSource('routeSource')) map.removeSource('routeSource');
