@@ -11,6 +11,9 @@
     <link href="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.css" rel="stylesheet" />
 
     <style>
+        /* =========================================
+       1. VARIABLES & CONFIGURATION
+       ========================================= */
         :root {
             /* Colors */
             --grab-green: #00B14F;
@@ -32,6 +35,9 @@
             --z-toast: 9999;
         }
 
+        /* =========================================
+       2. BASE LAYOUT & MAP
+       ========================================= */
         body {
             margin: 0;
             padding: 0;
@@ -48,7 +54,14 @@
             z-index: var(--z-map);
         }
 
-        /* --- HEADER SEARCH --- */
+        /* MapLibre Control Position Fix */
+        .maplibregl-ctrl-top-left {
+            margin-top: 80px;
+        }
+
+        /* =========================================
+       3. FLOATING HEADER (SEARCH BAR)
+       ========================================= */
         .floating-header {
             position: fixed;
             top: 20px;
@@ -77,7 +90,6 @@
             width: auto;
         }
 
-        /* Search Wrapper */
         .search-wrapper {
             position: relative;
             flex-grow: 1;
@@ -129,38 +141,20 @@
             color: var(--grab-green);
         }
 
-        /* Buttons */
-        .btn-circle {
-            width: var(--btn-size);
-            height: var(--btn-size);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            transition: 0.2s;
-        }
-
-        .btn-grab {
-            background-color: var(--grab-green);
-            border-color: var(--grab-green);
-            color: white;
-        }
-
-        .btn-grab:hover {
-            background-color: var(--grab-green-hover);
-            border-color: var(--grab-green-hover);
-            color: white;
-        }
-
-        /* --- PANEL LIST LOKASI --- */
+        /* =========================================
+       4. PANEL LAYOUT (LEFT SIDEBAR)
+       ========================================= */
         .locations-panel {
             position: fixed;
             top: 100px;
             left: 20px;
-            /* Left Position */
             width: 320px;
             max-height: calc(100vh - 120px);
+
+            /* Flex Layout */
+            display: flex;
+            flex-direction: column;
+
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
@@ -171,6 +165,24 @@
             display: none;
             overflow: hidden;
             animation: slideInPanel 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .panel-header {
+            flex-shrink: 0;
+            padding: 15px 20px 0 20px;
+            background: rgba(255, 255, 255, 0.9);
+            z-index: 10;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            position: sticky;
+            top: 0;
+        }
+
+        .panel-body {
+            flex-grow: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 0 15px 15px 15px !important;
         }
 
         @keyframes slideInPanel {
@@ -185,161 +197,92 @@
             }
         }
 
-        .panel-header {
-            padding: 15px 20px;
-            background: rgba(255, 255, 255, 0.9);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        /* 1. Primary Action (A->B) */
-        .btn-action-primary {
-            background: linear-gradient(135deg, #00B14F 0%, #009543 100%);
-            color: white;
-            border: none;
-            font-weight: 700;
-            font-size: 0.9rem;
-            /* Font agak diperkecil dikit */
-            letter-spacing: 0.3px;
-            border-radius: 12px;
-            /* padding dihapus dari CSS, diatur via class bootstrap py-2 */
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 12px rgba(0, 177, 79, 0.25);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-action-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(0, 177, 79, 0.35);
-            color: white;
-        }
-
-        .btn-action-primary:active {
-            transform: translateY(1px);
-        }
-
-        /* 2. Secondary Action (Multi) - Hapus Margin Top */
-        .btn-action-secondary {
-            background: white;
-            /* Ubah jadi putih biar bersih */
-            color: var(--grab-green);
-            border: 1px solid var(--grab-green);
-            /* Border ditipisin jadi 1px */
-            font-weight: 700;
-            font-size: 0.9rem;
-            letter-spacing: 0.3px;
-            border-radius: 12px;
-            /* padding dihapus dari CSS, diatur via class bootstrap py-2 */
-            transition: all 0.2s ease;
-            margin-top: 0;
-            /* PENTING: Hapus margin agar sejajar */
-        }
-
-        .btn-action-secondary:hover {
-            background: #f0fdf4;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0, 177, 79, 0.15);
-        }
-
-        .btn-action-secondary:active {
-            transform: translateY(1px);
-        }
-
-        /* Mode Switch */
-        .mode-switch-container {
-            background-color: #f1f3f5;
-            padding: 4px;
-            border-radius: 12px;
+        /* =========================================
+       5. TABS NAVIGATION
+       ========================================= */
+        .panel-tabs {
             display: flex;
-            position: relative;
+            border-bottom: 1px solid #eee;
+            margin-top: 15px;
         }
 
-        .btn-mode-switch {
-            background: transparent;
+        .tab-item {
+            flex: 1;
+            text-align: center;
+            padding: 10px 5px;
+            font-weight: 600;
+            font-size: 0.9rem;
             color: #adb5bd;
-            font-weight: 600;
-            font-size: 0.9rem;
-            border: none;
-            padding: 8px;
-            border-radius: 10px;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
             cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
         }
 
-        .btn-mode-switch:hover {
+        .tab-item:hover {
+            color: var(--grab-green-hover);
+            background-color: #f8f9fa;
+        }
+
+        .tab-item.active {
             color: var(--grab-green);
+            border-bottom: 3px solid var(--grab-green);
         }
 
-        .btn-check:checked+.btn-mode-switch {
-            background-color: white;
-            color: var(--grab-green);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            transform: scale(1.02);
+        .tab-pane {
+            display: none;
+            animation: fadeIn 0.2s ease;
         }
 
-        /* Reset Button */
-        .btn-reset-minimal {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #6c757d;
-            background: white;
-            border: 1px solid #e9ecef;
-            padding: 5px 12px;
-            border-radius: 30px;
-            transition: all 0.2s ease;
+        .tab-pane.active {
+            display: block;
         }
 
-        .btn-reset-minimal:hover {
-            color: #dc3545;
-            border-color: #dc3545;
-            background: #fff5f5;
-            box-shadow: 0 2px 5px rgba(220, 53, 69, 0.15);
-        }
-
-        .badge-count {
-            background: var(--grab-green);
-            color: white;
-            min-width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: bold;
-            margin-left: 5px;
-        }
-
-        #listContainer {
+        /* =========================================
+       6. SCROLLABLE LIST CONTAINERS
+       ========================================= */
+        #listContainer,
+        #segmentListContainer {
             overflow-y: auto;
-            max-height: calc(100vh - 180px);
-            /* padding: 10px; */
+            max-height: calc(100vh - 350px);
+            padding: 10px;
+            /* Merged padding logic */
+            /* padding-bottom: 20px; */
         }
 
-        #listContainer::-webkit-scrollbar {
+        /* #segmentListContainer {
+            margin-top: 15px;
+            max-height: 250px;
+            display: none;
+            padding-right: 5px;
+        } */
+
+        /* Custom Scrollbar Style (Shared) */
+        #listContainer::-webkit-scrollbar,
+        #segmentListContainer::-webkit-scrollbar {
             width: 6px;
         }
 
-        #listContainer::-webkit-scrollbar-track {
+        #listContainer::-webkit-scrollbar-track,
+        #segmentListContainer::-webkit-scrollbar-track {
             background: transparent;
         }
 
-        #listContainer::-webkit-scrollbar-thumb {
+        #listContainer::-webkit-scrollbar-thumb,
+        #segmentListContainer::-webkit-scrollbar-thumb {
             background: #ccc;
             border-radius: 10px;
         }
 
-        #listContainer::-webkit-scrollbar-thumb:hover {
+        #listContainer::-webkit-scrollbar-thumb:hover,
+        #segmentListContainer::-webkit-scrollbar-thumb:hover {
             background: #bbb;
         }
 
-        /* Item Location */
+        /* =========================================
+       7. LIST ITEMS & CARDS (COMPONENTS)
+       ========================================= */
+
+        /* A. Location Item (Tab 1) */
         .location-item {
             background: white;
             border-radius: 12px;
@@ -412,26 +355,59 @@
             gap: 4px;
         }
 
-        .btn-delete-item {
-            color: #999;
-            background: #f8f9fa;
-            border: 1px solid #eee;
-            width: 32px;
-            height: 32px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        /* B. Segment Card (Tab 2 - Detail Rute) */
+        .segment-card {
+            background: white;
+            border: 1px solid #f0f0f0;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            position: relative;
+            padding-left: 15px;
             transition: 0.2s;
         }
 
-        .btn-delete-item:hover {
-            background: #dc3545;
-            color: white;
-            border-color: #dc3545;
+        .segment-card:hover {
+            background: #f9f9f9;
         }
 
-        /* Route Result Card */
+        .segment-card.active-card {
+            background-color: #f0fdf4;
+            border-color: var(--grab-green);
+            box-shadow: 0 0 0 1px var(--grab-green);
+        }
+
+        .segment-color-bar {
+            position: absolute;
+            left: 0;
+            top: 4px;
+            bottom: 4px;
+            width: 4px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .segment-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .segment-details {
+            font-size: 0.75rem;
+            color: #666;
+            display: flex;
+            gap: 10px;
+        }
+
+        .segment-icon {
+            font-size: 0.7rem;
+            margin-right: 4px;
+        }
+
+        /* C. Result Summary Card */
         .route-result-card {
             background: #f0fdf4;
             border: 1px dashed var(--grab-green);
@@ -467,144 +443,175 @@
             margin: 0 10px;
         }
 
+        /* =========================================
+       8. BUTTONS
+       ========================================= */
+
+        /* Global Circle Button */
+        .btn-circle {
+            width: var(--btn-size);
+            height: var(--btn-size);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: 0.2s;
+        }
+
+        .btn-grab {
+            background-color: var(--grab-green);
+            border-color: var(--grab-green);
+            color: white;
+        }
+
+        .btn-grab:hover {
+            background-color: var(--grab-green-hover);
+            border-color: var(--grab-green-hover);
+            color: white;
+        }
+
+        /* Primary Action (Gradient Green) */
+        .btn-action-primary {
+            background: linear-gradient(135deg, #00B14F 0%, #009543 100%);
+            color: white;
+            border: none;
+            font-weight: 700;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 177, 79, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-action-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 177, 79, 0.35);
+            color: white;
+        }
+
+        .btn-action-primary:active {
+            transform: translateY(1px);
+        }
+
+        /* Secondary Action (Outline) */
+        .btn-action-secondary {
+            background: white;
+            color: var(--grab-green);
+            border: 1px solid var(--grab-green);
+            font-weight: 700;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+            margin-top: 0;
+        }
+
+        .btn-action-secondary:hover {
+            background: #f0fdf4;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 177, 79, 0.15);
+        }
+
+        .btn-action-secondary:active {
+            transform: translateY(1px);
+        }
+
+        /* Reset Button (Minimal) */
+        .btn-reset-minimal {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6c757d;
+            background: white;
+            border: 1px solid #e9ecef;
+            padding: 5px 12px;
+            border-radius: 30px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-reset-minimal:hover {
+            color: #dc3545;
+            border-color: #dc3545;
+            background: #fff5f5;
+            box-shadow: 0 2px 5px rgba(220, 53, 69, 0.15);
+        }
+
+        /* Delete Item Button */
+        .btn-delete-item {
+            color: #999;
+            background: #f8f9fa;
+            border: 1px solid #eee;
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+
+        .btn-delete-item:hover {
+            background: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+
+        /* Travel Mode Switch */
+        .mode-switch-container {
+            background-color: #f1f3f5;
+            padding: 4px;
+            border-radius: 12px;
+            display: flex;
+            position: relative;
+        }
+
+        .btn-mode-switch {
+            background: transparent;
+            color: #adb5bd;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: none;
+            padding: 8px;
+            border-radius: 10px;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .btn-mode-switch:hover {
+            color: var(--grab-green);
+        }
+
+        .btn-check:checked+.btn-mode-switch {
+            background-color: white;
+            color: var(--grab-green);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transform: scale(1.02);
+        }
+
+        /* =========================================
+       9. UTILITIES (Toast & Badges)
+       ========================================= */
         .toast-container {
             z-index: var(--z-toast) !important;
         }
 
-        .maplibregl-ctrl-top-left {
-            margin-top: 80px;
-        }
-    </style>
-
-    <style>
-        /* --- STYLE DETAIL LIST SEGMENT --- */
-        #segmentListContainer {
-            margin-top: 15px;
-            max-height: 250px;
-            /* Batasi tinggi agar bisa discroll jika panjang */
-            overflow-y: auto;
-            display: none;
-            /* Default hide */
-            padding-right: 5px;
-            /* Space untuk scrollbar */
-        }
-
-        /* Scrollbar halus */
-        #segmentListContainer::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        #segmentListContainer::-webkit-scrollbar-thumb {
-            background: #ddd;
-            border-radius: 4px;
-        }
-
-        .segment-card {
-            background: white;
-            border: 1px solid #f0f0f0;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 10px;
-            position: relative;
-            padding-left: 15px;
-            /* Space untuk garis warna */
-            transition: 0.2s;
-        }
-
-        .segment-card:hover {
-            background: #f9f9f9;
-        }
-
-        /* Garis Warna Indikator di Kiri */
-        .segment-color-bar {
-            position: absolute;
-            left: 0;
-            top: 4px;
-            bottom: 4px;
-            width: 4px;
-            border-radius: 0 4px 4px 0;
-            /* Warna akan di-set lewat JS */
-        }
-
-        .segment-title {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 4px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .segment-details {
+        .badge-count {
+            background: var(--grab-green);
+            color: white;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             font-size: 0.75rem;
-            color: #666;
-            display: flex;
-            gap: 10px;
-        }
-
-        .segment-icon {
-            font-size: 0.7rem;
-            margin-right: 4px;
-        }
-
-        /* --- STYLE TAB NAVIGASI --- */
-        .panel-tabs {
-            display: flex;
-            border-bottom: 1px solid #eee;
-            /* margin-bottom: 10px; */
-            margin-top: 15px;
-        }
-
-        .tab-item {
-            flex: 1;
-            text-align: center;
-            padding: 10px 5px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: #adb5bd;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s;
-        }
-
-        .tab-item:hover {
-            color: var(--grab-green-hover);
-            background-color: #f8f9fa;
-        }
-
-        /* Tab Aktif (Hijau) */
-        .tab-item.active {
-            color: var(--grab-green);
-            border-bottom: 3px solid var(--grab-green);
-        }
-
-        /* Konten Tab */
-        .tab-pane {
-            display: none;
-            /* Default sembunyi */
-            animation: fadeIn 0.2s ease;
-        }
-
-        .tab-pane.active {
-            display: block;
-            /* Muncul jika active */
-        }
-
-        /* Sesuaikan container list agar pas dengan tab */
-        #listContainer,
-        #segmentListContainer {
-            max-height: calc(100vh - 350px);
-            /* Sesuaikan tinggi agar scrollable */
-            overflow-y: auto;
-            padding-bottom: 20px;
-        }
-
-        /* Efek saat card dipilih */
-        .segment-card.active-card {
-            background-color: #f0fdf4;
-            /* Hijau sangat muda */
-            border-color: var(--grab-green);
-            box-shadow: 0 0 0 1px var(--grab-green);
+            font-weight: bold;
+            margin-left: 5px;
         }
     </style>
 </head>
@@ -715,7 +722,9 @@
     <script src="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.js"></script>
 
     <script>
-        // --- ENV CONFIGURATION ---
+        /* =========================================
+       1. CONFIGURATION & GLOBAL STATE
+       ========================================= */
         const region = "{{ env('AWS_REGION') }}";
         const mapName = "{{ env('AWS_MAP_NAME') }}";
         const placeIndex = "{{ env('AWS_MAP_PLACE') }}";
@@ -726,11 +735,14 @@
         let markersData = [];
         let selectedMarkerId = null;
 
-        // --- 1. TOAST ---
+
+        /* =========================================
+           2. UI UTILITIES (Toast & Tabs)
+           ========================================= */
         function showToast(title, message, type = 'info') {
             const container = document.getElementById('toastContainer');
-
             let bgClass, iconClass;
+
             switch (type) {
                 case 'success':
                     bgClass = 'text-bg-success';
@@ -751,16 +763,16 @@
 
             const wrapper = document.createElement('div');
             wrapper.innerHTML = `
-                <div class="toast align-items-start ${bgClass} border-0 mb-2 shadow" role="alert" aria-live="assertive" aria-atomic="true">
-                    <div class="d-flex">
-                        <div class="toast-body text-white">
-                            <i class="${iconClass} me-2 fs-5"></i>
-                            <strong>${title}</strong>
-                            <div class="mt-1 small">${message}</div>
-                        </div>
-                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            <div class="toast align-items-start ${bgClass} border-0 mb-2 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body text-white">
+                        <i class="${iconClass} me-2 fs-5"></i>
+                        <strong>${title}</strong>
+                        <div class="mt-1 small">${message}</div>
                     </div>
-                </div>`;
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>`;
 
             const toastElement = wrapper.firstElementChild;
             container.appendChild(toastElement);
@@ -782,7 +794,18 @@
             });
         }
 
-        // --- 2. INIT MAP ---
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(`tabBtn-${tabName}`).classList.add('active');
+            document.getElementById(`tabPane-${tabName}`).classList.add('active');
+        }
+
+
+        /* =========================================
+           3. MAP INITIALIZATION
+           ========================================= */
         function initMap() {
             if (!apiKey) return showToast('Error', 'API Key Missing', 'error');
 
@@ -799,11 +822,9 @@
                 customAttribution: '© Grab, © AWS'
             }), 'bottom-right');
 
-            // --- CLICK MAP TO ADD LOCATION ---
+            // Click map to add location
             map.on('click', async (e) => {
                 const coords = [e.lngLat.lng, e.lngLat.lat];
-
-                // Optimistic UI update
                 addLocation(coords, "Loading address...");
                 const currentId = selectedMarkerId;
 
@@ -832,10 +853,12 @@
             });
         }
 
-        // --- 3. ADD LOCATION & RENDER LIST ---
+
+        /* =========================================
+           4. LOCATION MANAGEMENT (CRUD)
+           ========================================= */
         function addLocation(coords, label) {
             const id = Date.now();
-
             const newMarker = new maplibregl.Marker({
                     color: '#00B14F',
                     draggable: true
@@ -848,18 +871,17 @@
 
             newMarker.togglePopup();
 
-            // DRAG EVENT
+            // Drag Event Handler
             newMarker.on('dragend', async () => {
                 const lngLat = newMarker.getLngLat();
                 const updatedCoords = [lngLat.lng, lngLat.lat];
-
                 const item = markersData.find(m => m.id === id);
+
                 if (item) {
                     item.coords = updatedCoords;
                     showToast('Loading...', 'Finding new address...', 'info');
 
                     const newName = await getPlaceNameByCoords(updatedCoords);
-
                     if (newName) {
                         item.name = newName;
                         newMarker.setPopup(new maplibregl.Popup({
@@ -887,7 +909,78 @@
             });
         }
 
-        // --- 5. CALCULATE ROUTE ---
+        function removeLocation(id) {
+            const item = markersData.find(m => m.id === id);
+            if (item) item.marker.remove();
+            markersData = markersData.filter(m => m.id !== id);
+            renderLocationList();
+        }
+
+        function clearAllMarkers() {
+            markersData.forEach(m => m.marker.remove());
+            markersData = [];
+            selectedMarkerId = null;
+
+            removeRouteLayer();
+            renderLocationList();
+
+            // Reset Route UI
+            document.getElementById('routeResultCard').style.display = 'none';
+            document.getElementById('segmentListContainer').style.display = 'none';
+            document.getElementById('segmentListContainer').innerHTML = '';
+            document.getElementById('routeEmptyState').style.display = 'block';
+
+            switchTab('locations');
+            showToast('Reset', 'All markers and route cleared.', 'info');
+        }
+
+        function zoomToLocation(id) {
+            const item = markersData.find(m => m.id === id);
+            if (item) {
+                selectedMarkerId = id;
+                map.flyTo({
+                    center: item.coords,
+                    zoom: 17
+                });
+                item.marker.togglePopup();
+                renderLocationList();
+            }
+        }
+
+        async function getPlaceNameByCoords(coords) {
+            try {
+                const url = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIndex}/search/position?key=${apiKey}`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        Position: coords,
+                        MaxResults: 1,
+                        Language: 'en'
+                    })
+                });
+
+                if (!response.ok) throw new Error('AWS API Error');
+                const data = await response.json();
+
+                if (data.Results && data.Results.length > 0) {
+                    return data.Results[0].Place.Label;
+                }
+                return null;
+            } catch (error) {
+                console.error("Reverse geocode failed:", error);
+                return null;
+            }
+        }
+
+
+        /* =========================================
+           5. ROUTING LOGIC
+           ========================================= */
+
+        // --- Single Route (A -> B) ---
         async function calculateRoute() {
             if (markersData.length < 2) return showToast('Insufficient Data', 'Add at least 2 locations.', 'warning');
 
@@ -919,15 +1012,13 @@
                 const data = await response.json();
 
                 if (data.Legs && data.Legs.length > 0 && data.Legs[0].Geometry) {
-
-                    // BUAT FEATURE COLLECTION UNTUK SINGLE ROUTE (Warna Hijau Grab Saja)
                     const featureCollection = {
                         'type': 'FeatureCollection',
                         'features': [{
                             'type': 'Feature',
                             'properties': {
                                 'color': '#00B14F'
-                            }, // Satu warna
+                            },
                             'geometry': {
                                 'type': 'LineString',
                                 'coordinates': data.Legs[0].Geometry.LineString
@@ -937,49 +1028,38 @@
 
                     drawRouteOnMap(featureCollection);
 
-                    // Summary UI
+                    // UI Updates
                     const summary = data.Summary;
                     document.getElementById('resDistance').innerText = summary.Distance.toFixed(1) + ' km';
                     document.getElementById('resDuration').innerText = Math.round(summary.DurationSeconds / 60) + ' min';
-                    // document.getElementById('routeResultCard').style.display = 'block';
-                    // Sembunyikan Empty State
-                    document.getElementById('routeEmptyState').style.display = 'none';
 
-                    // Munculkan Card & List
+                    document.getElementById('routeEmptyState').style.display = 'none';
                     document.getElementById('routeResultCard').style.display = 'block';
                     document.getElementById('segmentListContainer').style.display = 'block';
 
-                    // --- AUTO SWITCH TAB ---
                     switchTab('routes');
-
                 } else {
                     showToast('Error', 'Path not found.', 'error');
                 }
-
             } catch (e) {
                 console.error(e);
                 showToast('Error', 'Failed.', 'error');
             }
         }
 
-        // --- 6. LOGIC MULTI-STOP ROUTE (UNLIMITED STOPS / BATCHING) ---
+        // --- Multi-Stop Route (Batching Support) ---
         async function calculateMultiRoute() {
             if (markersData.length < 2) return showToast('Insufficient Data', 'Add at least 2 locations.', 'warning');
 
             const selectedMode = document.querySelector('input[name="travelMode"]:checked').value;
-
-            // Palet Warna
             const colors = ['#00B14F', '#007bff', '#dc3545', '#fd7e14', '#6f42c1', '#e83e8c', '#17a2b8'];
+            const MAX_STOPS = 25;
 
             let totalDistance = 0;
             let totalDuration = 0;
             let allRouteFeatures = [];
             let globalLegIndex = 0;
-
-            // ARRAY BARU UNTUK MENAMPUNG DETAIL TEXT
             let segmentDetails = [];
-
-            const MAX_STOPS = 25;
 
             showToast('Processing...', `Calculating detailed route...`, 'info');
 
@@ -991,7 +1071,6 @@
                     const waypoints = chunk.length > 2 ? chunk.slice(1, -1).map(m => m.coords) : [];
 
                     const url = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${routeCalculator}/calculate/route?key=${apiKey}`;
-
                     const body = {
                         DeparturePosition: origin,
                         DestinationPosition: destination,
@@ -1009,6 +1088,7 @@
                         },
                         body: JSON.stringify(body)
                     });
+
                     if (!response.ok) throw new Error(`Batch error`);
                     const data = await response.json();
 
@@ -1018,11 +1098,9 @@
                     if (data.Legs && data.Legs.length > 0) {
                         data.Legs.forEach((leg, legIndexInBatch) => {
                             if (leg.Geometry && leg.Geometry.LineString) {
-
-                                // Tentukan Warna
                                 const segmentColor = colors[globalLegIndex % colors.length];
 
-                                // 1. Simpan Feature untuk Peta
+                                // 1. Feature for Map
                                 allRouteFeatures.push({
                                     'type': 'Feature',
                                     'properties': {
@@ -1034,19 +1112,15 @@
                                     }
                                 });
 
-                                // 2. SIMPAN DATA DETAIL UNTUK LIST
-                                // Logic Nama: 
-                                // Start point segmen ini adalah: markersData[i + legIndexInBatch]
-                                // End point segmen ini adalah: markersData[i + legIndexInBatch + 1]
-
+                                // 2. Data for List
                                 const startNode = markersData[i + legIndexInBatch];
                                 const endNode = markersData[i + legIndexInBatch + 1];
 
                                 segmentDetails.push({
                                     from: startNode.name || 'Unknown Point',
                                     to: endNode.name || 'Unknown Point',
-                                    distance: leg.Distance, // Dulu: leg.Summary.Distance (Salah)
-                                    duration: leg.DurationSeconds, // Dulu: leg.Summary.DurationSeconds (Salah)
+                                    distance: leg.Distance,
+                                    duration: leg.DurationSeconds,
                                     color: segmentColor,
                                     geometry: leg.Geometry.LineString
                                 });
@@ -1057,36 +1131,25 @@
                     }
                 }
 
-                // --- RENDER HASIL ---
+                // Render Results
                 if (allRouteFeatures.length > 0) {
-
-                    // A. Gambar di Peta
                     const featureCollection = {
                         'type': 'FeatureCollection',
                         'features': allRouteFeatures
                     };
                     drawRouteOnMap(featureCollection);
 
-                    // B. Update Summary Card
                     const finalDist = totalDistance.toFixed(1) + ' km';
                     const finalDur = formatDuration(totalDuration);
 
                     document.getElementById('resDistance').innerText = finalDist;
                     document.getElementById('resDuration').innerText = finalDur;
-
-                    // Sembunyikan Empty State
                     document.getElementById('routeEmptyState').style.display = 'none';
-
-                    // Munculkan Card & List
                     document.getElementById('routeResultCard').style.display = 'block';
                     document.getElementById('segmentListContainer').style.display = 'block';
 
-                    // C. RENDER DETAIL LIST (Fungsi Baru)
                     renderSegmentList(segmentDetails);
-
-                    // --- AUTO SWITCH TAB ---
                     switchTab('routes');
-
                     showToast('Success', `Multi-stop route calculated!`, 'success');
                 } else {
                     showToast('Error', 'Route geometry missing.', 'error');
@@ -1098,17 +1161,19 @@
             }
         }
 
+
+        /* =========================================
+           6. VISUALIZATION & HELPERS
+           ========================================= */
         function drawRouteOnMap(geoJsonFeatureCollection) {
-            // Hapus layer lama jika ada
             removeRouteLayer();
 
-            // Tambahkan Source
             map.addSource('routeSource', {
                 'type': 'geojson',
                 'data': geoJsonFeatureCollection
             });
 
-            // 1. Layer Outline (Putih) - Agar garis lebih kontras dan rapi
+            // Layer Outline (White)
             map.addLayer({
                 'id': 'routeLayerOutline',
                 'type': 'line',
@@ -1124,7 +1189,7 @@
                 }
             });
 
-            // 2. Layer Utama (Warna-Warni)
+            // Main Layer (Colorful)
             map.addLayer({
                 'id': 'routeLayer',
                 'type': 'line',
@@ -1134,85 +1199,90 @@
                     'line-cap': 'round'
                 },
                 'paint': {
-                    // LOGIC WARNA: Ambil dari properti 'color' yang kita set di JS
                     'line-color': ['get', 'color'],
                     'line-width': 4,
                     'line-opacity': 0.9
                 }
             });
 
-            // --- SAYA MENGHAPUS LAYER 'routeArrows' DISINI AGAR TIDAK ERROR FONT ---
-
-            // Fit Bounds (Zoom otomatis agar seluruh rute terlihat)
             const bounds = new maplibregl.LngLatBounds();
-
-            // Loop untuk mencari batas koordinat (Bounding Box)
             geoJsonFeatureCollection.features.forEach(feature => {
-                feature.geometry.coordinates.forEach(coord => {
-                    bounds.extend(coord);
-                });
+                feature.geometry.coordinates.forEach(coord => bounds.extend(coord));
             });
 
-            // Zoom peta ke area rute
             map.fitBounds(bounds, {
                 padding: 50
             });
         }
 
         function removeRouteLayer() {
-            // if (map.getLayer('routeArrows')) map.removeLayer('routeArrows');
             if (map.getLayer('routeLayer')) map.removeLayer('routeLayer');
             if (map.getLayer('routeLayerOutline')) map.removeLayer('routeLayerOutline');
             if (map.getSource('routeSource')) map.removeSource('routeSource');
         }
 
+        function zoomToSegment(coordinates) {
+            if (!coordinates || coordinates.length === 0) return;
+            const bounds = new maplibregl.LngLatBounds();
+            coordinates.forEach(coord => bounds.extend(coord));
+            map.fitBounds(bounds, {
+                padding: 100,
+                duration: 1000
+            });
+        }
+
+        function formatDuration(seconds) {
+            const totalMinutes = Math.round(seconds / 60);
+            if (totalMinutes >= 60) {
+                const hrs = Math.floor(totalMinutes / 60);
+                const mins = totalMinutes % 60;
+                return `${hrs} hr ${mins} min`;
+            }
+            return `${totalMinutes} min`;
+        }
+
+
+        /* =========================================
+           7. UI RENDERING (LISTS)
+           ========================================= */
         function renderLocationList() {
             const panel = document.getElementById('locationsPanel');
             const container = document.getElementById('listContainer');
             const countBadge = document.getElementById('locCount');
             const emptyState = document.getElementById('emptyState');
 
-            // Tampilkan panel jika ada marker (opsional, atau biarkan panel selalu ada)
             panel.style.display = 'block';
-
             countBadge.innerText = markersData.length;
 
-            // Tampilkan/Sembunyikan Empty State
             if (markersData.length === 0) {
                 emptyState.style.display = 'block';
                 container.innerHTML = '';
             } else {
                 emptyState.style.display = 'none';
-                // ... (kode loop markersData yang lama tetap sama) ...
                 container.innerHTML = '';
                 markersData.forEach((item, index) => {
-                    // ... kode create element div location-item ...
-                    // COPY PASTE LOGIC RENDER ITEM YANG LAMA DISINI
                     const div = document.createElement('div');
                     div.className = 'location-item';
                     if (item.id === selectedMarkerId) div.classList.add('active');
 
-                    // (Animasi slideIn)
                     div.style.animation = `slideInPanel 0.3s ease forwards ${index * 0.05}s`;
-
                     const lat = item.coords[1].toFixed(5);
                     const lng = item.coords[0].toFixed(5);
 
                     div.innerHTML = `
-                            <div class="loc-info" onclick="zoomToLocation(${item.id})">
-                                <span class="loc-name text-truncate" title="${item.name}">${item.name}</span>
-                                <span class="loc-coord"><i class="bi bi-crosshair"></i> ${lat}, ${lng}</span>
-                            </div>
-                            <button class="btn-delete-item shadow-sm" onclick="event.stopPropagation(); removeLocation(${item.id})">
-                                <i class="bi bi-x-lg"></i>
-                            </button>
-                        `;
+                    <div class="loc-info" onclick="zoomToLocation(${item.id})">
+                        <span class="loc-name text-truncate" title="${item.name}">${item.name}</span>
+                        <span class="loc-coord"><i class="bi bi-crosshair"></i> ${lat}, ${lng}</span>
+                    </div>
+                    <button class="btn-delete-item shadow-sm" onclick="event.stopPropagation(); removeLocation(${item.id})">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                `;
                     container.appendChild(div);
                 });
             }
         }
 
-        // RENDER LIST DETAIL ---
         function renderSegmentList(details) {
             const container = document.getElementById('segmentListContainer');
             container.innerHTML = '';
@@ -1224,23 +1294,16 @@
 
                 const item = document.createElement('div');
                 item.className = 'segment-card';
-
-                // Agar kursor berubah jadi jari telunjuk saat hover
                 item.style.cursor = 'pointer';
 
-                // --- EVENT KLIK ---
                 item.onclick = () => {
-                    // 1. Zoom ke segmen ini
                     zoomToSegment(seg.geometry);
-
-                    // 2. (Opsional) Highlight visual card yang aktif
                     document.querySelectorAll('.segment-card').forEach(el => el.classList.remove('active-card'));
                     item.classList.add('active-card');
                 };
 
                 item.innerHTML = `
                 <div class="segment-color-bar" style="background-color: ${seg.color};"></div>
-                
                 <div class="d-flex flex-column">
                     <div class="segment-title">
                         <span class="text-truncate" style="max-width: 240px;">
@@ -1248,13 +1311,11 @@
                             ${seg.to}
                         </span>
                     </div>
-                    
                     <div class="segment-details">
                         <span><i class="bi bi-rulers segment-icon"></i> ${dist}</span>
                         <span class="border-start mx-2"></span>
                         <span><i class="bi bi-clock segment-icon"></i> ${dur}</span>
                     </div>
-                    
                     <div style="font-size: 0.7rem; color: #999; margin-top: 2px;">
                         From: ${seg.from}
                     </div>
@@ -1264,89 +1325,10 @@
             });
         }
 
-        // Helper Format Waktu
-        function formatDuration(seconds) {
-            const totalMinutes = Math.round(seconds / 60);
-            if (totalMinutes >= 60) {
-                const hrs = Math.floor(totalMinutes / 60);
-                const mins = totalMinutes % 60;
-                return `${hrs} hr ${mins} min`;
-            }
-            return `${totalMinutes} min`;
-        }
 
-        function zoomToLocation(id) {
-            const item = markersData.find(m => m.id === id);
-            if (item) {
-                selectedMarkerId = id;
-                map.flyTo({
-                    center: item.coords,
-                    zoom: 17
-                });
-                item.marker.togglePopup();
-                renderLocationList();
-            }
-        }
-
-        // Fungsi untuk zoom kamera ke segmen tertentu
-        function zoomToSegment(coordinates) {
-            if (!coordinates || coordinates.length === 0) return;
-
-            // Buat batas kotak (Bounding Box) dari kumpulan koordinat segmen
-            const bounds = new maplibregl.LngLatBounds();
-
-            coordinates.forEach(coord => {
-                bounds.extend(coord);
-            });
-
-            // Perintahkan map untuk fit ke bounds tersebut
-            map.fitBounds(bounds, {
-                padding: 100, // Memberi jarak bantalan agar tidak mepet pinggir layar
-                duration: 1000 // Animasi zoom selama 1 detik
-            });
-        }
-
-        function removeLocation(id) {
-            const item = markersData.find(m => m.id === id);
-            if (item) item.marker.remove();
-            markersData = markersData.filter(m => m.id !== id);
-            renderLocationList();
-        }
-
-        function clearAllMarkers() {
-            markersData.forEach(m => m.marker.remove());
-            markersData = [];
-            selectedMarkerId = null;
-
-            removeRouteLayer();
-            renderLocationList();
-
-            // --- RESET TAMPILAN ROUTE TAB ---
-            // 1. Sembunyikan Hasil
-            document.getElementById('routeResultCard').style.display = 'none';
-            document.getElementById('segmentListContainer').style.display = 'none';
-            document.getElementById('segmentListContainer').innerHTML = ''; // Bersihkan isi list
-
-            // 2. Munculkan Empty State Rute Lagi
-            document.getElementById('routeEmptyState').style.display = 'block';
-
-            switchTab('locations');
-            showToast('Reset', 'All markers and route cleared.', 'info');
-        }
-
-        // --- FUNGSI GANTI TAB ---
-        function switchTab(tabName) {
-            // 1. Reset semua tombol tab jadi tidak active
-            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
-            // 2. Sembunyikan semua pane konten
-            document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
-
-            // 3. Aktifkan yang dipilih
-            document.getElementById(`tabBtn-${tabName}`).classList.add('active');
-            document.getElementById(`tabPane-${tabName}`).classList.add('active');
-        }
-
-        // --- SEARCH LOGIC ---
+        /* =========================================
+           8. SEARCH FUNCTIONALITY
+           ========================================= */
         const input = document.getElementById('searchInput');
         const list = document.getElementById('suggestionsList');
 
@@ -1373,7 +1355,7 @@
                     body: JSON.stringify({
                         Text: query,
                         MaxResults: 5,
-                        Language: 'en' // Changed to EN
+                        Language: 'en'
                     })
                 });
                 const data = await res.json();
@@ -1382,35 +1364,6 @@
                 console.error(err);
             }
         }, 300));
-
-        async function getPlaceNameByCoords(coords) {
-            try {
-                const url = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIndex}/search/position?key=${apiKey}`;
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        Position: coords,
-                        MaxResults: 1,
-                        Language: 'en' // Changed to EN
-                    })
-                });
-
-                if (!response.ok) throw new Error('AWS API Error');
-                const data = await response.json();
-
-                if (data.Results && data.Results.length > 0) {
-                    return data.Results[0].Place.Label;
-                }
-                return null;
-
-            } catch (error) {
-                console.error("Reverse geocode failed:", error);
-                return null;
-            }
-        }
 
         function renderSuggestions(results) {
             list.innerHTML = '';
@@ -1472,18 +1425,32 @@
             }
         }
 
-        document.addEventListener('click', (e) => {
-            if (!input.contains(e.target) && !list.contains(e.target)) list.classList.remove('show');
-        });
+        /* =========================================
+           9. INITIALIZATION & EVENTS
+           ========================================= */
 
-        input.addEventListener("keypress", (event) => {
-            if (event.key === "Enter") {
-                event.preventDefault();
-                handleManualSearch();
-            }
-        });
+        function setupEventListeners() {
+            // 1. Close suggestion list when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!input.contains(e.target) && !list.contains(e.target)) {
+                    list.classList.remove('show');
+                }
+            });
 
-        initMap();
+            // 2. Handle Enter key on Search Input
+            input.addEventListener("keypress", (event) => {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    handleManualSearch();
+                }
+            });
+        }
+
+        // --- MAIN BOOTSTRAP ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            setupEventListeners();
+        });
     </script>
 </body>
 
