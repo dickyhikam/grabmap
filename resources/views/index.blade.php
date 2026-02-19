@@ -809,7 +809,37 @@
         }
 
         /* =========================================
-       11. RESPONSIVE
+       11. POI HIGHLIGHT MARKERS
+       ========================================= */
+        .poi-marker {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            font-size: 0.7rem;
+            font-family: 'Inter', sans-serif;
+            border: 3px solid white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: transform var(--transition-fast);
+            animation: poiBounce 0.4s var(--transition-bounce);
+        }
+
+        .poi-marker:hover {
+            transform: scale(1.15);
+        }
+
+        @keyframes poiBounce {
+            from { transform: scale(0) translateY(-10px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        /* =========================================
+       12. RESPONSIVE
        ========================================= */
         @media (max-width: 768px) {
             .locations-panel {
@@ -1095,6 +1125,7 @@
         let map = null;
         let markersData = [];
         let selectedMarkerId = null;
+        let highlightMarkers = [];
 
 
         /* =========================================
@@ -1743,6 +1774,9 @@
         }
 
         function removeRouteLayer() {
+            // Clear highlight first
+            clearSegmentHighlight();
+
             if (map.getLayer('routeLayer')) map.removeLayer('routeLayer');
             if (map.getLayer('routeLayerOutline')) map.removeLayer('routeLayerOutline');
             if (map.getSource('routeSource')) map.removeSource('routeSource');
@@ -1756,6 +1790,122 @@
                 padding: 100,
                 duration: 1000
             });
+        }
+
+        function highlightSegment(seg) {
+            clearSegmentHighlight();
+
+            // 1. Dim all routes
+            if (map.getLayer('routeLayer')) {
+                map.setPaintProperty('routeLayer', 'line-opacity', 0.25);
+                map.setPaintProperty('routeLayer', 'line-width', 3);
+            }
+            if (map.getLayer('routeLayerOutline')) {
+                map.setPaintProperty('routeLayerOutline', 'line-opacity', 0.15);
+            }
+
+            // 2. Add highlight layers for selected segment
+            map.addSource('highlightSource', {
+                type: 'geojson',
+                data: {
+                    type: 'Feature',
+                    properties: { color: seg.color },
+                    geometry: { type: 'LineString', coordinates: seg.geometry }
+                }
+            });
+
+            // Glow effect
+            map.addLayer({
+                id: 'highlightGlow',
+                type: 'line',
+                source: 'highlightSource',
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: {
+                    'line-color': ['get', 'color'],
+                    'line-width': 12,
+                    'line-opacity': 0.2
+                }
+            });
+
+            // White outline
+            map.addLayer({
+                id: 'highlightOutline',
+                type: 'line',
+                source: 'highlightSource',
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: {
+                    'line-color': '#ffffff',
+                    'line-width': 7,
+                    'line-opacity': 0.9
+                }
+            });
+
+            // Main highlight line
+            map.addLayer({
+                id: 'highlightLine',
+                type: 'line',
+                source: 'highlightSource',
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: {
+                    'line-color': ['get', 'color'],
+                    'line-width': 5,
+                    'line-opacity': 1
+                }
+            });
+
+            // 3. Add POI markers at start and end
+            const startCoord = seg.geometry[0];
+            const endCoord = seg.geometry[seg.geometry.length - 1];
+
+            const startMarker = new maplibregl.Marker({ element: createPOIElement('A', seg.color) })
+                .setLngLat(startCoord)
+                .setPopup(new maplibregl.Popup({ offset: 20, closeButton: false }).setHTML(
+                    `<div style="font-family:Inter,sans-serif;font-size:0.8rem;"><strong style="color:${seg.color};">Start</strong><br>${seg.from}</div>`
+                ))
+                .addTo(map);
+
+            const endMarker = new maplibregl.Marker({ element: createPOIElement('B', seg.color) })
+                .setLngLat(endCoord)
+                .setPopup(new maplibregl.Popup({ offset: 20, closeButton: false }).setHTML(
+                    `<div style="font-family:Inter,sans-serif;font-size:0.8rem;"><strong style="color:${seg.color};">End</strong><br>${seg.to}</div>`
+                ))
+                .addTo(map);
+
+            startMarker.togglePopup();
+            endMarker.togglePopup();
+            highlightMarkers.push(startMarker, endMarker);
+
+            // 4. Zoom to segment
+            zoomToSegment(seg.geometry);
+        }
+
+        function clearSegmentHighlight() {
+            // Remove highlight layers
+            ['highlightLine', 'highlightOutline', 'highlightGlow'].forEach(id => {
+                if (map.getLayer(id)) map.removeLayer(id);
+            });
+            if (map.getSource('highlightSource')) map.removeSource('highlightSource');
+
+            // Restore main route opacity
+            if (map.getLayer('routeLayer')) {
+                map.setPaintProperty('routeLayer', 'line-opacity', 0.9);
+                map.setPaintProperty('routeLayer', 'line-width', 4);
+            }
+            if (map.getLayer('routeLayerOutline')) {
+                map.setPaintProperty('routeLayerOutline', 'line-opacity', 0.8);
+            }
+
+            // Remove POI markers
+            highlightMarkers.forEach(m => m.remove());
+            highlightMarkers = [];
+        }
+
+        function createPOIElement(label, color) {
+            const el = document.createElement('div');
+            el.className = 'poi-marker';
+            el.style.backgroundColor = color;
+            el.textContent = label;
+            return el;
         }
 
         function formatDuration(seconds) {
@@ -1824,9 +1974,15 @@
                 item.style.cursor = 'pointer';
 
                 item.onclick = () => {
-                    zoomToSegment(seg.geometry);
+                    const isActive = item.classList.contains('active-card');
                     document.querySelectorAll('.segment-card').forEach(el => el.classList.remove('active-card'));
-                    item.classList.add('active-card');
+
+                    if (isActive) {
+                        clearSegmentHighlight();
+                    } else {
+                        item.classList.add('active-card');
+                        highlightSegment(seg);
+                    }
                 };
 
                 item.innerHTML = `
