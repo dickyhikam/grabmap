@@ -22,6 +22,10 @@ Route::get('/', function () {
     return view('index');
 })->name('pageHome');
 
+Route::get('/route-tester', function () {
+    return view('route-tester');
+})->name('pageRouteTester');
+
 Route::get('/address', function () {
     return view('address');
 })->name('pageAddress');

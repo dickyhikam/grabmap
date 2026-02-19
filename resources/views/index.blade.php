@@ -9,30 +9,46 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
         /* =========================================
        1. VARIABLES & CONFIGURATION
        ========================================= */
         :root {
-            /* Colors */
             --grab-green: #00B14F;
             --grab-green-hover: #009543;
-            --text-color: #333;
-            --bg-glass: rgba(255, 255, 255, 0.95);
-            --bg-hover: #f0f0f0;
-            --shadow-soft: 0 4px 15px rgba(0, 0, 0, 0.15);
-
-            /* Layout & Sizes */
-            --header-max-width: 600px;
-            --header-radius: 50px;
-            --btn-size: 40px;
-
-            /* Z-Indices */
+            --grab-green-light: #e8faf0;
+            --grab-green-subtle: #f0fdf4;
+            --text-primary: #1a1a2e;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --bg-glass: rgba(255, 255, 255, 0.88);
+            --bg-glass-strong: rgba(255, 255, 255, 0.95);
+            --bg-surface: #ffffff;
+            --bg-subtle: #f8fafc;
+            --border-light: rgba(0, 0, 0, 0.06);
+            --border-hover: rgba(0, 177, 79, 0.3);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
+            --shadow-green: 0 4px 14px rgba(0, 177, 79, 0.2);
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-xl: 28px;
+            --radius-full: 9999px;
+            --header-max-width: 540px;
+            --btn-size: 42px;
             --z-map: 1;
             --z-header: 1000;
             --z-panel: 1050;
             --z-toast: 9999;
+            --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-bounce: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         /* =========================================
@@ -42,7 +58,9 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         #map {
@@ -54,46 +72,57 @@
             z-index: var(--z-map);
         }
 
-        /* MapLibre Control Position Fix */
         .maplibregl-ctrl-top-left {
             margin-top: 80px;
         }
+
 
         /* =========================================
        3. FLOATING HEADER (SEARCH BAR)
        ========================================= */
         .floating-header {
             position: fixed;
-            top: 20px;
+            top: 16px;
             left: 50%;
             transform: translateX(-50%);
-            width: 90%;
+            width: 92%;
             max-width: var(--header-max-width);
             z-index: var(--z-header);
-            background: var(--bg-glass);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-radius: var(--header-radius);
-            box-shadow: var(--shadow-soft);
-            padding: 10px 15px;
+            background: var(--bg-glass-strong);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: var(--radius-full);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            padding: 8px 8px 8px 20px;
             display: flex;
-            align-items: flex-start;
+            align-items: center;
+            gap: 12px;
+            transition: box-shadow var(--transition-smooth);
+        }
+
+        .floating-header:focus-within {
+            box-shadow: var(--shadow-lg), 0 0 0 3px rgba(0, 177, 79, 0.15);
         }
 
         .logo-container {
-            padding-top: 5px;
-            padding-right: 15px;
+            display: flex;
+            align-items: center;
+            padding-right: 12px;
+            border-right: 1.5px solid var(--border-light);
+            flex-shrink: 0;
         }
 
         .grab-logo {
-            height: 28px;
+            height: 24px;
             width: auto;
         }
 
         .search-wrapper {
             position: relative;
             flex-grow: 1;
-            margin-right: 10px;
+            display: flex;
+            align-items: center;
         }
 
         .search-input {
@@ -101,43 +130,96 @@
             outline: none;
             background: transparent;
             width: 100%;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            padding: 6px 4px;
+            font-family: inherit;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .btn-search-main {
+            width: var(--btn-size);
+            height: var(--btn-size);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            background: linear-gradient(135deg, var(--grab-green) 0%, var(--grab-green-hover) 100%);
+            border: none;
+            color: white;
             font-size: 1rem;
-            color: var(--text-color);
-            padding: 5px 0;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            box-shadow: var(--shadow-green);
+        }
+
+        .btn-search-main:hover {
+            transform: scale(1.06);
+            box-shadow: 0 6px 18px rgba(0, 177, 79, 0.3);
+        }
+
+        .btn-search-main:active {
+            transform: scale(0.96);
         }
 
         /* Suggestions Dropdown */
         .suggestions-list {
             position: absolute;
-            top: 100%;
-            left: 0;
-            width: 100%;
-            background: white;
-            border-radius: 0 0 15px 15px;
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            top: calc(100% + 8px);
+            left: -32px;
+            width: calc(100% + 44px);
+            background: var(--bg-surface);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
             list-style: none;
-            padding: 0;
-            margin: 10px 0 0 0;
+            padding: 6px;
+            margin: 0;
             display: none;
             max-height: 300px;
             overflow-y: auto;
-            border: 1px solid #eee;
+            border: 1px solid var(--border-light);
         }
 
         .suggestions-list.show {
             display: block;
+            animation: dropdownIn 0.2s var(--transition-bounce);
+        }
+
+        @keyframes dropdownIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .suggestion-item {
-            padding: 12px 15px;
+            padding: 10px 14px;
             cursor: pointer;
-            border-bottom: 1px solid #f0f0f0;
             display: flex;
             align-items: center;
+            gap: 10px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            transition: all var(--transition-fast);
+        }
+
+        .suggestion-item i {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            flex-shrink: 0;
         }
 
         .suggestion-item:hover {
-            background-color: #f7f7f7;
+            background-color: var(--grab-green-light);
+            color: var(--grab-green);
+        }
+
+        .suggestion-item:hover i {
             color: var(--grab-green);
         }
 
@@ -146,55 +228,86 @@
        ========================================= */
         .locations-panel {
             position: fixed;
-            top: 100px;
-            left: 20px;
-            width: 320px;
-            max-height: calc(100vh - 120px);
-
-            /* Flex Layout */
-            display: flex;
-            flex-direction: column;
-
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            border-radius: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            z-index: var(--z-panel);
+            top: 80px;
+            left: 16px;
+            width: 340px;
+            max-height: calc(100vh - 100px);
             display: none;
-            overflow: hidden;
-            animation: slideInPanel 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .panel-header {
-            flex-shrink: 0;
-            padding: 15px 20px 0 20px;
-            background: rgba(255, 255, 255, 0.9);
-            z-index: 10;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            position: sticky;
-            top: 0;
-        }
-
-        .panel-body {
-            flex-grow: 1;
-            overflow: hidden;
-            display: flex;
             flex-direction: column;
-            padding: 0 15px 15px 15px !important;
+            background: var(--bg-glass);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            z-index: var(--z-panel);
+            overflow: hidden;
+            animation: slideInPanel 0.4s var(--transition-bounce);
         }
 
         @keyframes slideInPanel {
             from {
                 opacity: 0;
-                transform: translateY(20px) scale(0.95);
+                transform: translateY(16px) scale(0.97);
             }
-
             to {
                 opacity: 1;
                 transform: translateY(0) scale(1);
             }
+        }
+
+        .panel-header {
+            flex-shrink: 0;
+            padding: 20px 20px 0 20px;
+            background: rgba(255, 255, 255, 0.6);
+            z-index: 10;
+            position: sticky;
+            top: 0;
+        }
+
+        .panel-title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .panel-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title h6 {
+            margin: 0;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .panel-body {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0 16px 16px 16px !important;
+        }
+
+        .panel-body::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .panel-body::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .panel-body::-webkit-scrollbar-thumb {
+            background: #d4d4d8;
+            border-radius: 10px;
+        }
+
+        .panel-body::-webkit-scrollbar-thumb:hover {
+            background: #a1a1aa;
         }
 
         /* =========================================
@@ -202,39 +315,50 @@
        ========================================= */
         .panel-tabs {
             display: flex;
-            border-bottom: 1px solid #eee;
-            margin-top: 15px;
+            background: var(--bg-subtle);
+            border-radius: var(--radius-sm);
+            padding: 3px;
+            margin-bottom: 4px;
+            flex-shrink: 0;
         }
 
         .tab-item {
             flex: 1;
             text-align: center;
-            padding: 10px 5px;
+            padding: 8px 8px;
             font-weight: 600;
-            font-size: 0.9rem;
-            color: #adb5bd;
+            font-size: 0.8rem;
+            color: var(--text-muted);
             cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.2s;
+            border-radius: 6px;
+            border-bottom: none;
+            transition: all var(--transition-fast);
+            user-select: none;
         }
 
         .tab-item:hover {
-            color: var(--grab-green-hover);
-            background-color: #f8f9fa;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.5);
         }
 
         .tab-item.active {
             color: var(--grab-green);
-            border-bottom: 3px solid var(--grab-green);
+            background: var(--bg-surface);
+            box-shadow: var(--shadow-sm);
         }
 
         .tab-pane {
             display: none;
-            animation: fadeIn 0.2s ease;
+            animation: fadeInTab 0.2s ease;
         }
 
         .tab-pane.active {
             display: block;
+        }
+
+        @keyframes fadeInTab {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         /* =========================================
@@ -242,31 +366,7 @@
        ========================================= */
         #listContainer,
         #segmentListContainer {
-            overflow-y: auto;
-            max-height: calc(100vh - 350px);
-            padding: 10px;
-        }
-
-        /* Custom Scrollbar Style (Shared) */
-        #listContainer::-webkit-scrollbar,
-        #segmentListContainer::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        #listContainer::-webkit-scrollbar-track,
-        #segmentListContainer::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        #listContainer::-webkit-scrollbar-thumb,
-        #segmentListContainer::-webkit-scrollbar-thumb {
-            background: #ccc;
-            border-radius: 10px;
-        }
-
-        #listContainer::-webkit-scrollbar-thumb:hover,
-        #segmentListContainer::-webkit-scrollbar-thumb:hover {
-            background: #bbb;
+            padding: 8px 2px;
         }
 
         /* =========================================
@@ -275,25 +375,25 @@
 
         /* A. Location Item (Tab 1) */
         .location-item {
-            background: white;
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 10px;
+            background: var(--bg-surface);
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
-            border: 1px solid transparent;
-            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+            border: 1.5px solid transparent;
+            transition: all var(--transition-smooth);
             cursor: pointer;
             position: relative;
             overflow: hidden;
         }
 
         .location-item.active {
-            border: 2px solid var(--grab-green);
-            background-color: #f0fdf4;
-            transform: translateX(5px);
+            border-color: var(--grab-green);
+            background: var(--grab-green-subtle);
+            box-shadow: 0 0 0 3px rgba(0, 177, 79, 0.08);
         }
 
         .location-item.active .loc-coord i {
@@ -306,16 +406,17 @@
             left: 0;
             top: 0;
             bottom: 0;
-            width: 4px;
+            width: 3px;
             background: var(--grab-green);
             opacity: 0;
-            transition: 0.2s;
+            transition: opacity var(--transition-fast);
+            border-radius: 0 3px 3px 0;
         }
 
         .location-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            border-color: var(--grab-green);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--border-hover);
         }
 
         .location-item:hover::before {
@@ -324,89 +425,95 @@
 
         .loc-info {
             flex-grow: 1;
-            padding-left: 8px;
+            padding-left: 6px;
             padding-right: 10px;
+            min-width: 0;
         }
 
         .loc-name {
-            font-weight: 700;
-            font-size: 0.9rem;
-            color: #222;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-primary);
             display: block;
-            margin-bottom: 2px;
-            white-space: normal;
-            word-wrap: break-word;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .loc-coord {
-            font-size: 0.75rem;
-            color: #888;
+            font-size: 0.72rem;
+            color: var(--text-muted);
             display: flex;
             align-items: center;
             gap: 4px;
+            font-variant-numeric: tabular-nums;
         }
 
-        /* B. Segment Card (Tab 2 - Detail Rute) */
+        /* B. Segment Card (Tab 2 - Route Detail) */
         .segment-card {
-            background: white;
-            border: 1px solid #f0f0f0;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 10px;
+            background: var(--bg-surface);
+            border: 1.5px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 12px 12px 12px 18px;
+            margin-bottom: 8px;
             position: relative;
-            padding-left: 15px;
-            transition: 0.2s;
+            transition: all var(--transition-smooth);
+            cursor: pointer;
         }
 
         .segment-card:hover {
-            background: #f9f9f9;
+            background: var(--bg-subtle);
+            border-color: var(--border-hover);
+            box-shadow: var(--shadow-sm);
         }
 
         .segment-card.active-card {
-            background-color: #f0fdf4;
+            background-color: var(--grab-green-subtle);
             border-color: var(--grab-green);
-            box-shadow: 0 0 0 1px var(--grab-green);
+            box-shadow: 0 0 0 3px rgba(0, 177, 79, 0.08);
         }
 
         .segment-color-bar {
             position: absolute;
             left: 0;
-            top: 4px;
-            bottom: 4px;
-            width: 4px;
-            border-radius: 0 4px 4px 0;
+            top: 6px;
+            bottom: 6px;
+            width: 3px;
+            border-radius: 0 3px 3px 0;
         }
 
         .segment-title {
-            font-size: 0.8rem;
+            font-size: 0.82rem;
             font-weight: 600;
-            color: #333;
-            margin-bottom: 4px;
+            color: var(--text-primary);
+            margin-bottom: 5px;
             display: flex;
             justify-content: space-between;
         }
 
         .segment-details {
-            font-size: 0.75rem;
-            color: #666;
+            font-size: 0.74rem;
+            color: var(--text-secondary);
             display: flex;
-            gap: 10px;
+            gap: 8px;
+            align-items: center;
         }
 
         .segment-icon {
             font-size: 0.7rem;
-            margin-right: 4px;
+            margin-right: 3px;
         }
 
         /* C. Result Summary Card */
         .route-result-card {
-            background: #f0fdf4;
-            border: 1px dashed var(--grab-green);
-            border-radius: 12px;
-            padding: 15px;
-            margin-top: 15px;
+            background: linear-gradient(135deg, var(--grab-green-light) 0%, #dcfce7 100%);
+            border: 1.5px solid rgba(0, 177, 79, 0.2);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-top: 12px;
             display: none;
-            animation: fadeIn 0.3s ease;
+            animation: fadeInTab 0.3s ease;
         }
 
         .route-stat-box {
@@ -415,30 +522,32 @@
         }
 
         .route-label {
-            font-size: 0.75rem;
-            color: #666;
+            font-size: 0.68rem;
+            color: var(--text-secondary);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 2px;
+            letter-spacing: 0.8px;
+            font-weight: 600;
+            margin-bottom: 4px;
         }
 
         .route-value {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: 800;
             color: var(--grab-green);
+            letter-spacing: -0.02em;
         }
 
         .route-divider {
-            width: 1px;
-            background-color: #d1fae5;
-            margin: 0 10px;
+            width: 1.5px;
+            background-color: rgba(0, 177, 79, 0.15);
+            margin: 0 8px;
+            align-self: stretch;
         }
 
         /* =========================================
        8. BUTTONS
        ========================================= */
 
-        /* Global Circle Button */
         .btn-circle {
             width: var(--btn-size);
             height: var(--btn-size);
@@ -447,7 +556,7 @@
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            transition: 0.2s;
+            transition: all var(--transition-fast);
         }
 
         .btn-grab {
@@ -462,129 +571,133 @@
             color: white;
         }
 
-        /* Primary Action (Gradient Green) */
+        /* Primary Action */
         .btn-action-primary {
             background: linear-gradient(135deg, #00B14F 0%, #009543 100%);
             color: white;
             border: none;
-            font-weight: 700;
-            font-size: 0.9rem;
-            letter-spacing: 0.3px;
-            border-radius: 12px;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 12px rgba(0, 177, 79, 0.25);
+            font-weight: 600;
+            font-size: 0.85rem;
+            letter-spacing: 0.02em;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+            box-shadow: var(--shadow-green);
             position: relative;
             overflow: hidden;
         }
 
         .btn-action-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(0, 177, 79, 0.35);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(0, 177, 79, 0.3);
             color: white;
         }
 
         .btn-action-primary:active {
             transform: translateY(1px);
+            box-shadow: 0 2px 6px rgba(0, 177, 79, 0.2);
         }
 
-        /* Secondary Action (Outline) */
+        /* Secondary Action */
         .btn-action-secondary {
-            background: white;
+            background: var(--bg-surface);
             color: var(--grab-green);
-            border: 1px solid var(--grab-green);
-            font-weight: 700;
-            font-size: 0.9rem;
-            letter-spacing: 0.3px;
-            border-radius: 12px;
-            transition: all 0.2s ease;
-            margin-top: 0;
+            border: 1.5px solid rgba(0, 177, 79, 0.3);
+            font-weight: 600;
+            font-size: 0.85rem;
+            letter-spacing: 0.02em;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
         }
 
         .btn-action-secondary:hover {
-            background: #f0fdf4;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0, 177, 79, 0.15);
+            background: var(--grab-green-subtle);
+            border-color: var(--grab-green);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 177, 79, 0.12);
         }
 
         .btn-action-secondary:active {
             transform: translateY(1px);
         }
 
-        /* Reset Button (Minimal) */
+        /* Reset Button */
         .btn-reset-minimal {
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             font-weight: 600;
-            color: #6c757d;
-            background: white;
-            border: 1px solid #e9ecef;
+            color: var(--text-muted);
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-light);
             padding: 5px 12px;
-            border-radius: 30px;
-            transition: all 0.2s ease;
+            border-radius: var(--radius-full);
+            transition: all var(--transition-fast);
+            cursor: pointer;
         }
 
         .btn-reset-minimal:hover {
-            color: #dc3545;
-            border-color: #dc3545;
-            background: #fff5f5;
-            box-shadow: 0 2px 5px rgba(220, 53, 69, 0.15);
+            color: #ef4444;
+            border-color: #fecaca;
+            background: #fef2f2;
         }
 
-        /* Help Button (Minimal - Header) */
+        /* Help Button */
         .btn-help-minimal {
             background: transparent;
             border: none;
-            color: #adb5bd;
-            font-size: 1.1rem;
+            color: var(--text-muted);
+            font-size: 1rem;
             padding: 0;
             line-height: 1;
-            transition: color 0.2s ease;
+            transition: all var(--transition-fast);
             cursor: pointer;
-            margin-left: 8px;
         }
 
         .btn-help-minimal:hover {
             color: var(--grab-green);
-            transform: scale(1.1);
+            transform: scale(1.15);
         }
 
         /* Delete Item Button */
         .btn-delete-item {
-            color: #999;
-            background: #f8f9fa;
-            border: 1px solid #eee;
-            width: 32px;
-            height: 32px;
-            border-radius: 10px;
+            color: var(--text-muted);
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-light);
+            width: 30px;
+            height: 30px;
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: 0.2s;
+            transition: all var(--transition-fast);
+            cursor: pointer;
+            flex-shrink: 0;
+            font-size: 0.75rem;
         }
 
         .btn-delete-item:hover {
-            background: #dc3545;
+            background: #ef4444;
             color: white;
-            border-color: #dc3545;
+            border-color: #ef4444;
+            transform: scale(1.05);
         }
 
         /* Travel Mode Switch */
         .mode-switch-container {
-            background-color: #f1f3f5;
-            padding: 4px;
-            border-radius: 12px;
+            background-color: var(--bg-subtle);
+            padding: 3px;
+            border-radius: var(--radius-sm);
             display: flex;
-            position: relative;
+            border: 1px solid var(--border-light);
         }
 
         .btn-mode-switch {
             background: transparent;
-            color: #adb5bd;
+            color: var(--text-muted);
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: 0.78rem;
             border: none;
-            padding: 8px;
-            border-radius: 10px;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            padding: 7px 8px;
+            border-radius: 6px;
+            transition: all var(--transition-smooth);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -592,14 +705,13 @@
         }
 
         .btn-mode-switch:hover {
-            color: var(--grab-green);
+            color: var(--text-secondary);
         }
 
         .btn-check:checked+.btn-mode-switch {
-            background-color: white;
+            background-color: var(--bg-surface);
             color: var(--grab-green);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            transform: scale(1.02);
+            box-shadow: var(--shadow-sm);
         }
 
         /* =========================================
@@ -612,88 +724,105 @@
         .badge-count {
             background: var(--grab-green);
             color: white;
-            min-width: 20px;
-            height: 20px;
-            border-radius: 50%;
+            min-width: 18px;
+            height: 18px;
+            border-radius: var(--radius-full);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.75rem;
-            font-weight: bold;
+            font-size: 0.68rem;
+            font-weight: 700;
             margin-left: 5px;
+            line-height: 1;
         }
 
         /* =========================================
-       10. MODAL & INFO STYLE (NEW)
+       10. MODAL & INFO STYLE
        ========================================= */
         .modal-content-pro {
             border: none;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
             overflow: hidden;
         }
 
         .modal-header-pro {
-            background: linear-gradient(135deg, #00B14F 0%, #009543 100%);
+            background: linear-gradient(135deg, #00B14F 0%, #00963f 50%, #007a33 100%);
             color: white;
-            padding: 20px 25px;
+            padding: 24px 28px;
             border-bottom: none;
         }
 
         .modal-body-pro {
-            padding: 25px;
-            background: #f8f9fa;
+            padding: 24px;
+            background: var(--bg-subtle);
         }
 
-        /* Info Section Item (Inside Modal) */
         .info-section {
-            background: white;
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 15px;
-            border: 1px solid #f0f0f0;
+            background: var(--bg-surface);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-light);
             display: flex;
-            gap: 15px;
-            transition: transform 0.2s;
+            gap: 14px;
+            transition: all var(--transition-smooth);
         }
 
         .info-section:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            border-color: #d1fae5;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+            border-color: var(--border-hover);
         }
 
         .info-icon-box {
-            width: 40px;
-            height: 40px;
-            background: #f0fdf4;
+            width: 38px;
+            height: 38px;
+            background: var(--grab-green-light);
             color: var(--grab-green);
-            border-radius: 10px;
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             flex-shrink: 0;
         }
 
         .info-content h6 {
-            margin: 0 0 4px 0;
+            margin: 0 0 3px 0;
             font-weight: 700;
-            color: #333;
-            font-size: 0.95rem;
+            color: var(--text-primary);
+            font-size: 0.9rem;
         }
 
         .info-content p {
             margin: 0;
-            font-size: 0.85rem;
-            color: #666;
-            line-height: 1.4;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            line-height: 1.45;
         }
 
         .modal-footer-pro {
-            background: white;
-            padding: 15px 25px;
-            border-top: 1px solid #eee;
+            background: var(--bg-surface);
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-light);
+        }
+
+        /* =========================================
+       11. RESPONSIVE
+       ========================================= */
+        @media (max-width: 768px) {
+            .locations-panel {
+                width: calc(100% - 32px);
+                left: 16px;
+                top: 76px;
+                max-height: 50vh;
+            }
+
+            .floating-header {
+                width: 94%;
+                padding: 6px 6px 6px 16px;
+            }
         }
     </style>
 </head>
@@ -701,52 +830,49 @@
 <body>
 
     <div class="floating-header">
-        <div class="logo-container border-end">
+        <div class="logo-container">
             <img src="logo.png" alt="Grab Logo" class="grab-logo">
         </div>
 
         <div class="search-wrapper">
-            <div class="flex-grow-1 px-3">
-                <input type="text" class="search-input" placeholder="Search location here..." id="searchInput">
-            </div>
+            <input type="text" class="search-input" placeholder="Search a place..." id="searchInput">
             <ul class="suggestions-list" id="suggestionsList"></ul>
         </div>
 
-        <button class="btn btn-circle btn-grab shadow-sm" type="button" onclick="handleManualSearch()">
+        <button class="btn-search-main" type="button" onclick="handleManualSearch()">
             <i class="bi bi-search"></i>
         </button>
     </div>
 
     <div class="locations-panel" id="locationsPanel">
         <div class="panel-header">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div class="d-flex align-items-center">
-                    <h6 class="m-0 fw-bold text-dark">Location Manager</h6>
+            <div class="panel-title-row">
+                <div class="panel-title">
+                    <h6>Location Manager</h6>
                     <button class="btn-help-minimal" data-bs-toggle="modal" data-bs-target="#helpModal" title="Guide & Information">
                         <i class="bi bi-question-circle-fill"></i>
                     </button>
                 </div>
-
                 <button class="btn-reset-minimal" onclick="clearAllMarkers()">
-                    <i class="bi bi-trash3 me-1"></i> Reset
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
                 </button>
             </div>
 
             <div class="mode-switch-container mb-2">
                 <input type="radio" class="btn-check" name="travelMode" id="modeCar" value="Car" checked>
-                <label class="btn-mode-switch flex-grow-1" for="modeCar"><i class="bi bi-car-front-fill me-2"></i> Car</label>
+                <label class="btn-mode-switch flex-grow-1" for="modeCar"><i class="bi bi-car-front-fill me-1"></i> Car</label>
                 <input type="radio" class="btn-check" name="travelMode" id="modeBike" value="Motorcycle">
-                <label class="btn-mode-switch flex-grow-1" for="modeBike"><i class="bi bi-scooter me-2"></i> Motorcycle</label>
+                <label class="btn-mode-switch flex-grow-1" for="modeBike"><i class="bi bi-scooter me-1"></i> Motorcycle</label>
             </div>
 
             <div class="mode-switch-container mb-3">
                 <input type="radio" class="btn-check" name="optMode" id="optFast" value="fast" checked>
                 <label class="btn-mode-switch flex-grow-1" for="optFast" title="Sort by direct distance (Faster)">
-                    <i class="bi bi-rulers me-2"></i> Straight Line
+                    <i class="bi bi-rulers me-1"></i> Straight Line
                 </label>
                 <input type="radio" class="btn-check" name="optMode" id="optPrecise" value="real">
                 <label class="btn-mode-switch flex-grow-1" for="optPrecise" title="Sort by actual driving route (More Accurate)">
-                    <i class="bi bi-sign-turn-slight-right-fill me-2"></i> Real Road
+                    <i class="bi bi-sign-turn-slight-right-fill me-1"></i> Real Road
                 </label>
             </div>
 
@@ -774,9 +900,12 @@
             <div id="tabPane-locations" class="tab-pane active">
                 <div id="listContainer"></div>
 
-                <div id="emptyState" class="text-center text-muted mt-4" style="font-size: 0.85rem;">
-                    <i class="bi bi-pin-map fs-3 d-block mb-2" style="color: #ddd;"></i>
-                    Click map or search to add locations
+                <div id="emptyState" class="text-center mt-4" style="font-size: 0.82rem;">
+                    <div style="width: 48px; height: 48px; border-radius: 14px; background: var(--bg-subtle); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                        <i class="bi bi-pin-map-fill" style="font-size: 1.3rem; color: var(--text-muted);"></i>
+                    </div>
+                    <p class="mb-1" style="font-weight: 600; color: var(--text-secondary);">No locations yet</p>
+                    <p style="color: var(--text-muted); font-size: 0.75rem;">Click on the map or search to add</p>
                 </div>
             </div>
 
@@ -788,7 +917,7 @@
                             <div class="route-label"><i class="bi bi-rulers"></i> Distance</div>
                             <div class="route-value" id="resDistance">-</div>
                         </div>
-                        <div class="route-divider align-self-stretch"></div>
+                        <div class="route-divider"></div>
                         <div class="route-stat-box">
                             <div class="route-label"><i class="bi bi-stopwatch"></i> Duration</div>
                             <div class="route-value" id="resDuration">-</div>
@@ -799,10 +928,12 @@
                 <div id="segmentListContainer" style="display: none;">
                 </div>
 
-                <div id="routeEmptyState" class="text-center text-muted mt-5">
-                    <i class="bi bi-sign-turn-slight-right fs-1 d-block mb-3" style="color: #eee;"></i>
-                    <p style="font-size: 0.9rem;">No route calculated yet.</p>
-                    <small style="font-size: 0.75rem;">Add locations and click "Calculate Route"</small>
+                <div id="routeEmptyState" class="text-center mt-5">
+                    <div style="width: 56px; height: 56px; border-radius: 16px; background: var(--bg-subtle); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                        <i class="bi bi-map" style="font-size: 1.5rem; color: var(--text-muted);"></i>
+                    </div>
+                    <p style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">No route yet</p>
+                    <p style="font-size: 0.75rem; color: var(--text-muted);">Add locations then press Calculate</p>
                 </div>
 
             </div>
@@ -814,40 +945,51 @@
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content modal-content-pro">
                 <div class="modal-header modal-header-pro">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-info-circle-fill fs-4"></i>
-                        <h5 class="modal-title fw-bold mb-0">Features & Guide</h5>
+                    <div class="d-flex align-items-center gap-3">
+                        <div style="width: 36px; height: 36px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-book-fill fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0" style="font-size: 1.05rem;">Features & Guide</h5>
+                            <small style="opacity: 0.8; font-size: 0.75rem;">Everything you need to know</small>
+                        </div>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
                 <div class="modal-body modal-body-pro">
 
-                    <p class="text-uppercase fw-bold text-muted small mb-2 ms-1">Basic Controls</p>
-                    <div class="bg-white p-3 rounded border mb-4">
+                    <p class="text-uppercase fw-bold small mb-2 ms-1" style="font-size: 0.68rem; color: var(--text-muted); letter-spacing: 1px;">Basic Controls</p>
+                    <div class="bg-white p-3 rounded-3 border mb-4" style="border-color: var(--border-light) !important;">
                         <div class="row g-3 text-center">
                             <div class="col-4 border-end">
-                                <i class="bi bi-geo-alt-fill text-danger fs-5 d-block mb-1"></i>
+                                <div style="width: 36px; height: 36px; border-radius: 10px; background: #fef2f2; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px;">
+                                    <i class="bi bi-geo-alt-fill text-danger"></i>
+                                </div>
                                 <div class="small fw-bold text-dark">Add</div>
-                                <div class="text-muted" style="font-size: 0.7rem;">Click Map / Search</div>
+                                <div style="font-size: 0.68rem; color: var(--text-muted);">Click Map / Search</div>
                             </div>
                             <div class="col-4 border-end">
-                                <i class="bi bi-arrows-move text-primary fs-5 d-block mb-1"></i>
+                                <div style="width: 36px; height: 36px; border-radius: 10px; background: #eff6ff; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px;">
+                                    <i class="bi bi-arrows-move text-primary"></i>
+                                </div>
                                 <div class="small fw-bold text-dark">Move</div>
-                                <div class="text-muted" style="font-size: 0.7rem;">Drag Marker</div>
+                                <div style="font-size: 0.68rem; color: var(--text-muted);">Drag Marker</div>
                             </div>
                             <div class="col-4">
-                                <i class="bi bi-x-circle text-secondary fs-5 d-block mb-1"></i>
+                                <div style="width: 36px; height: 36px; border-radius: 10px; background: var(--bg-subtle); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px;">
+                                    <i class="bi bi-x-circle text-secondary"></i>
+                                </div>
                                 <div class="small fw-bold text-dark">Remove</div>
-                                <div class="text-muted" style="font-size: 0.7rem;">Click 'X' in List</div>
+                                <div style="font-size: 0.68rem; color: var(--text-muted);">Click 'X' in List</div>
                             </div>
                         </div>
                     </div>
 
-                    <p class="text-uppercase fw-bold text-muted small mb-2 ms-1">1. Optimization Methods</p>
-                    <div class="p-3 bg-white rounded border mb-3">
+                    <p class="text-uppercase fw-bold small mb-2 ms-1" style="font-size: 0.68rem; color: var(--text-muted); letter-spacing: 1px;">1. Optimization Methods</p>
+                    <div class="p-3 bg-white rounded-3 border mb-3" style="border-color: var(--border-light) !important;">
                         <table class="table table-borderless table-sm small mb-0">
-                            <thead class="text-muted border-bottom">
+                            <thead class="border-bottom" style="color: var(--text-muted);">
                                 <tr>
                                     <th class="pb-2">Feature</th>
                                     <th class="pb-2 text-center text-primary">Straight Line</th>
@@ -856,12 +998,12 @@
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td class="py-2 fw-semibold text-secondary">Accuracy</td>
+                                    <td class="py-2 fw-semibold" style="color: var(--text-secondary);">Accuracy</td>
                                     <td class="py-2 text-center">Low (Flight)</td>
                                     <td class="py-2 text-center">High (Traffic)</td>
                                 </tr>
                                 <tr>
-                                    <td class="py-2 fw-semibold text-secondary">Best For</td>
+                                    <td class="py-2 fw-semibold" style="color: var(--text-secondary);">Best For</td>
                                     <td class="py-2 text-center">Estimates</td>
                                     <td class="py-2 text-center">Delivery</td>
                                 </tr>
@@ -869,57 +1011,57 @@
                         </table>
                         <div class="mt-2 pt-2 border-top d-flex align-items-start gap-2">
                             <i class="bi bi-lightbulb-fill text-warning mt-1"></i>
-                            <p class="small text-muted mb-0" style="font-size: 0.75rem;">
+                            <p class="small mb-0" style="font-size: 0.73rem; color: var(--text-secondary);">
                                 <strong>Tip:</strong> Use "Straight Line" to list points quickly, then "Real Road" to finalize.
                             </p>
                         </div>
                     </div>
 
-                    <p class="text-uppercase fw-bold text-muted small mb-2 ms-1">2. Travel Modes</p>
+                    <p class="text-uppercase fw-bold small mb-2 ms-1" style="font-size: 0.68rem; color: var(--text-muted); letter-spacing: 1px;">2. Travel Modes</p>
                     <div class="row g-2 mb-4">
                         <div class="col-6">
-                            <div class="p-2 border rounded bg-white d-flex align-items-center gap-2">
-                                <div class="bg-light rounded-circle p-2 text-success">
-                                    <i class="bi bi-car-front-fill"></i>
+                            <div class="p-2 border rounded-3 bg-white d-flex align-items-center gap-2" style="border-color: var(--border-light) !important;">
+                                <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--grab-green-light); display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-car-front-fill" style="color: var(--grab-green);"></i>
                                 </div>
                                 <div style="line-height: 1.2;">
                                     <div class="small fw-bold text-dark">Car</div>
-                                    <div class="text-muted" style="font-size: 0.65rem;">Standard Routes</div>
+                                    <div style="font-size: 0.63rem; color: var(--text-muted);">Standard Routes</div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-6">
-                            <div class="p-2 border rounded bg-white d-flex align-items-center gap-2">
-                                <div class="bg-light rounded-circle p-2 text-success">
-                                    <i class="bi bi-scooter"></i>
+                            <div class="p-2 border rounded-3 bg-white d-flex align-items-center gap-2" style="border-color: var(--border-light) !important;">
+                                <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--grab-green-light); display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-scooter" style="color: var(--grab-green);"></i>
                                 </div>
                                 <div style="line-height: 1.2;">
                                     <div class="small fw-bold text-dark">Motorcycle</div>
-                                    <div class="text-muted" style="font-size: 0.65rem;">Faster ETA</div>
+                                    <div style="font-size: 0.63rem; color: var(--text-muted);">Faster ETA</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <p class="text-uppercase fw-bold text-muted small mb-2 ms-1">3. Calculation Actions</p>
+                    <p class="text-uppercase fw-bold small mb-2 ms-1" style="font-size: 0.68rem; color: var(--text-muted); letter-spacing: 1px;">3. Calculation Actions</p>
 
                     <div class="info-section py-2 mb-2">
-                        <div class="info-icon-box" style="background: #e0f2fe; color: #007bff; width: 32px; height: 32px; font-size: 1rem;">
+                        <div class="info-icon-box" style="background: #eff6ff; color: #3b82f6; width: 32px; height: 32px; font-size: 1rem;">
                             <i class="bi bi-sign-turn-right-fill"></i>
                         </div>
                         <div class="info-content">
-                            <h6 style="font-size: 0.9rem;">Single Route (A&rarr;B)</h6>
-                            <p style="font-size: 0.8rem;">Direct path from the first to the second location only.</p>
+                            <h6 style="font-size: 0.88rem;">Single Route (A&rarr;B)</h6>
+                            <p style="font-size: 0.78rem;">Direct path from the first to the second location only.</p>
                         </div>
                     </div>
 
                     <div class="info-section py-2 mb-0">
-                        <div class="info-icon-box" style="background: #e0f2fe; color: #007bff; width: 32px; height: 32px; font-size: 1rem;">
+                        <div class="info-icon-box" style="background: #eff6ff; color: #3b82f6; width: 32px; height: 32px; font-size: 1rem;">
                             <i class="bi bi-diagram-3-fill"></i>
                         </div>
                         <div class="info-content">
-                            <h6 style="font-size: 0.9rem;">Multi-Stop (Optimized)</h6>
-                            <p style="font-size: 0.8rem;">Automatically <b>reorders</b> all stops to find the most efficient path.</p>
+                            <h6 style="font-size: 0.88rem;">Multi-Stop (Optimized)</h6>
+                            <p style="font-size: 0.78rem;">Automatically <b>reorders</b> all stops to find the most efficient path.</p>
                         </div>
                     </div>
 
@@ -1636,7 +1778,7 @@
             const countBadge = document.getElementById('locCount');
             const emptyState = document.getElementById('emptyState');
 
-            panel.style.display = 'block';
+            panel.style.display = 'flex';
             countBadge.innerText = markersData.length;
 
             if (markersData.length === 0) {
