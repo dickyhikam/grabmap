@@ -44,7 +44,15 @@ Route::get('/tests', function () {
 Route::get('/map', [MapController::class, 'showMap']);
 Route::get('/api/map-style', [MapController::class, 'getMapStyle']);
 Route::get('/api/map-style-simple', [MapController::class, 'getMapStyleSimple']);
-Route::get('/api/map-style-clean', [MapController::class, 'getMapStyleClean']); // New endpoint
+Route::get('/api/map-style-clean', [MapController::class, 'getMapStyleClean']);
+
+// Proxy endpoints — keeps API keys server-side
+Route::post('/api/places/suggestions', [MapController::class, 'searchSuggestions']);
+Route::post('/api/places/search', [MapController::class, 'searchText']);
+Route::get('/api/places/{placeId}', [MapController::class, 'getPlace']);
+Route::post('/api/places/reverse', [MapController::class, 'reverseGeocode']);
+Route::post('/api/routes/calculate', [MapController::class, 'calculateRoute']);
+Route::post('/api/routes/matrix', [MapController::class, 'calculateRouteMatrix']);
 
 //route API
 Route::get('/map-style', function () {

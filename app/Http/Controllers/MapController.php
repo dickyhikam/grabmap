@@ -115,45 +115,30 @@ class MapController extends Controller
     private function fixLayersStructure($layers)
     {
         $fixedLayers = [];
-        $fixedCount = 0;
 
-        foreach ($layers as $index => $layer) {
-            $fixedLayer = $layer;
-
-            // **FIX: Pastikan layout adalah object, bukan array**
+        foreach ($layers as $layer) {
+            // Pastikan layout selalu jadi JSON object {}, bukan array []
             if (isset($layer['layout']) && is_array($layer['layout'])) {
-                // Jika layout adalah array indexed, convert ke associative array
-                if (array_keys($layer['layout']) === range(0, count($layer['layout']) - 1)) {
-                    $fixedLayer['layout'] = [];
-                    Log::warning("Layer {$index}: Layout array di-convert ke object kosong");
-                } else {
-                    // Jika sudah associative, biarkan saja
-                    $fixedLayer['layout'] = $layer['layout'];
-                }
-                $fixedCount++;
+                $layer['layout'] = empty($layer['layout'])
+                    ? new \stdClass()
+                    : (object) $layer['layout'];
             }
 
-            // **FIX: Pastikan paint adalah object, bukan array**
+            // Pastikan paint selalu jadi JSON object {}, bukan array []
             if (isset($layer['paint']) && is_array($layer['paint'])) {
-                if (array_keys($layer['paint']) === range(0, count($layer['paint']) - 1)) {
-                    $fixedLayer['paint'] = [];
-                    Log::warning("Layer {$index}: Paint array di-convert ke object kosong");
-                } else {
-                    $fixedLayer['paint'] = $layer['paint'];
-                }
-                $fixedCount++;
+                $layer['paint'] = empty($layer['paint'])
+                    ? new \stdClass()
+                    : (object) $layer['paint'];
             }
 
-            // **FIX: Pastikan filter adalah array, bukan object**
+            // Pastikan filter tetap array
             if (isset($layer['filter']) && !is_array($layer['filter'])) {
-                $fixedLayer['filter'] = [$layer['filter']];
-                $fixedCount++;
+                $layer['filter'] = [$layer['filter']];
             }
 
-            $fixedLayers[] = $fixedLayer;
+            $fixedLayers[] = $layer;
         }
 
-        Log::info("Fixed {$fixedCount} layer properties");
         return $fixedLayers;
     }
 
@@ -336,5 +321,97 @@ class MapController extends Controller
         }
 
         return $layer;
+    }
+
+    /* =========================================
+       PROXY ENDPOINTS — Places & Routes
+       ========================================= */
+
+    private function awsConfig()
+    {
+        return [
+            'region'     => config('services.aws.region'),
+            'api_key'    => config('services.aws.api_key'),
+            'place_index'=> config('services.aws.place_index'),
+            'route_calc' => config('services.aws.route_calculator'),
+        ];
+    }
+
+    public function searchSuggestions(Request $request)
+    {
+        $cfg = $this->awsConfig();
+        $url = "https://places.geo.{$cfg['region']}.amazonaws.com/places/v0/indexes/{$cfg['place_index']}/search/suggestions?key={$cfg['api_key']}";
+
+        try {
+            $response = Http::timeout(15)->post($url, $request->all());
+            return response()->json($response->json(), $response->status());
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function searchText(Request $request)
+    {
+        $cfg = $this->awsConfig();
+        $url = "https://places.geo.{$cfg['region']}.amazonaws.com/places/v0/indexes/{$cfg['place_index']}/search/text?key={$cfg['api_key']}";
+
+        try {
+            $response = Http::timeout(15)->post($url, $request->all());
+            return response()->json($response->json(), $response->status());
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getPlace($placeId)
+    {
+        $cfg = $this->awsConfig();
+        $url = "https://places.geo.{$cfg['region']}.amazonaws.com/places/v0/indexes/{$cfg['place_index']}/places/{$placeId}?key={$cfg['api_key']}";
+
+        try {
+            $response = Http::timeout(15)->get($url);
+            return response()->json($response->json(), $response->status());
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function reverseGeocode(Request $request)
+    {
+        $cfg = $this->awsConfig();
+        $url = "https://places.geo.{$cfg['region']}.amazonaws.com/places/v0/indexes/{$cfg['place_index']}/search/position?key={$cfg['api_key']}";
+
+        try {
+            $response = Http::timeout(15)->post($url, $request->all());
+            return response()->json($response->json(), $response->status());
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function calculateRoute(Request $request)
+    {
+        $cfg = $this->awsConfig();
+        $url = "https://routes.geo.{$cfg['region']}.amazonaws.com/routes/v0/calculators/{$cfg['route_calc']}/calculate/route?key={$cfg['api_key']}";
+
+        try {
+            $response = Http::timeout(30)->post($url, $request->all());
+            return response()->json($response->json(), $response->status());
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function calculateRouteMatrix(Request $request)
+    {
+        $cfg = $this->awsConfig();
+        $url = "https://routes.geo.{$cfg['region']}.amazonaws.com/routes/v0/calculators/{$cfg['route_calc']}/calculate/route-matrix?key={$cfg['api_key']}";
+
+        try {
+            $response = Http::timeout(30)->post($url, $request->all());
+            return response()->json($response->json(), $response->status());
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 }

@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AWS Grab Maps - Location List</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>AWS Grab Maps</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -192,8 +193,15 @@
         }
 
         @keyframes dropdownIn {
-            from { opacity: 0; transform: translateY(-6px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .suggestion-item {
@@ -250,6 +258,7 @@
                 opacity: 0;
                 transform: translateY(16px) scale(0.97);
             }
+
             to {
                 opacity: 1;
                 transform: translateY(0) scale(1);
@@ -357,8 +366,13 @@
         }
 
         @keyframes fadeInTab {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         /* =========================================
@@ -834,8 +848,15 @@
         }
 
         @keyframes poiBounce {
-            from { transform: scale(0) translateY(-10px); opacity: 0; }
-            to { transform: scale(1) translateY(0); opacity: 1; }
+            from {
+                transform: scale(0) translateY(-10px);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
         }
 
         /* =========================================
@@ -858,6 +879,11 @@
 </head>
 
 <body>
+
+    <!-- Kalau mau 100% hidden dari Network tab juga, kita bisa proxy semua tile/sprite/glyph lewat backend. Tapi ada trade-off:
+    Pros: API key benar-benar tidak terlihat di browser
+    Cons: Semua tile request lewat server PHP dulu → lebih lambat, server load naik (setiap scroll/zoom peta = puluhan request tile)
+    Mau saya implementasi full proxy untuk tile/sprite/glyph juga, atau cukup yang sekarang? (API key sudah aman dari view-source dan bot crawler, hanya terlihat kalau user buka DevTools Network tab) -->
 
     <div class="floating-header">
         <div class="logo-container">
@@ -1116,11 +1142,29 @@
         /* =========================================
        1. CONFIGURATION & GLOBAL STATE
        ========================================= */
-        const region = "{{ env('AWS_REGION') }}";
-        const mapName = "{{ env('AWS_MAP_NAME') }}";
-        const placeIndex = "{{ env('AWS_MAP_PLACE') }}";
-        const apiKey = "{{ env('AWS_API_KEY') }}";
-        const routeCalculator = "{{ env('AWS_MAP_ROUTE') }}";
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+        // Helper for POST requests to our proxy
+        function proxyPost(url, body) {
+            return fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+        }
+
+        // Helper for GET requests to our proxy
+        function proxyGet(url) {
+            return fetch(url, {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+        }
 
         let map = null;
         let markersData = [];
@@ -1199,11 +1243,9 @@
            3. MAP INITIALIZATION
            ========================================= */
         function initMap() {
-            if (!apiKey) return showToast('Error', 'API Key Missing', 'error');
-
             map = new maplibregl.Map({
                 container: 'map',
-                style: `https://maps.geo.${region}.amazonaws.com/maps/v0/maps/${mapName}/style-descriptor?key=${apiKey}`,
+                style: '/api/map-style',
                 center: [106.8456, -6.2088],
                 zoom: 13,
                 attributionControl: false
@@ -1343,20 +1385,13 @@
 
         async function getPlaceNameByCoords(coords) {
             try {
-                const url = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIndex}/search/position?key=${apiKey}`;
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        Position: coords,
-                        MaxResults: 1,
-                        Language: 'en'
-                    })
+                const response = await proxyPost('/api/places/reverse', {
+                    Position: coords,
+                    MaxResults: 1,
+                    Language: 'en'
                 });
 
-                if (!response.ok) throw new Error('AWS API Error');
+                if (!response.ok) throw new Error('API Error');
                 const data = await response.json();
 
                 if (data.Results && data.Results.length > 0) {
@@ -1385,22 +1420,13 @@
             showToast('Processing...', 'Calculating single route...', 'info');
 
             try {
-                const url = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${routeCalculator}/calculate/route?key=${apiKey}`;
-                const body = {
+                const response = await proxyPost('/api/routes/calculate', {
                     DeparturePosition: origin,
                     DestinationPosition: destination,
                     TravelMode: selectedMode,
                     DistanceUnit: "Kilometers",
                     DepartNow: true,
                     IncludeLegGeometry: true
-                };
-
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(body)
                 });
                 if (!response.ok) throw new Error('Failed');
                 const data = await response.json();
@@ -1493,8 +1519,7 @@
                     const destination = chunk[chunk.length - 1].coords;
                     const waypoints = chunk.length > 2 ? chunk.slice(1, -1).map(m => m.coords) : [];
 
-                    const url = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${routeCalculator}/calculate/route?key=${apiKey}`;
-                    const body = {
+                    const response = await proxyPost('/api/routes/calculate', {
                         DeparturePosition: origin,
                         DestinationPosition: destination,
                         WaypointPositions: waypoints,
@@ -1502,14 +1527,6 @@
                         DistanceUnit: "Kilometers",
                         DepartNow: true,
                         IncludeLegGeometry: true
-                    };
-
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(body)
                     });
 
                     if (!response.ok) throw new Error(`Batch error`);
@@ -1641,22 +1658,11 @@
 
         // --- HELPER: PANGGIL AWS MATRIX (REAL ROAD DISTANCE) ---
         async function getRouteMatrix(departure, destinations) {
-            // Pastikan pakai endpoint route-matrix
-            const url = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${routeCalculator}/calculate/route-matrix?key=${apiKey}`;
-
-            const body = {
-                DeparturePositions: [departure], // 1 Titik Asal
-                DestinationPositions: destinations, // Banyak Titik Tujuan
-                TravelMode: "Car", // Mode Mobil (Penting untuk satu arah/tol)
+            const response = await proxyPost('/api/routes/matrix', {
+                DeparturePositions: [departure],
+                DestinationPositions: destinations,
+                TravelMode: "Car",
                 DistanceUnit: "Kilometers"
-            };
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(body)
             });
 
             if (!response.ok) throw new Error("Matrix API Error");
@@ -1809,8 +1815,13 @@
                 type: 'geojson',
                 data: {
                     type: 'Feature',
-                    properties: { color: seg.color },
-                    geometry: { type: 'LineString', coordinates: seg.geometry }
+                    properties: {
+                        color: seg.color
+                    },
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: seg.geometry
+                    }
                 }
             });
 
@@ -1819,7 +1830,10 @@
                 id: 'highlightGlow',
                 type: 'line',
                 source: 'highlightSource',
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
                 paint: {
                     'line-color': ['get', 'color'],
                     'line-width': 12,
@@ -1832,7 +1846,10 @@
                 id: 'highlightOutline',
                 type: 'line',
                 source: 'highlightSource',
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
                 paint: {
                     'line-color': '#ffffff',
                     'line-width': 7,
@@ -1845,7 +1862,10 @@
                 id: 'highlightLine',
                 type: 'line',
                 source: 'highlightSource',
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
                 paint: {
                     'line-color': ['get', 'color'],
                     'line-width': 5,
@@ -1857,16 +1877,26 @@
             const startCoord = seg.geometry[0];
             const endCoord = seg.geometry[seg.geometry.length - 1];
 
-            const startMarker = new maplibregl.Marker({ element: createPOIElement('A', seg.color) })
+            const startMarker = new maplibregl.Marker({
+                    element: createPOIElement('A', seg.color)
+                })
                 .setLngLat(startCoord)
-                .setPopup(new maplibregl.Popup({ offset: 20, closeButton: false }).setHTML(
+                .setPopup(new maplibregl.Popup({
+                    offset: 20,
+                    closeButton: false
+                }).setHTML(
                     `<div style="font-family:Inter,sans-serif;font-size:0.8rem;"><strong style="color:${seg.color};">Start</strong><br>${seg.from}</div>`
                 ))
                 .addTo(map);
 
-            const endMarker = new maplibregl.Marker({ element: createPOIElement('B', seg.color) })
+            const endMarker = new maplibregl.Marker({
+                    element: createPOIElement('B', seg.color)
+                })
                 .setLngLat(endCoord)
-                .setPopup(new maplibregl.Popup({ offset: 20, closeButton: false }).setHTML(
+                .setPopup(new maplibregl.Popup({
+                    offset: 20,
+                    closeButton: false
+                }).setHTML(
                     `<div style="font-family:Inter,sans-serif;font-size:0.8rem;"><strong style="color:${seg.color};">End</strong><br>${seg.to}</div>`
                 ))
                 .addTo(map);
@@ -2030,16 +2060,10 @@
                 return;
             }
             try {
-                const res = await fetch(`https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIndex}/search/suggestions?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        Text: query,
-                        MaxResults: 5,
-                        Language: 'en'
-                    })
+                const res = await proxyPost('/api/places/suggestions', {
+                    Text: query,
+                    MaxResults: 5,
+                    Language: 'en'
                 });
                 const data = await res.json();
                 renderSuggestions(data.Results);
@@ -2069,7 +2093,7 @@
             input.value = '';
 
             try {
-                const res = await fetch(`https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIndex}/places/${placeId}?key=${apiKey}`);
+                const res = await proxyGet(`/api/places/${placeId}`);
                 const data = await res.json();
                 addLocation(data.Place.Geometry.Point, data.Place.Label);
                 showToast('Added', placeName, 'success');
@@ -2084,15 +2108,9 @@
             list.classList.remove('show');
 
             try {
-                const res = await fetch(`https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIndex}/search/text?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        Text: query,
-                        MaxResults: 1
-                    })
+                const res = await proxyPost('/api/places/search', {
+                    Text: query,
+                    MaxResults: 1
                 });
                 const data = await res.json();
 
