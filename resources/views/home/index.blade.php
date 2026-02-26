@@ -79,44 +79,47 @@
 
 
         /* =========================================
-       3. FLOATING HEADER (SEARCH BAR)
+       3. FLOATING HEADER (SEARCH BAR) - Modern Redesign
        ========================================= */
         .floating-header {
             position: fixed;
-            top: 16px;
+            top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            width: 92%;
-            max-width: var(--header-max-width);
+            width: 94%;
+            max-width: 580px;
             z-index: var(--z-header);
-            background: var(--bg-glass-strong);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border-radius: var(--radius-full);
-            box-shadow: var(--shadow-lg);
-            border: 1px solid rgba(255, 255, 255, 0.7);
-            padding: 8px 8px 8px 20px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 252, 250, 0.92) 100%);
+            backdrop-filter: blur(24px) saturate(200%);
+            -webkit-backdrop-filter: blur(24px) saturate(200%);
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            padding: 10px 12px 10px 16px;
             display: flex;
             align-items: center;
-            gap: 12px;
-            transition: box-shadow var(--transition-smooth);
+            gap: 14px;
+            transition: all var(--transition-smooth);
         }
 
         .floating-header:focus-within {
-            box-shadow: var(--shadow-lg), 0 0 0 3px rgba(0, 177, 79, 0.15);
+            box-shadow: 0 8px 32px rgba(0, 177, 79, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06), 0 0 0 2px rgba(0, 177, 79, 0.2);
+            border-color: rgba(0, 177, 79, 0.25);
         }
 
         .logo-container {
             display: flex;
             align-items: center;
-            padding-right: 12px;
-            border-right: 1.5px solid var(--border-light);
+            padding-right: 14px;
+            margin-right: 2px;
+            border-right: 1px solid rgba(0, 0, 0, 0.08);
             flex-shrink: 0;
         }
 
         .grab-logo {
-            height: 24px;
+            height: 26px;
             width: auto;
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.06));
         }
 
         .search-wrapper {
@@ -124,6 +127,35 @@
             flex-grow: 1;
             display: flex;
             align-items: center;
+            min-width: 0;
+        }
+
+        .search-input-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 8px 12px;
+            background: rgba(248, 250, 249, 0.8);
+            border-radius: 10px;
+            border: 1px solid transparent;
+            transition: all var(--transition-fast);
+        }
+
+        .floating-header:focus-within .search-input-wrap {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(0, 177, 79, 0.15);
+        }
+
+        .search-input-wrap .bi-search {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            flex-shrink: 0;
+            transition: color var(--transition-fast);
+        }
+
+        .floating-header:focus-within .search-input-wrap .bi-search {
+            color: var(--grab-green);
         }
 
         .search-input {
@@ -131,11 +163,12 @@
             outline: none;
             background: transparent;
             width: 100%;
-            font-size: 0.9rem;
+            font-size: 0.925rem;
             font-weight: 500;
             color: var(--text-primary);
-            padding: 6px 4px;
+            padding: 0;
             font-family: inherit;
+            min-width: 0;
         }
 
         .search-input::placeholder {
@@ -143,72 +176,95 @@
             font-weight: 400;
         }
 
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
         .btn-search-main {
-            width: var(--btn-size);
-            height: var(--btn-size);
-            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            background: linear-gradient(135deg, var(--grab-green) 0%, var(--grab-green-hover) 100%);
+            background: linear-gradient(145deg, var(--grab-green) 0%, #008c3d 100%);
             border: none;
             color: white;
-            font-size: 1rem;
+            font-size: 1.05rem;
             cursor: pointer;
-            transition: all var(--transition-fast);
-            box-shadow: var(--shadow-green);
+            transition: all var(--transition-smooth);
+            box-shadow: 0 4px 14px rgba(0, 177, 79, 0.35);
         }
 
         .btn-search-main:hover {
-            transform: scale(1.06);
-            box-shadow: 0 6px 18px rgba(0, 177, 79, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 177, 79, 0.4);
+            background: linear-gradient(145deg, #00c257 0%, var(--grab-green) 100%);
         }
 
         .btn-search-main:active {
-            transform: scale(0.96);
+            transform: translateY(0);
         }
 
-        .btn-pricing-link {
+        .btn-header-link {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: var(--btn-size);
-            height: var(--btn-size);
-            border-radius: 50%;
-            background: var(--bg-subtle);
-            border: 1.5px solid var(--border-light);
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(248, 250, 249, 0.9);
+            border: 1px solid rgba(0, 0, 0, 0.06);
             color: var(--text-secondary);
-            font-size: 0.95rem;
+            font-size: 1rem;
             cursor: pointer;
-            transition: all var(--transition-fast);
+            transition: all var(--transition-smooth);
             flex-shrink: 0;
             text-decoration: none;
         }
 
-        .btn-pricing-link:hover {
+        .btn-header-link:hover {
             background: var(--grab-green-light);
-            border-color: var(--border-hover);
+            border-color: rgba(0, 177, 79, 0.2);
             color: var(--grab-green);
-            transform: scale(1.06);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 177, 79, 0.15);
+        }
+
+        .btn-header-link.btn-header-link--pricing:hover {
+            color: #f59e0b;
+            background: rgba(245, 158, 11, 0.1);
+            border-color: rgba(245, 158, 11, 0.2);
+        }
+
+        .btn-header-link.btn-header-link--tester:hover {
+            color: #6366f1;
+            background: rgba(99, 102, 241, 0.1);
+            border-color: rgba(99, 102, 241, 0.2);
         }
 
         /* Suggestions Dropdown */
         .suggestions-list {
             position: absolute;
-            top: calc(100% + 8px);
-            left: -32px;
-            width: calc(100% + 44px);
-            background: var(--bg-surface);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-lg);
+            top: calc(100% + 10px);
+            left: 0;
+            right: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(16px);
+            border-radius: 12px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
             list-style: none;
             padding: 6px;
             margin: 0;
             display: none;
-            max-height: 300px;
+            max-height: 320px;
             overflow-y: auto;
-            border: 1px solid var(--border-light);
+            border: 1px solid rgba(0, 0, 0, 0.06);
         }
 
         .suggestions-list.show {
@@ -895,8 +951,14 @@
             }
 
             .floating-header {
-                width: 94%;
-                padding: 6px 6px 6px 16px;
+                width: 96%;
+                padding: 8px 10px 8px 14px;
+                gap: 10px;
+            }
+
+            .btn-search-main, .btn-header-link {
+                width: 40px;
+                height: 40px;
             }
         }
     </style>
@@ -915,17 +977,24 @@
         </div>
 
         <div class="search-wrapper">
-            <input type="text" class="search-input" placeholder="Search a place..." id="searchInput">
+            <div class="search-input-wrap">
+                <i class="bi bi-search"></i>
+                <input type="text" class="search-input" placeholder="Search a place..." id="searchInput">
+            </div>
             <ul class="suggestions-list" id="suggestionsList"></ul>
         </div>
 
-        <button class="btn-search-main" type="button" onclick="handleManualSearch()">
-            <i class="bi bi-search"></i>
-        </button>
-
-        <a href="{{ route('pricing') }}" class="btn-pricing-link" title="Pricing Comparison">
-            <i class="bi bi-tag"></i>
-        </a>
+        <div class="header-actions">
+            <button class="btn-search-main" type="button" onclick="handleManualSearch()" title="Search">
+                <i class="bi bi-search"></i>
+            </button>
+            <a href="{{ route('pricing') }}" class="btn-header-link btn-header-link--pricing" title="Pricing Comparison">
+                <i class="bi bi-tag-fill"></i>
+            </a>
+            <a href="{{ route('pageRouteTester') }}" class="btn-header-link btn-header-link--tester" title="Tester API">
+                <i class="bi bi-code-slash"></i>
+            </a>
+        </div>
     </div>
 
     <div class="locations-panel" id="locationsPanel">

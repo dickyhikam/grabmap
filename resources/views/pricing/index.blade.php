@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Pricing Comparison - GrabMaps vs Google Maps</title>
+    <title>{{ __('pricing.title') }} - GrabMaps vs Google Maps</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -19,6 +19,11 @@
             background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 50%, #e8f0fe 100%);
             min-height: 100vh;
         }
+
+        .grab-logo {
+            height: 24px;
+            width: auto;
+        }
     </style>
 </head>
 
@@ -27,15 +32,22 @@
     <nav class="pricing-navbar">
         <div class="container">
             <a href="{{ route('pageHome') }}" class="navbar-brand">
-                <span class="logo-dot">G</span>
-                <span>GrabMaps</span>
+                <img src="logo.png" alt="Grab Logo" class="grab-logo">
             </a>
-            <div style="display:flex;align-items:center;gap:12px;">
-                <a href="{{ route('pricing.admin') }}" class="btn-back">
-                    <i class="bi bi-gear"></i> Admin
+            <div class="navbar-actions">
+                <div class="lang-switcher-dropdown">
+                    <label for="langSelect" class="lang-label">{{ __('pricing.language') }}:</label>
+                    <select id="langSelect" class="lang-select" aria-label="{{ __('pricing.language') }}" onchange="window.location.href='{{ route('pricing') }}?lang='+this.value">
+                        @foreach(config('pricing_locales', []) as $code => $info)
+                        <option value="{{ $code }}" {{ app()->getLocale() === $code ? 'selected' : '' }}>{{ $info['label'] }} ({{ $info['country'] }})</option>
+                        @endforeach
+                    </select>
+                </div>
+                <a href="{{ route('pricing.admin') }}" class="btn-back" hidden>
+                    <i class="bi bi-gear"></i> {{ __('pricing.admin') }}
                 </a>
                 <a href="{{ route('pageHome') }}" class="btn-back">
-                    <i class="bi bi-map"></i> Back to Map
+                    <i class="bi bi-map"></i> {{ __('pricing.back_to_map') }}
                 </a>
             </div>
         </div>
@@ -44,31 +56,31 @@
     <!-- HERO -->
     <section class="hero-section">
         <div class="container">
-            <h1>API Pricing Comparison</h1>
-            <p>ALS-GRAB (Amazon Location Service - GrabMaps) vs Google Maps Platform</p>
-            <small>Prices per 1,000 requests (USD)</small>
+            <h1>{{ __('pricing.title') }}</h1>
+            <p>{{ __('pricing.subtitle') }}</p>
+            <small>{{ __('pricing.per_request') }}</small>
         </div>
     </section>
 
     <!-- CALCULATOR -->
     <section class="content-section">
         <div class="calculator-card animate-in">
-            <h5><i class="bi bi-calculator"></i> Cost Calculator</h5>
-            <p class="calc-subtitle">Enter your estimated monthly API requests to compare costs</p>
+            <h5><i class="bi bi-calculator"></i> {{ __('pricing.cost_calculator') }}</h5>
+            <p class="calc-subtitle">{{ __('pricing.calc_subtitle') }}</p>
 
             <div class="calc-input-wrapper">
                 <div class="calc-input-box">
                     <span class="calc-input-icon"><i class="bi bi-hash"></i></span>
                     <input type="text" id="volumeInput" value="50,000" inputmode="numeric" autocomplete="off" placeholder="e.g. 50,000" onkeydown="if(event.key==='Enter')calculateCosts()" onfocus="this.select()">
-                    <button type="button" class="calc-input-clear" id="clearVolume" title="Clear"><i class="bi bi-x-lg"></i></button>
-                    <span class="calc-input-suffix">req/month</span>
+                    <button type="button" class="calc-input-clear" id="clearVolume" title="{{ __('pricing.clear') }}"><i class="bi bi-x-lg"></i></button>
+                    <span class="calc-input-suffix">{{ __('pricing.req_month') }}</span>
                 </div>
                 <button class="btn-calculate" onclick="calculateCosts()">
-                    <i class="bi bi-graph-up"></i> Calculate
+                    <i class="bi bi-graph-up"></i> {{ __('pricing.calculate') }}
                 </button>
             </div>
 
-            <div class="calc-input-error" id="volumeError">Please enter the number of requests</div>
+            <div class="calc-input-error" id="volumeError">{{ __('pricing.volume_error') }}</div>
 
             <div class="slider-wrapper">
                 <input type="range" id="volumeSlider" class="volume-slider" min="0" max="500000" step="1000" value="50000">
@@ -90,13 +102,17 @@
     <section class="content-section">
         <div class="charts-section animate-in delay-1">
             <div class="chart-card">
-                <h6><i class="bi bi-bar-chart-fill" style="color:var(--grab-green)"></i> Cost by Category</h6>
-                <canvas id="barChart"></canvas>
+                <h6><i class="bi bi-bar-chart-fill" style="color:var(--grab-green)"></i> {{ __('pricing.cost_by_category') }}</h6>
+                <div class="chart-wrapper">
+                    <canvas id="barChart"></canvas>
+                </div>
             </div>
             <div class="chart-card">
-                <h6><i class="bi bi-graph-up-arrow" style="color:var(--grab-green)"></i> Cost Curve</h6>
+                <h6><i class="bi bi-graph-up-arrow" style="color:var(--grab-green)"></i> {{ __('pricing.cost_curve') }}</h6>
                 <div class="chart-controls" id="lineChartControls"></div>
-                <canvas id="lineChart"></canvas>
+                <div class="chart-wrapper">
+                    <canvas id="lineChart"></canvas>
+                </div>
             </div>
         </div>
     </section>
@@ -109,9 +125,14 @@
         @endphp
         <div class="pricing-card" data-category="{{ $category->slug }}">
             <div class="pricing-card-header">
-                <h5>{{ $category->name }}</h5>
+                <div class="pricing-card-title-wrap">
+                    <h5>{{ $category->name_translated ?? $category->name }}</h5>
+                    @if($category->description_translated ?? $category->description)
+                    <button type="button" class="info-trigger" data-info="{{ e($category->description_translated ?? $category->description) }}" title="{{ __('pricing.what_is_this') }}"><i class="bi bi-question-circle"></i></button>
+                    @endif
+                </div>
                 <span class="category-badge {{ $allAlsOnly ? 'badge-als-only' : 'badge-both' }}">
-                    {{ $allAlsOnly ? 'ALS-GRAB Only' : 'Both Platforms' }}
+                    {{ $allAlsOnly ? __('pricing.als_only') : __('pricing.both_platforms') }}
                 </span>
             </div>
             <div class="table-responsive">
@@ -129,22 +150,33 @@
                     </colgroup>
                     <thead>
                         <tr>
-                            <th class="col-check"><input type="checkbox" class="check-all" data-category="{{ $category->slug }}" checked></th>
-                            <th>API</th>
-                            <th>Tier</th>
-                            <th class="col-price">ALS/1K</th>
-                            <th class="col-price">Google/1K</th>
-                            <th class="col-free">Free Tier</th>
-                            <th class="col-cost">ALS Cost</th>
-                            <th class="col-cost">Google Cost</th>
-                            <th class="col-savings">Savings</th>
+                            @php
+                            $recCount = $category->items->where('is_recommended', true)->count();
+                            $totalCount = $category->items->count();
+                            $checkAllChecked = $recCount === $totalCount && $totalCount > 0;
+                            $checkAllIndeterminate = $recCount > 0 && $recCount < $totalCount;
+                            @endphp
+                            <th class="col-check"><input type="checkbox" class="check-all" data-category="{{ $category->slug }}" {{ $checkAllChecked ? 'checked' : '' }}></th>
+                            <th>{{ __('pricing.api') }}</th>
+                            <th>{{ __('pricing.tier') }}</th>
+                            <th class="col-price">{{ __('pricing.als_1k') }}</th>
+                            <th class="col-price">{{ __('pricing.google_1k') }}</th>
+                            <th class="col-free">{{ __('pricing.free_tier') }}</th>
+                            <th class="col-cost">{{ __('pricing.als_cost') }}</th>
+                            <th class="col-cost">{{ __('pricing.google_cost') }}</th>
+                            <th class="col-savings">{{ __('pricing.savings') }}</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($category->items as $item)
-                        <tr data-item-id="{{ $item->id }}">
-                            <td class="td-check"><input type="checkbox" class="item-check" data-item-id="{{ $item->id }}" checked></td>
-                            <td class="td-api">{{ $item->api_name }}</td>
+                        <tr data-item-id="{{ $item->id }}" data-tier-group="{{ $item->tier_group ?? '' }}" data-is-recommended="{{ $item->is_recommended ? '1' : '0' }}" class="{{ !$item->is_recommended ? 'row-disabled' : '' }}">
+                            <td class="td-check"><input type="checkbox" class="item-check" data-item-id="{{ $item->id }}" data-tier-group="{{ $item->tier_group ?? '' }}" data-is-recommended="{{ $item->is_recommended ? '1' : '0' }}" {{ $item->is_recommended ? 'checked' : '' }}></td>
+                            <td class="td-api">
+                                <span class="api-name-cell">{{ $item->api_name_translated ?? $item->api_name }}</span>
+                                @if($item->description_translated ?? $item->description)
+                                <button type="button" class="info-trigger" data-info="{{ e($item->description_translated ?? $item->description) }}" title="{{ __('pricing.what_is_this') }}"><i class="bi bi-question-circle"></i></button>
+                                @endif
+                            </td>
                             <td>
                                 @if($item->tier)
                                 @php
@@ -180,7 +212,7 @@
                         </tr>
                         @endforeach
                         <tr class="subtotal-row" data-category-subtotal="{{ $category->slug }}">
-                            <td colspan="6"><strong>Subtotal</strong></td>
+                            <td colspan="6"><strong>{{ __('pricing.subtotal') }}</strong></td>
                             <td class="td-cost td-cost-als subtotal-als">-</td>
                             <td class="td-cost td-cost-google subtotal-google">-</td>
                             <td class="td-savings subtotal-savings">-</td>
@@ -194,31 +226,31 @@
 
     <!-- KEY INSIGHTS -->
     <section class="content-section insights-section animate-in delay-3">
-        <h4 style="text-align:center;font-weight:700;margin-bottom:24px;">Key Insights</h4>
-        <div class="insights-grid">
+        <h4 style="text-align:center;font-weight:700;margin-bottom:24px;">{{ __('pricing.key_insights') }}</h4>
+        <div class="insights-grid" id="insightsGrid">
             <div class="insight-card">
                 <div class="insight-icon green">
                     <i class="bi bi-arrow-down-circle"></i>
                 </div>
-                <span class="insight-value">~14K</span>
-                <h6>Breakeven Point</h6>
-                <p>At just 14,000 requests/month for Places, GrabMaps is already cheaper than Google Maps</p>
+                <span class="insight-value" id="insightBreakeven">~14K</span>
+                <h6>{{ __('pricing.breakeven_point') }}</h6>
+                <p id="insightBreakevenDesc">{{ __('pricing.breakeven_desc', ['count' => '14,000']) }}</p>
             </div>
             <div class="insight-card">
                 <div class="insight-icon blue">
                     <i class="bi bi-percent"></i>
                 </div>
-                <span class="insight-value">96%</span>
-                <h6>Map Tiles Savings</h6>
-                <p>GrabMaps Map Tiles cost $0.04/1K vs Google's $1.00/1K - a dramatic difference at scale</p>
+                <span class="insight-value" id="insightMapTiles">96%</span>
+                <h6>{{ __('pricing.map_tiles_savings') }}</h6>
+                <p id="insightMapTilesDesc">{{ __('pricing.map_tiles_desc', ['als' => '0.04', 'google' => '1.00']) }}</p>
             </div>
             <div class="insight-card">
                 <div class="insight-icon amber">
                     <i class="bi bi-star"></i>
                 </div>
-                <span class="insight-value">4+</span>
-                <h6>Exclusive Features</h6>
-                <p>Trackers, Geofences, Isolines, and Snap to Roads available only on ALS-GRAB</p>
+                <span class="insight-value" id="insightExclusive">4+</span>
+                <h6>{{ __('pricing.exclusive_features') }}</h6>
+                <p>{{ __('pricing.exclusive_desc') }}</p>
             </div>
         </div>
     </section>
@@ -227,19 +259,44 @@
     <footer class="pricing-footer">
         <div class="container">
             <p>
-                Sources:
+                {{ __('pricing.sources') }}:
                 <a href="https://aws.amazon.com/location/pricing/" target="_blank">Amazon Location Service Pricing</a>
                 &middot;
                 <a href="https://mapsplatform.google.com/pricing/" target="_blank">Google Maps Platform Pricing</a>
             </p>
             <p style="margin-top:4px;">
-                <a href="{{ route('pricing.admin') }}">Manage Pricing Data</a>
+                <a href="{{ route('pricing.admin') }}">{{ __('pricing.manage_pricing') }}</a>
             </p>
         </div>
     </footer>
 
+    <!-- INFO POPOVER (single instance) -->
+    <div id="infoPopover" class="info-popover" role="dialog" aria-label="{{ __('pricing.api_description') }}">
+        <button type="button" class="info-popover-close" aria-label="{{ __('pricing.close') }}"><i class="bi bi-x-lg"></i></button>
+        <div class="info-popover-content"></div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    @php
+        $pricingT = [
+            'summary_als' => __('pricing.summary_als'),
+            'summary_google' => __('pricing.summary_google'),
+            'summary_comparable' => __('pricing.summary_comparable'),
+            'you_save' => __('pricing.you_save'),
+            'per_month' => __('pricing.per_month'),
+            'als_exclusive' => __('pricing.als_exclusive'),
+            'trackers_geofences' => __('pricing.trackers_geofences'),
+            'als_only_badge' => __('pricing.als_only_badge'),
+            'monthly_requests' => __('pricing.monthly_requests'),
+            'cost_usd' => __('pricing.cost_usd'),
+            'breakeven_desc' => __('pricing.breakeven_desc', ['count' => ':count']),
+            'map_tiles_desc' => __('pricing.map_tiles_desc', ['als' => ':als', 'google' => ':google']),
+        ];
+    @endphp
     <script>
+        // ---- TRANSLATIONS ----
+        const pricingT = @json($pricingT);
+
         // ---- DATA FROM DB ----
         const pricingData = @json($categories);
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
@@ -256,6 +313,27 @@
             return Math.max(0, Math.min(10000000, n)).toLocaleString();
         }
 
+        // ---- DEBOUNCE ----
+        let debounceCalc = null;
+        let debounceLineChart = null;
+
+        function scheduleAutoCalc() {
+            if (debounceCalc) clearTimeout(debounceCalc);
+            debounceCalc = setTimeout(() => {
+                const v = getVolume();
+                if (v > 0) calculateCosts();
+                debounceCalc = null;
+            }, 600);
+        }
+
+        function scheduleLineChartUpdate() {
+            if (debounceLineChart) clearTimeout(debounceLineChart);
+            debounceLineChart = setTimeout(() => {
+                updateLineChartVolume();
+                debounceLineChart = null;
+            }, 150);
+        }
+
         // ---- CLEAR BUTTON ----
         document.getElementById('clearVolume').addEventListener('click', () => {
             volumeInput.value = '';
@@ -265,10 +343,11 @@
 
         volumeSlider.addEventListener('input', () => {
             volumeInput.value = formatNumber(parseInt(volumeSlider.value));
+            scheduleAutoCalc();
+            scheduleLineChartUpdate();
         });
 
         volumeInput.addEventListener('input', () => {
-            // Clear error on typing
             document.querySelector('.calc-input-box').classList.remove('has-error');
             document.getElementById('volumeError').classList.remove('visible');
 
@@ -276,19 +355,19 @@
             const num = parseInt(raw) || 0;
             const clamped = Math.max(0, Math.min(10000000, num));
 
-            // Save cursor position relative to end
             const pos = volumeInput.selectionStart;
             const oldLen = volumeInput.value.length;
 
             volumeInput.value = formatNumber(clamped);
 
-            // Restore cursor position adjusted for new formatting
             const newLen = volumeInput.value.length;
             volumeInput.setSelectionRange(pos + (newLen - oldLen), pos + (newLen - oldLen));
 
             if (clamped <= parseInt(volumeSlider.max)) {
                 volumeSlider.value = clamped;
             }
+            scheduleAutoCalc();
+            scheduleLineChartUpdate();
         });
 
         // ---- CHARTS ----
@@ -312,13 +391,55 @@
             }
         }
 
-        // Individual checkbox → re-render + sync "Select All"
+        // After calculate: sync tier_group checkboxes to match the tier that applies to current volume
+        function syncTierGroupFromResults(data) {
+            const tierGroupActive = new Map(); // tier_group -> item id that has cost
+            data.results.forEach(cat => {
+                cat.items.forEach(item => {
+                    if (item.tier_group && (item.als_cost !== null || item.google_cost !== null)) {
+                        tierGroupActive.set(item.tier_group, item.id);
+                    }
+                });
+            });
+            document.querySelectorAll('.item-check').forEach(cb => {
+                const tg = cb.dataset.tierGroup;
+                if (!tg) return; // Only sync tier_group items; leave recommended (non-tier) as-is
+                const activeId = tierGroupActive.get(tg);
+                const shouldCheck = activeId === parseInt(cb.dataset.itemId);
+                cb.checked = shouldCheck;
+                cb.closest('tr').classList.toggle('row-disabled', !shouldCheck);
+            });
+            // Sync "Select All" state
+            document.querySelectorAll('.pricing-card').forEach(card => {
+                const allBoxes = card.querySelectorAll('.item-check');
+                const checkAll = card.querySelector('.check-all');
+                const allChecked = [...allBoxes].every(b => b.checked);
+                const someChecked = [...allBoxes].some(b => b.checked);
+                checkAll.checked = allChecked;
+                checkAll.indeterminate = !allChecked && someChecked;
+            });
+        }
+
+        // Mutual exclusivity: when checking a tier_group item, uncheck others in same group
+        function syncTierGroupExclusivity(checkedCb) {
+            const tg = checkedCb.dataset.tierGroup;
+            if (!tg) return;
+            const card = checkedCb.closest('.pricing-card');
+            card.querySelectorAll(`.item-check[data-tier-group="${tg}"]`).forEach(b => {
+                if (b !== checkedCb) {
+                    b.checked = false;
+                    b.closest('tr').classList.add('row-disabled');
+                }
+            });
+        }
+
+        // Individual checkbox → re-render + sync "Select All" + tier_group exclusivity
         document.querySelectorAll('.item-check').forEach(cb => {
             cb.addEventListener('change', () => {
                 const row = cb.closest('tr');
                 row.classList.toggle('row-disabled', !cb.checked);
+                if (cb.checked) syncTierGroupExclusivity(cb);
 
-                // Sync "Select All" for this category
                 const card = cb.closest('.pricing-card');
                 const allBoxes = card.querySelectorAll('.item-check');
                 const checkAll = card.querySelector('.check-all');
@@ -331,13 +452,26 @@
             });
         });
 
-        // "Select All" checkbox → toggle all in category
+        // "Select All" checkbox → toggle all in category (for tier_group: only first per group)
         document.querySelectorAll('.check-all').forEach(cb => {
             cb.addEventListener('change', () => {
                 const card = cb.closest('.pricing-card');
+                const seenTierGroups = new Set();
                 card.querySelectorAll('.item-check').forEach(box => {
-                    box.checked = cb.checked;
-                    box.closest('tr').classList.toggle('row-disabled', !cb.checked);
+                    const tg = box.dataset.tierGroup;
+                    if (tg) {
+                        if (cb.checked && !seenTierGroups.has(tg)) {
+                            seenTierGroups.add(tg);
+                            box.checked = true;
+                            box.closest('tr').classList.remove('row-disabled');
+                        } else {
+                            box.checked = false;
+                            box.closest('tr').classList.add('row-disabled');
+                        }
+                    } else {
+                        box.checked = cb.checked;
+                        box.closest('tr').classList.toggle('row-disabled', !cb.checked);
+                    }
                 });
                 reRender();
             });
@@ -373,8 +507,10 @@
 
                 const data = await response.json();
                 lastCalcData = data;
+                syncTierGroupFromResults(data);
                 renderResults(data);
                 renderBarChart(data);
+                updateLineChartVolume();
             } catch (err) {
                 console.error('Calculate error:', err);
             }
@@ -382,12 +518,19 @@
 
         // Format number as USD currency
         function formatUSD(value) {
-            return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            return value.toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
         }
 
         function renderResults(data) {
             // --- Calculate totals (separate comparable vs exclusive) ---
-            let comparableAls = 0, comparableGoogle = 0, exclusiveAls = 0;
+            let comparableAls = 0,
+                comparableGoogle = 0,
+                exclusiveAls = 0;
             const checkedIds = getCheckedItemIds();
 
             data.results.forEach(cat => {
@@ -409,31 +552,33 @@
             const summaryContainer = document.getElementById('calculatorSummary');
             summaryContainer.innerHTML = `<div class="result-summary">
                 <div class="summary-card summary-als">
-                    <div class="summary-label">ALS-GRAB</div>
+                    <div class="summary-label">${pricingT.summary_als}</div>
                     <div class="summary-value">${formatUSD(comparableAls)}</div>
-                    <div class="summary-sub">comparable APIs</div>
+                    <div class="summary-sub">${pricingT.summary_comparable}</div>
                 </div>
                 <div class="summary-card summary-google">
-                    <div class="summary-label">Google Maps</div>
+                    <div class="summary-label">${pricingT.summary_google}</div>
                     <div class="summary-value">${formatUSD(comparableGoogle)}</div>
-                    <div class="summary-sub">comparable APIs</div>
+                    <div class="summary-sub">${pricingT.summary_comparable}</div>
                 </div>
                 <div class="summary-card summary-savings">
-                    <div class="summary-label">You Save</div>
+                    <div class="summary-label">${pricingT.you_save}</div>
                     <div class="summary-value">${savings}%</div>
-                    <div class="summary-sub">${formatUSD(savedAmount)}/month</div>
+                    <div class="summary-sub">${formatUSD(savedAmount)}${pricingT.per_month}</div>
                 </div>
                 <div class="summary-card summary-exclusive">
-                    <div class="summary-label">ALS Exclusive</div>
+                    <div class="summary-label">${pricingT.als_exclusive}</div>
                     <div class="summary-value">${formatUSD(exclusiveAls)}</div>
-                    <div class="summary-sub">Trackers, Geofences, etc.</div>
+                    <div class="summary-sub">${pricingT.trackers_geofences}</div>
                 </div>
             </div>`;
 
             // --- Update table cells per item ---
             data.results.forEach(cat => {
-                let catComparableAls = 0, catComparableGoogle = 0;
-                let catAlsAll = 0, catGoogleAll = 0;
+                let catComparableAls = 0,
+                    catComparableGoogle = 0;
+                let catAlsAll = 0,
+                    catGoogleAll = 0;
 
                 cat.items.forEach(item => {
                     const row = document.querySelector(`tr[data-item-id="${item.id}"]`);
@@ -449,7 +594,7 @@
                         row.querySelector('.td-cost-google').textContent = googleCostStr;
 
                         if (item.als_only) {
-                            row.querySelector('.td-savings').innerHTML = '<span class="als-only-badge">ALS Only</span>';
+                            row.querySelector('.td-savings').innerHTML = '<span class="als-only-badge">' + pricingT.als_only_badge + '</span>';
                         } else if (item.savings_percent !== null && item.savings_percent > 0) {
                             row.querySelector('.td-savings').innerHTML = `<span class="savings-badge"><i class="bi bi-check-circle-fill"></i> ${item.savings_percent}%</span>`;
                         } else {
@@ -510,7 +655,7 @@
                 data: {
                     labels,
                     datasets: [{
-                            label: 'ALS-GRAB',
+                            label: pricingT.summary_als,
                             data: alsData,
                             backgroundColor: 'rgba(0, 177, 79, 0.8)',
                             borderColor: '#00B14F',
@@ -518,7 +663,7 @@
                             borderRadius: 6,
                         },
                         {
-                            label: 'Google Maps',
+                            label: pricingT.summary_google,
                             data: googleData,
                             backgroundColor: 'rgba(66, 133, 244, 0.8)',
                             borderColor: '#4285F4',
@@ -529,6 +674,10 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: { top: 8, right: 8, bottom: 0, left: 8 }
+                    },
                     plugins: {
                         legend: {
                             position: 'top'
@@ -552,15 +701,18 @@
         }
 
         // ---- LINE CHART ----
+        let activeLineChartItem = null;
+        let comparableLineItems = [];
+
         function buildLineChartControls() {
             const container = document.getElementById('lineChartControls');
-            const comparableItems = [];
+            comparableLineItems = [];
 
             pricingData.forEach(cat => {
                 cat.items.forEach(item => {
                     if (item.als_price !== null && item.google_price !== null) {
-                        const label = item.api_name + (item.tier ? ` (${item.tier})` : '');
-                        comparableItems.push({
+                        const label = (item.api_name_translated || item.api_name) + (item.tier ? ` (${item.tier})` : '');
+                        comparableLineItems.push({
                             label,
                             alsRate: parseFloat(item.als_price),
                             googleRate: parseFloat(item.google_price),
@@ -570,9 +722,9 @@
                 });
             });
 
-            if (comparableItems.length === 0) return;
+            if (comparableLineItems.length === 0) return;
 
-            comparableItems.forEach((item, idx) => {
+            comparableLineItems.forEach((item, idx) => {
                 const btn = document.createElement('button');
                 btn.className = 'btn-chip' + (idx === 0 ? ' active' : '');
                 btn.textContent = item.label.length > 25 ? item.label.substring(0, 22) + '...' : item.label;
@@ -580,13 +732,18 @@
                 btn.onclick = () => {
                     container.querySelectorAll('.btn-chip').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
+                    activeLineChartItem = item;
                     renderLineChart(item);
                 };
                 container.appendChild(btn);
             });
 
-            // Render first item by default
-            renderLineChart(comparableItems[0]);
+            activeLineChartItem = comparableLineItems[0];
+            renderLineChart(activeLineChartItem);
+        }
+
+        function updateLineChartVolume() {
+            if (activeLineChartItem) renderLineChart(activeLineChartItem);
         }
 
         function renderLineChart(item) {
@@ -614,7 +771,7 @@
                 data: {
                     labels: volumes.map(v => v >= 1000 ? (v / 1000) + 'K' : v),
                     datasets: [{
-                            label: 'ALS-GRAB',
+                            label: pricingT.summary_als,
                             data: alsLine,
                             borderColor: '#00B14F',
                             backgroundColor: 'rgba(0,177,79,0.08)',
@@ -624,7 +781,7 @@
                             pointHoverRadius: 5,
                         },
                         {
-                            label: 'Google Maps',
+                            label: pricingT.summary_google,
                             data: googleLine,
                             borderColor: '#4285F4',
                             backgroundColor: 'rgba(66,133,244,0.08)',
@@ -637,6 +794,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     interaction: {
                         intersect: false,
                         mode: 'index'
@@ -655,14 +813,14 @@
                         x: {
                             title: {
                                 display: true,
-                                text: 'Monthly Requests'
+                                text: pricingT.monthly_requests
                             }
                         },
                         y: {
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Cost (USD)'
+                                text: pricingT.cost_usd
                             },
                             ticks: {
                                 callback: v => '$' + v
@@ -673,8 +831,126 @@
             });
         }
 
-        // ---- INIT ----
+        // ---- KEY INSIGHTS (dynamic from pricingData) ----
+        function renderKeyInsights() {
+            let breakeven = null;
+            let mapTilesItem = null;
+            let exclusiveCount = 0;
+
+            pricingData.forEach(cat => {
+                cat.items.forEach(item => {
+                    if (item.als_only) exclusiveCount++;
+                    if (item.api_name === 'Map Tiles' && item.als_price != null && item.google_price != null) {
+                        mapTilesItem = item;
+                    }
+                    if (breakeven == null && item.als_price != null && item.google_price != null && (item.google_free_threshold || 0) > 0) {
+                        const als = parseFloat(item.als_price);
+                        const google = parseFloat(item.google_price);
+                        const free = item.google_free_threshold || 0;
+                        if (als < google) {
+                            const v = (google * free) / (google - als);
+                            breakeven = Math.round(v);
+                        }
+                    }
+                });
+            });
+
+            const breakevenEl = document.getElementById('insightBreakeven');
+            const breakevenDescEl = document.getElementById('insightBreakevenDesc');
+            if (breakeven != null && breakevenEl) {
+                breakevenEl.textContent = breakeven >= 1000 ? '~' + (breakeven / 1000) + 'K' : '~' + breakeven;
+                breakevenDescEl.textContent = pricingT.breakeven_desc.replace(':count', breakeven.toLocaleString());
+            }
+
+            const mapTilesEl = document.getElementById('insightMapTiles');
+            const mapTilesDescEl = document.getElementById('insightMapTilesDesc');
+            if (mapTilesItem && mapTilesEl) {
+                const als = parseFloat(mapTilesItem.als_price);
+                const google = parseFloat(mapTilesItem.google_price);
+                const pct = google > 0 ? Math.round((1 - als / google) * 100) : 0;
+                mapTilesEl.textContent = pct + '%';
+                mapTilesDescEl.textContent = pricingT.map_tiles_desc.replace(':als', als.toFixed(2)).replace(':google', google.toFixed(2));
+            }
+
+            const exclusiveEl = document.getElementById('insightExclusive');
+            if (exclusiveEl) exclusiveEl.textContent = exclusiveCount > 0 ? exclusiveCount + '+' : '4+';
+        }
+
+        // ---- INFO POPOVER ----
+        (function initInfoPopover() {
+            const popover = document.getElementById('infoPopover');
+            const content = popover.querySelector('.info-popover-content');
+            let hideTimeout = null;
+
+            function show(trigger, text) {
+                if (hideTimeout) clearTimeout(hideTimeout);
+                content.textContent = text;
+                popover.style.top = '-9999px';
+                popover.style.left = '0';
+                popover.classList.add('visible');
+
+                requestAnimationFrame(() => {
+                    const rect = trigger.getBoundingClientRect();
+                    const popRect = popover.getBoundingClientRect();
+                    let top = rect.top - popRect.height - 10;
+                    let left = rect.left + (rect.width / 2) - (popRect.width / 2);
+
+                    if (top < 10) {
+                        top = rect.bottom + 10;
+                        popover.classList.add('above');
+                    } else {
+                        popover.classList.remove('above');
+                    }
+                    if (left < 10) left = 10;
+                    if (left + popRect.width > window.innerWidth - 10) left = window.innerWidth - popRect.width - 10;
+
+                    popover.style.top = top + 'px';
+                    popover.style.left = left + 'px';
+                });
+            }
+
+            function hide() {
+                hideTimeout = setTimeout(() => popover.classList.remove('visible'), 50);
+            }
+
+            document.querySelectorAll('.info-trigger').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const text = btn.dataset.info;
+                    if (!text) return;
+                    if (popover.classList.contains('visible') && content.textContent === text) {
+                        popover.classList.remove('visible');
+                        return;
+                    }
+                    show(btn, text);
+                });
+            });
+
+            const closeBtn = popover.querySelector('.info-popover-close');
+            if (closeBtn) closeBtn.addEventListener('click', () => popover.classList.remove('visible'));
+
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('.info-trigger') || e.target.closest('#infoPopover')) return;
+                hide();
+            });
+        })();
+
+        // Sync "Select All" state based on current item checkboxes
+        function syncCheckAllState() {
+            document.querySelectorAll('.pricing-card').forEach(card => {
+                const allBoxes = card.querySelectorAll('.item-check');
+                const checkAll = card.querySelector('.check-all');
+                const allChecked = [...allBoxes].every(b => b.checked);
+                const someChecked = [...allBoxes].some(b => b.checked);
+                checkAll.checked = allChecked;
+                checkAll.indeterminate = !allChecked && someChecked;
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            renderKeyInsights();
+            syncCheckAllState();
             buildLineChartControls();
             calculateCosts();
         });

@@ -19,13 +19,6 @@ Route::get('/doc-web', function () {
     return view('documents.web');
 });
 
-Route::get('/', function () {
-    return view('home.index');
-})->name('pageHome');
-Route::get('/tester-api', function () {
-    return view('old.route-tester');
-})->name('pageRouteTester');
-
 Route::get('/address', function () {
     return view('address');
 })->name('pageAddress');
@@ -87,3 +80,9 @@ Route::get('/pricing/admin', [PricingController::class, 'adminIndex'])->name('pr
 Route::post('/pricing/admin/items', [PricingController::class, 'store'])->name('pricing.store');
 Route::put('/pricing/admin/items/{item}', [PricingController::class, 'update'])->name('pricing.update');
 Route::delete('/pricing/admin/items/{item}', [PricingController::class, 'destroy'])->name('pricing.destroy');
+Route::get('/', function () {
+    return view('home.index');
+})->name('pageHome');
+Route::get('/tester-api', function () {
+    return view('testing.index');
+})->name('pageRouteTester');

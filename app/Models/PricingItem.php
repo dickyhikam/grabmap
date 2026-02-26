@@ -11,11 +11,16 @@ class PricingItem extends Model
         'pricing_category_id',
         'api_name',
         'tier',
+        'tier_group',
+        'tier_min',
+        'tier_max',
         'als_price',
         'google_price',
         'google_free_threshold',
         'als_only',
+        'is_recommended',
         'notes',
+        'description',
         'sort_order',
     ];
 
@@ -25,6 +30,7 @@ class PricingItem extends Model
             'als_price' => 'decimal:4',
             'google_price' => 'decimal:4',
             'als_only' => 'boolean',
+            'is_recommended' => 'boolean',
         ];
     }
 
