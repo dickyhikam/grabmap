@@ -7,6 +7,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Pricing Admin - GrabMaps</title>
 
+    <link rel="shortcut icon" href="{{ asset('logo2.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('logo2.png') }}" type="image/png" sizes="32x32">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +18,9 @@
     <link rel="stylesheet" href="/css/pricing.css">
 
     <style>
-        body { background: var(--bg-subtle); }
+        body {
+            background: var(--bg-subtle);
+        }
     </style>
 </head>
 
@@ -31,9 +36,9 @@
 
     <div class="content">
         @if(session('success'))
-            <div class="flash-message flash-success">
-                <i class="bi bi-check-circle-fill"></i> {{ session('success') }}
-            </div>
+        <div class="flash-message flash-success">
+            <i class="bi bi-check-circle-fill"></i> {{ session('success') }}
+        </div>
         @endif
 
         @foreach($categories as $category)
@@ -78,7 +83,7 @@
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                     <form action="{{ route('pricing.destroy', $item) }}" method="POST"
-                                          onsubmit="return confirm('Delete this item?');" style="display:inline;">
+                                        onsubmit="return confirm('Delete this item?');" style="display:inline;">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn-sm-action btn-delete">
@@ -178,7 +183,7 @@
                                 <i class="bi bi-plus"></i> Add Item
                             </button>
                             <button type="button" class="btn-sm-action btn-cancel" style="padding:8px 20px;"
-                                    onclick="toggleAddForm('add-form-{{ $category->slug }}')">
+                                onclick="toggleAddForm('add-form-{{ $category->slug }}')">
                                 Cancel
                             </button>
                         </div>

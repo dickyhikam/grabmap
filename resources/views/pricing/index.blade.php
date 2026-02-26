@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="shortcut icon" href="{{ asset('logo2.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('logo2.png') }}" type="image/png" sizes="32x32">
     <title>{{ __('pricing.title') }} - GrabMaps vs Google Maps</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
