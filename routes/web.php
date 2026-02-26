@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\MapController;
+use App\Http\Controllers\PricingController;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
@@ -19,11 +20,10 @@ Route::get('/doc-web', function () {
 });
 
 Route::get('/', function () {
-    return view('index');
+    return view('home.index');
 })->name('pageHome');
-
-Route::get('/route-tester', function () {
-    return view('route-tester');
+Route::get('/tester-api', function () {
+    return view('old.route-tester');
 })->name('pageRouteTester');
 
 Route::get('/address', function () {
@@ -77,3 +77,13 @@ Route::get('/map-config', function () {
         'mapName' => env('AWS_MAP_NAME')
     ]);
 });
+
+// Pricing Comparison
+Route::get('/pricing', [PricingController::class, 'index'])->name('pricing');
+Route::post('/api/pricing/calculate', [PricingController::class, 'calculate']);
+
+// Pricing Admin
+Route::get('/pricing/admin', [PricingController::class, 'adminIndex'])->name('pricing.admin');
+Route::post('/pricing/admin/items', [PricingController::class, 'store'])->name('pricing.store');
+Route::put('/pricing/admin/items/{item}', [PricingController::class, 'update'])->name('pricing.update');
+Route::delete('/pricing/admin/items/{item}', [PricingController::class, 'destroy'])->name('pricing.destroy');
