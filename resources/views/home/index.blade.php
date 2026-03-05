@@ -238,16 +238,97 @@
             box-shadow: 0 2px 8px rgba(0, 177, 79, 0.15);
         }
 
-        .btn-header-link.btn-header-link--pricing:hover {
-            color: #f59e0b;
-            background: rgba(245, 158, 11, 0.1);
-            border-color: rgba(245, 158, 11, 0.2);
+        /* More Menu Dropdown */
+        .more-menu-wrapper {
+            position: relative;
         }
 
-        .btn-header-link.btn-header-link--tester:hover {
-            color: #6366f1;
+        .more-menu-dropdown {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            min-width: 220px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 14px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            padding: 6px;
+            display: none;
+            z-index: 1100;
+            animation: dropdownIn 0.2s var(--transition-bounce);
+        }
+
+        .more-menu-dropdown.show {
+            display: block;
+        }
+
+        .more-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 14px;
+            border-radius: 10px;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all var(--transition-fast);
+            cursor: pointer;
+        }
+
+        .more-menu-item:hover {
+            background: var(--grab-green-light);
+            color: var(--grab-green);
+        }
+
+        .more-menu-item .menu-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+            transition: all var(--transition-fast);
+        }
+
+        .more-menu-item .menu-icon.icon-pricing {
+            background: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+        }
+
+        .more-menu-item .menu-icon.icon-tester {
             background: rgba(99, 102, 241, 0.1);
-            border-color: rgba(99, 102, 241, 0.2);
+            color: #6366f1;
+        }
+
+        .more-menu-item .menu-icon.icon-address {
+            background: rgba(0, 177, 79, 0.1);
+            color: var(--grab-green);
+        }
+
+        .more-menu-item:hover .menu-icon {
+            transform: scale(1.05);
+        }
+
+        .more-menu-item .menu-label {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .more-menu-item .menu-label small {
+            font-size: 0.72rem;
+            font-weight: 400;
+            color: var(--text-muted);
+            transition: color var(--transition-fast);
+        }
+
+        .more-menu-item:hover .menu-label small {
+            color: rgba(0, 177, 79, 0.7);
         }
 
         /* Suggestions Dropdown */
@@ -963,6 +1044,11 @@
                 width: 40px;
                 height: 40px;
             }
+
+            .more-menu-dropdown {
+                min-width: 200px;
+                right: 0;
+            }
         }
     </style>
 </head>
@@ -991,12 +1077,25 @@
             <button class="btn-search-main" type="button" onclick="handleManualSearch()" title="Search">
                 <i class="bi bi-search"></i>
             </button>
-            <a href="{{ route('pricing') }}" class="btn-header-link btn-header-link--pricing" title="Pricing Comparison">
-                <i class="bi bi-tag-fill"></i>
-            </a>
-            <a href="{{ route('pageRouteTester') }}" class="btn-header-link btn-header-link--tester" title="Tester API">
-                <i class="bi bi-code-slash"></i>
-            </a>
+            <div class="more-menu-wrapper">
+                <button class="btn-header-link" type="button" onclick="toggleMoreMenu()" title="More Features" id="moreMenuBtn">
+                    <i class="bi bi-three-dots"></i>
+                </button>
+                <div class="more-menu-dropdown" id="moreMenuDropdown">
+                    <a href="{{ route('pricing') }}" class="more-menu-item">
+                        <div class="menu-icon icon-pricing"><i class="bi bi-tag-fill"></i></div>
+                        <div class="menu-label">Pricing Dashboard<small>Compare route pricing</small></div>
+                    </a>
+                    <a href="{{ route('pageRouteTester') }}" class="more-menu-item">
+                        <div class="menu-icon icon-tester"><i class="bi bi-code-slash"></i></div>
+                        <div class="menu-label">Tester API<small>Test API endpoints</small></div>
+                    </a>
+                    <a href="{{ route('pageAddress') }}" class="more-menu-item">
+                        <div class="menu-icon icon-address"><i class="bi bi-patch-check-fill"></i></div>
+                        <div class="menu-label">Address Verification<small>Verify & geocode addresses</small></div>
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2246,6 +2345,20 @@
                 }
             });
         }
+
+        // --- MORE MENU ---
+        function toggleMoreMenu() {
+            const dropdown = document.getElementById('moreMenuDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const wrapper = document.querySelector('.more-menu-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                document.getElementById('moreMenuDropdown').classList.remove('show');
+            }
+        });
 
         // --- MAIN BOOTSTRAP ---
         document.addEventListener('DOMContentLoaded', () => {

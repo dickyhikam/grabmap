@@ -20,7 +20,7 @@ Route::get('/doc-web', function () {
 });
 
 Route::get('/address', function () {
-    return view('address');
+    return view('old.address');
 })->name('pageAddress');
 
 Route::get('/scrap-test', function () {
