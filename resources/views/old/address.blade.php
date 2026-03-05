@@ -540,17 +540,29 @@
             color: var(--text-secondary);
         }
 
+        .grid-actions-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
         .grid-info {
             font-size: 0.72rem;
             color: var(--text-muted);
             display: flex;
             align-items: center;
             gap: 5px;
-            margin-top: 4px;
         }
 
         .grid-info i {
             font-size: 0.7rem;
+        }
+
+        .toggle-pill.small {
+            padding: 4px 10px;
+            font-size: 0.7rem;
+            gap: 5px;
         }
 
         .grid-progress {
@@ -1035,6 +1047,65 @@
                     <span id="labelManyData">Many Data</span>
                 </div>
             </div>
+
+            <!-- Grid Search Options (shown when Many Data is active) -->
+            <div class="grid-search-options" id="gridSearchOptions">
+                <div class="grid-label">Area Grid Search</div>
+                <div class="city-select-wrap">
+                    <select class="city-select" id="citySelect">
+                        <option value="">-- Select City --</option>
+                        <optgroup label="Indonesia">
+                            <option value="jakarta">Jakarta</option>
+                            <option value="surabaya">Surabaya</option>
+                            <option value="bandung">Bandung</option>
+                            <option value="medan">Medan</option>
+                            <option value="semarang">Semarang</option>
+                            <option value="makassar">Makassar</option>
+                            <option value="yogyakarta">Yogyakarta</option>
+                            <option value="denpasar">Denpasar (Bali)</option>
+                            <option value="palembang">Palembang</option>
+                            <option value="tangerang">Tangerang</option>
+                            <option value="bekasi">Bekasi</option>
+                            <option value="depok">Depok</option>
+                            <option value="bogor">Bogor</option>
+                        </optgroup>
+                        <optgroup label="Southeast Asia">
+                            <option value="singapore">Singapore</option>
+                            <option value="kualalumpur">Kuala Lumpur</option>
+                            <option value="bangkok">Bangkok</option>
+                            <option value="hochiminh">Ho Chi Minh City</option>
+                            <option value="manila">Manila</option>
+                            <option value="yangon">Yangon</option>
+                            <option value="phnompenh">Phnom Penh</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="grid-size-row">
+                    <label>Grid:</label>
+                    <div class="grid-size-chips">
+                        <div class="grid-chip" data-grid="2" onclick="selectGridSize(this)">2×2</div>
+                        <div class="grid-chip active" data-grid="3" onclick="selectGridSize(this)">3×3</div>
+                        <div class="grid-chip" data-grid="4" onclick="selectGridSize(this)">4×4</div>
+                        <div class="grid-chip" data-grid="5" onclick="selectGridSize(this)">5×5</div>
+                    </div>
+                </div>
+                <div class="grid-actions-row">
+                    <div class="grid-info">
+                        <i class="bi bi-info-circle"></i>
+                        <span id="gridInfoText">9 cells × 50 max = up to 450 results</span>
+                    </div>
+                    <div class="toggle-pill small" id="toggleGridOverlay" onclick="handleToggleGridOverlay()">
+                        <i class="bi bi-grid-3x3"></i>
+                        <span>Show Grid</span>
+                    </div>
+                </div>
+                <div class="grid-progress" id="gridProgress">
+                    <div class="grid-progress-bar">
+                        <div class="grid-progress-fill" id="gridProgressFill"></div>
+                    </div>
+                    <div class="grid-progress-text" id="gridProgressText">Searching cell 0/9...</div>
+                </div>
+            </div>
         </div>
 
         <!-- Results Panel -->
@@ -1065,6 +1136,34 @@
 
         let map;
         let mapMarkers = [];
+        let selectedGridSize = 3;
+        let gridOverlayVisible = false;
+
+        // ====== CITY BOUNDING BOXES [south, west, north, east] ======
+        const cityBounds = {
+            // Indonesia
+            jakarta:    { bounds: [-6.38, 106.65, -6.08, 106.98], center: [106.845, -6.21] },
+            surabaya:   { bounds: [-7.38, 112.60, -7.20, 112.82], center: [112.75, -7.28] },
+            bandung:    { bounds: [-6.97, 107.52, -6.83, 107.72], center: [107.62, -6.90] },
+            medan:      { bounds: [3.48, 98.58, 3.70, 98.75],     center: [98.67, 3.59] },
+            semarang:   { bounds: [-7.08, 110.30, -6.92, 110.50], center: [110.42, -6.97] },
+            makassar:   { bounds: [-5.22, 119.35, -5.08, 119.52], center: [119.43, -5.14] },
+            yogyakarta: { bounds: [-7.84, 110.32, -7.74, 110.42], center: [110.37, -7.79] },
+            denpasar:   { bounds: [-8.75, 115.15, -8.60, 115.30], center: [115.22, -8.65] },
+            palembang:  { bounds: [-3.07, 104.68, -2.90, 104.82], center: [104.75, -2.98] },
+            tangerang:  { bounds: [-6.30, 106.55, -6.14, 106.72], center: [106.63, -6.20] },
+            bekasi:     { bounds: [-6.32, 106.95, -6.18, 107.08], center: [107.00, -6.24] },
+            depok:      { bounds: [-6.45, 106.73, -6.33, 106.87], center: [106.80, -6.39] },
+            bogor:      { bounds: [-6.67, 106.72, -6.55, 106.85], center: [106.80, -6.60] },
+            // Southeast Asia
+            singapore:   { bounds: [1.22, 103.60, 1.47, 104.05],  center: [103.82, 1.35] },
+            kualalumpur: { bounds: [3.03, 101.60, 3.24, 101.78],  center: [101.69, 3.14] },
+            bangkok:     { bounds: [13.60, 100.35, 13.92, 100.70], center: [100.52, 13.76] },
+            hochiminh:   { bounds: [10.68, 106.55, 10.88, 106.85], center: [106.70, 10.78] },
+            manila:      { bounds: [14.45, 120.90, 14.70, 121.10], center: [121.00, 14.58] },
+            yangon:      { bounds: [16.75, 96.05, 16.95, 96.25],   center: [96.15, 16.85] },
+            phnompenh:   { bounds: [11.50, 104.85, 11.62, 105.00], center: [104.92, 11.56] }
+        };
 
         // ====== OVERRIDE showToast to use Bootstrap Icons ======
         window.showToast = function(message, type = "warning") {
@@ -1122,6 +1221,11 @@
             document.addEventListener('click', function() {
                 document.getElementById('languageDropdown').classList.remove('show');
             });
+
+            // City select change → redraw grid if visible
+            document.getElementById('citySelect').addEventListener('change', function() {
+                if (gridOverlayVisible && mapStyleLoaded) drawGridOverlay();
+            });
         });
 
         function initMap() {
@@ -1154,6 +1258,18 @@
                 if (!mapInitialized) {
                     initMap();
                     mapInitialized = true;
+                    // Wait for map to load, then apply pending markers + grid
+                    map.on('load', function() {
+                        mapStyleLoaded = true;
+                        reapplyMarkers();
+                        if (gridOverlayVisible) drawGridOverlay();
+                    });
+                } else {
+                    // Map already initialized, re-apply markers
+                    setTimeout(function() {
+                        reapplyMarkers();
+                        if (gridOverlayVisible) drawGridOverlay();
+                    }, 300);
                 }
                 setTimeout(function() {
                     if (map) map.resize();
@@ -1170,16 +1286,352 @@
             pill.classList.toggle('active');
             var isActive = pill.classList.contains('active');
 
+            // Show/hide grid search options
+            var gridPanel = document.getElementById('gridSearchOptions');
             if (isActive) {
+                gridPanel.classList.add('show');
                 if (lastSearchData && lastSearchStatus === 'success') {
                     renderVerificationResult('success', lastSearchData);
                 }
             } else {
+                gridPanel.classList.remove('show');
                 if (lastSelectedData) {
                     renderVerificationResult('success', [lastSelectedData]);
                 } else if (lastSearchData && lastSearchData.length > 0) {
                     renderVerificationResult('success', [lastSearchData[0]]);
                 }
+            }
+        }
+
+        // ====== GRID SEARCH FUNCTIONS ======
+        function selectGridSize(el) {
+            document.querySelectorAll('.grid-chip').forEach(function(c) { c.classList.remove('active'); });
+            el.classList.add('active');
+            selectedGridSize = parseInt(el.getAttribute('data-grid'));
+            updateGridInfo();
+            if (gridOverlayVisible && mapStyleLoaded) drawGridOverlay();
+        }
+
+        function updateGridInfo() {
+            var totalCells = selectedGridSize * selectedGridSize;
+            var maxResults = totalCells * 50;
+            document.getElementById('gridInfoText').textContent = totalCells + ' cells × 50 max = up to ' + maxResults + ' results';
+        }
+
+        function splitBoundsToGrid(bounds, gridSize) {
+            // bounds = [south, west, north, east]
+            var south = bounds[0], west = bounds[1], north = bounds[2], east = bounds[3];
+            var latStep = (north - south) / gridSize;
+            var lonStep = (east - west) / gridSize;
+            var cells = [];
+
+            for (var row = 0; row < gridSize; row++) {
+                for (var col = 0; col < gridSize; col++) {
+                    var cellSouth = south + row * latStep;
+                    var cellWest = west + col * lonStep;
+                    var cellNorth = cellSouth + latStep;
+                    var cellEast = cellWest + lonStep;
+                    // BiasPosition = center of cell [lon, lat]
+                    var centerLon = (cellWest + cellEast) / 2;
+                    var centerLat = (cellSouth + cellNorth) / 2;
+                    cells.push({
+                        biasPosition: [centerLon, centerLat],
+                        label: 'R' + (row + 1) + 'C' + (col + 1)
+                    });
+                }
+            }
+            return cells;
+        }
+
+        function deduplicateResults(results) {
+            var seen = {};
+            var unique = [];
+            results.forEach(function(r) {
+                var pt = r.Place && r.Place.Geometry && r.Place.Geometry.Point;
+                if (!pt) return;
+                // Round to ~11m precision to catch near-duplicates
+                var key = Number(pt[0]).toFixed(4) + ',' + Number(pt[1]).toFixed(4);
+                if (!seen[key]) {
+                    seen[key] = true;
+                    unique.push(r);
+                }
+            });
+            return unique;
+        }
+
+        async function searchGeocodeWithBias(search, biasPosition, maxResults) {
+            var url = 'https://places.geo.' + region + '.amazonaws.com/places/v0/indexes/' + mapPlace + '/search/text?key=' + apiKey;
+            try {
+                var response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        Text: search,
+                        MaxResults: maxResults,
+                        BiasPosition: biasPosition
+                    })
+                });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                var data = await response.json();
+                return data.Results || [];
+            } catch (err) {
+                console.error('Grid cell search error:', err);
+                return [];
+            }
+        }
+
+        async function performGridSearch(query) {
+            var cityKey = document.getElementById('citySelect').value;
+            if (!cityKey) {
+                showToast('Please select a city for grid search', 'warning');
+                return null;
+            }
+
+            var city = cityBounds[cityKey];
+            if (!city) return null;
+
+            var cells = splitBoundsToGrid(city.bounds, selectedGridSize);
+            var totalCells = cells.length;
+            var allResults = [];
+
+            // Show progress
+            var progressEl = document.getElementById('gridProgress');
+            var fillEl = document.getElementById('gridProgressFill');
+            var textEl = document.getElementById('gridProgressText');
+            progressEl.classList.add('show');
+            fillEl.style.width = '0%';
+            textEl.textContent = 'Searching cell 0/' + totalCells + '...';
+
+            // Run in batches of 3 to avoid rate limiting
+            var batchSize = 3;
+            for (var i = 0; i < totalCells; i += batchSize) {
+                var batch = cells.slice(i, i + batchSize);
+                var promises = batch.map(function(cell) {
+                    return searchGeocodeWithBias(query.toLowerCase(), cell.biasPosition, 50);
+                });
+                var batchResults = await Promise.all(promises);
+                batchResults.forEach(function(results) {
+                    allResults = allResults.concat(results);
+                });
+
+                var done = Math.min(i + batchSize, totalCells);
+                var pct = Math.round((done / totalCells) * 100);
+                fillEl.style.width = pct + '%';
+                textEl.textContent = 'Searching cell ' + done + '/' + totalCells + '... (' + allResults.length + ' found)';
+            }
+
+            // Deduplicate
+            var unique = deduplicateResults(allResults);
+            textEl.textContent = 'Done! ' + unique.length + ' unique results (from ' + allResults.length + ' total)';
+
+            // Hide progress after 2s
+            setTimeout(function() { progressEl.classList.remove('show'); }, 2000);
+
+            return unique;
+        }
+
+        // ====== GRID OVERLAY ON MAP ======
+        let mapStyleLoaded = false;
+
+        function waitForMapReady(callback) {
+            if (!map) return;
+            if (mapStyleLoaded) {
+                callback();
+            } else {
+                map.on('load', function() {
+                    mapStyleLoaded = true;
+                    callback();
+                });
+            }
+        }
+
+        function handleToggleGridOverlay() {
+            var pill = document.getElementById('toggleGridOverlay');
+            pill.classList.toggle('active');
+            gridOverlayVisible = pill.classList.contains('active');
+
+            if (gridOverlayVisible) {
+                var cityKey = document.getElementById('citySelect').value;
+                if (!cityKey || !cityBounds[cityKey]) {
+                    showToast('Select a city first to show grid', 'warning');
+                    pill.classList.remove('active');
+                    gridOverlayVisible = false;
+                    return;
+                }
+
+                // Auto-enable map if not active
+                if (!document.getElementById('toggleMap').classList.contains('active')) {
+                    handleToggleMap();
+                }
+
+                // Wait for map style to load before drawing
+                waitForMapReady(function() {
+                    drawGridOverlay();
+                });
+            } else {
+                removeGridOverlay();
+            }
+        }
+
+        function buildGridGeoJSON(bounds, gridSize) {
+            var south = bounds[0], west = bounds[1], north = bounds[2], east = bounds[3];
+            var latStep = (north - south) / gridSize;
+            var lonStep = (east - west) / gridSize;
+            var features = [];
+
+            // Outer boundary
+            features.push({
+                type: 'Feature',
+                properties: { type: 'boundary' },
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [[[west, south], [east, south], [east, north], [west, north], [west, south]]]
+                }
+            });
+
+            // Horizontal lines
+            for (var r = 1; r < gridSize; r++) {
+                var lat = south + r * latStep;
+                features.push({
+                    type: 'Feature',
+                    properties: { type: 'gridline' },
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [[west, lat], [east, lat]]
+                    }
+                });
+            }
+
+            // Vertical lines
+            for (var c = 1; c < gridSize; c++) {
+                var lon = west + c * lonStep;
+                features.push({
+                    type: 'Feature',
+                    properties: { type: 'gridline' },
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [[lon, south], [lon, north]]
+                    }
+                });
+            }
+
+            // Cell center points with labels
+            for (var row = 0; row < gridSize; row++) {
+                for (var col = 0; col < gridSize; col++) {
+                    var centerLon = west + (col + 0.5) * lonStep;
+                    var centerLat = south + (row + 0.5) * latStep;
+                    features.push({
+                        type: 'Feature',
+                        properties: {
+                            type: 'cell-center',
+                            label: (row * gridSize + col + 1).toString()
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [centerLon, centerLat]
+                        }
+                    });
+                }
+            }
+
+            return { type: 'FeatureCollection', features: features };
+        }
+
+        function drawGridOverlay() {
+            if (!map || !mapInitialized || !mapStyleLoaded) return;
+
+            var cityKey = document.getElementById('citySelect').value;
+            if (!cityKey || !cityBounds[cityKey]) return;
+
+            removeGridOverlay();
+
+            var city = cityBounds[cityKey];
+            var geojson = buildGridGeoJSON(city.bounds, selectedGridSize);
+
+            try {
+                map.addSource('grid-overlay', {
+                    type: 'geojson',
+                    data: geojson
+                });
+
+                // Grid boundary fill (transparent green)
+                map.addLayer({
+                    id: 'grid-boundary-fill',
+                    type: 'fill',
+                    source: 'grid-overlay',
+                    filter: ['==', ['get', 'type'], 'boundary'],
+                    paint: {
+                        'fill-color': '#00B14F',
+                        'fill-opacity': 0.05
+                    }
+                });
+
+                // Grid boundary outline
+                map.addLayer({
+                    id: 'grid-boundary-line',
+                    type: 'line',
+                    source: 'grid-overlay',
+                    filter: ['==', ['get', 'type'], 'boundary'],
+                    paint: {
+                        'line-color': '#00B14F',
+                        'line-width': 2.5,
+                        'line-dasharray': [4, 2]
+                    }
+                });
+
+                // Grid inner lines
+                map.addLayer({
+                    id: 'grid-lines',
+                    type: 'line',
+                    source: 'grid-overlay',
+                    filter: ['==', ['get', 'type'], 'gridline'],
+                    paint: {
+                        'line-color': '#00B14F',
+                        'line-width': 1.2,
+                        'line-opacity': 0.5,
+                        'line-dasharray': [3, 3]
+                    }
+                });
+
+                // Cell center dots
+                map.addLayer({
+                    id: 'grid-cell-dots',
+                    type: 'circle',
+                    source: 'grid-overlay',
+                    filter: ['==', ['get', 'type'], 'cell-center'],
+                    paint: {
+                        'circle-radius': 12,
+                        'circle-color': '#00B14F',
+                        'circle-opacity': 0.15,
+                        'circle-stroke-width': 1.5,
+                        'circle-stroke-color': '#00B14F',
+                        'circle-stroke-opacity': 0.5
+                    }
+                });
+
+                // Cell number labels — skip symbol layer to avoid font errors
+                // Numbers shown via circle dots instead
+
+                // Fly to city bounds
+                var b = city.bounds;
+                map.fitBounds([[b[1], b[0]], [b[3], b[2]]], {
+                    padding: 40,
+                    duration: 1000
+                });
+            } catch (err) {
+                console.error('Error drawing grid overlay:', err);
+            }
+        }
+
+        function removeGridOverlay() {
+            if (!map) return;
+            try {
+                ['grid-cell-dots', 'grid-lines', 'grid-boundary-line', 'grid-boundary-fill'].forEach(function(id) {
+                    if (map.getLayer(id)) map.removeLayer(id);
+                });
+                if (map.getSource('grid-overlay')) map.removeSource('grid-overlay');
+            } catch (err) {
+                console.error('Error removing grid overlay:', err);
             }
         }
 
@@ -1203,6 +1655,13 @@
                 map.flyTo({ center: [106.8456, -6.2088], zoom: 12 });
             }
             document.getElementById('toggleManyData').classList.remove('active');
+            document.getElementById('gridSearchOptions').classList.remove('show');
+            document.getElementById('citySelect').value = '';
+            document.getElementById('gridProgress').classList.remove('show');
+            document.getElementById('toggleGridOverlay').classList.remove('active');
+            gridOverlayVisible = false;
+            pendingMarkerData = null;
+            removeGridOverlay();
             // Reset map toggle
             document.getElementById('toggleMap').classList.remove('active');
             document.body.classList.add('no-map');
@@ -1223,11 +1682,20 @@
                 return;
             }
 
-            resultContainer.show().html('<div class="results-loading"><div class="spinner-border" role="status"></div><p>' + (texts.searchingAddress || "Searching...") + '</p></div>');
+            var isManyData = document.getElementById('toggleManyData').classList.contains('active');
+            var cityKey = document.getElementById('citySelect').value;
 
-            var resSearch = await searchGeocode(query.toLowerCase(), 5);
+            // Grid search mode: Many Data ON + city selected
+            if (isManyData && cityKey) {
+                // Auto-enable map for grid search results
+                if (!document.getElementById('toggleMap').classList.contains('active')) {
+                    handleToggleMap();
+                }
 
-            setTimeout(function() {
+                resultContainer.show().html('<div class="results-loading"><div class="spinner-border" role="status"></div><p>' + (texts.searchingAddress || "Searching...") + ' (Grid Mode)</p></div>');
+
+                var resSearch = await performGridSearch(query);
+
                 if (!resSearch || resSearch.length === 0) {
                     lastSearchStatus = 'error';
                     lastSearchData = null;
@@ -1239,7 +1707,27 @@
                     lastSelectedData = resSearch[0];
                     renderVerificationResult("success", resSearch);
                 }
-            }, 1500);
+            }
+            // Normal search
+            else {
+                resultContainer.show().html('<div class="results-loading"><div class="spinner-border" role="status"></div><p>' + (texts.searchingAddress || "Searching...") + '</p></div>');
+
+                var resSearch = await searchGeocode(query.toLowerCase(), isManyData ? 50 : 5);
+
+                setTimeout(function() {
+                    if (!resSearch || resSearch.length === 0) {
+                        lastSearchStatus = 'error';
+                        lastSearchData = null;
+                        lastSelectedData = null;
+                        renderVerificationResult("error", null);
+                    } else {
+                        lastSearchStatus = 'success';
+                        lastSearchData = resSearch;
+                        lastSelectedData = resSearch[0];
+                        renderVerificationResult("success", resSearch);
+                    }
+                }, 1500);
+            }
         }
 
         // ====== RENDER RESULTS ======
@@ -1263,6 +1751,7 @@
             }
             // MANY DATA ON
             else if (isManyData) {
+                html += '<div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px; font-weight:600;">' + dataArray.length + ' results found</div>';
                 html += '<div class="results-scroll-container">';
                 dataArray.forEach(function(result, index) {
                     var place = result.Place;
@@ -1335,9 +1824,23 @@
         }
 
         // ====== MAP MARKERS ======
-        function updateMapMarkers(dataArray) {
-            if (!map || !mapInitialized) return;
+        let pendingMarkerData = null;
 
+        function reapplyMarkers() {
+            if (!pendingMarkerData || !map || !mapInitialized) return;
+            placeMarkersOnMap(pendingMarkerData);
+        }
+
+        function updateMapMarkers(dataArray) {
+            // Always store data so markers can be applied when map is toggled on
+            pendingMarkerData = dataArray;
+
+            if (!map || !mapInitialized) return;
+            placeMarkersOnMap(dataArray);
+        }
+
+        function placeMarkersOnMap(dataArray) {
+            // Clear existing markers
             if (mapMarkers.length > 0) {
                 mapMarkers.forEach(function(m) { m.remove(); });
                 mapMarkers = [];
