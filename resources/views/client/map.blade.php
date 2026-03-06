@@ -300,21 +300,6 @@
     <div id="map"></div>
     <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
 
-    <script type="application/json" id="pageConfig">
-        {
-            !!json_encode([
-                'features' => [
-                    'search' => (bool) $features['search'],
-                    'route' => (bool) $features['route'],
-                    'reverse_geocode' => (bool) $features['reverse_geocode'],
-                    'route_matrix' => (bool) $features['route_matrix'],
-                ],
-                'searchLang' => $features['search_settings']['language'] ?? 'id',
-                'geocodeLang' => $features['reverse_geocode_settings']['language'] ?? 'id',
-            ]) !!
-        }
-    </script>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.js"></script>
 
@@ -324,11 +309,15 @@
            ========================================= */
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-        // Feature flags — read from JSON block, no Blade inside JS
-        const _cfg = JSON.parse(document.getElementById('pageConfig').textContent);
-        const features = _cfg.features;
-        const searchLang = _cfg.searchLang;
-        const geocodeLang = _cfg.geocodeLang;
+        // Feature flags passed from server
+        const features = {
+            search: "{{ $features['search'] ? 'true' : 'false'}}",
+            route: "{{ $features['route'] ? 'true' : 'false'}}",
+            reverse_geocode: "{{ $features['reverse_geocode'] ? 'true' : 'false'}}",
+            route_matrix: "{{ $features['route_matrix'] ? 'true' : 'false'}}",
+        };
+        const searchLang = "{{ $features[' search_settings '][' language '] ?? ' id ' }}";
+        const geocodeLang = "{{ $features[' reverse_geocode_settings '][' language '] ?? ' id ' }}";
 
         // All API calls go through Laravel proxy — API keys stay server-side
         function proxyPost(url, body) {
