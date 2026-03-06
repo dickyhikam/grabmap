@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>AWS Grab Maps</title>
+    <title>Demo MAP Grab X TJ (AWS)</title>
 
     <link rel="shortcut icon" href="{{ asset('logo2.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('logo2.png') }}" type="image/png" sizes="32x32">
@@ -21,14 +21,11 @@
 
 <body>
 
-    <!-- Kalau mau 100% hidden dari Network tab juga, kita bisa proxy semua tile/sprite/glyph lewat backend. Tapi ada trade-off:
-    Pros: API key benar-benar tidak terlihat di browser
-    Cons: Semua tile request lewat server PHP dulu → lebih lambat, server load naik (setiap scroll/zoom peta = puluhan request tile)
-    Mau saya implementasi full proxy untuk tile/sprite/glyph juga, atau cukup yang sekarang? (API key sudah aman dari view-source dan bot crawler, hanya terlihat kalau user buka DevTools Network tab) -->
-
     <div class="floating-header">
         <div class="logo-container">
-            <img src="logo.png" alt="Grab Logo" class="grab-logo">
+            <img src="{{ asset('logo.png') }}" alt="Grab Logo" class="grab-logo">
+            <span class="logo-x">x</span>
+            <img src="{{ asset('images/logo-tj.png') }}" alt="TJ Logo" class="partner-logo">
         </div>
 
         <div class="search-wrapper">
@@ -43,25 +40,6 @@
             <button class="btn-search-main" type="button" onclick="handleManualSearch()" title="Search">
                 <i class="bi bi-search"></i>
             </button>
-            <div class="more-menu-wrapper">
-                <button class="btn-header-link" type="button" onclick="toggleMoreMenu()" title="More Features" id="moreMenuBtn">
-                    <i class="bi bi-three-dots"></i>
-                </button>
-                <div class="more-menu-dropdown" id="moreMenuDropdown">
-                    <a href="{{ route('pricing') }}" class="more-menu-item">
-                        <div class="menu-icon icon-pricing"><i class="bi bi-tag-fill"></i></div>
-                        <div class="menu-label">Pricing Dashboard<small>Compare route pricing</small></div>
-                    </a>
-                    <a href="{{ route('pageRouteTester') }}" class="more-menu-item">
-                        <div class="menu-icon icon-tester"><i class="bi bi-code-slash"></i></div>
-                        <div class="menu-label">Tester API<small>Test API endpoints</small></div>
-                    </a>
-                    <a href="{{ route('pageAddress') }}" class="more-menu-item">
-                        <div class="menu-icon icon-address"><i class="bi bi-patch-check-fill"></i></div>
-                        <div class="menu-label">Address Verification<small>Verify & geocode addresses</small></div>
-                    </a>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -70,7 +48,8 @@
             <div class="panel-title-row">
                 <div class="panel-title">
                     <h6>Location Manager</h6>
-                    <button class="btn-help-minimal" data-bs-toggle="modal" data-bs-target="#helpModal" title="Guide & Information">
+                    <button class="btn-help-minimal" data-bs-toggle="modal" data-bs-target="#helpModal"
+                        title="Guide & Information">
                         <i class="bi bi-question-circle-fill"></i>
                     </button>
                 </div>
@@ -81,27 +60,32 @@
 
             <div class="mode-switch-container mb-2">
                 <input type="radio" class="btn-check" name="travelMode" id="modeCar" value="Car" checked>
-                <label class="btn-mode-switch flex-grow-1" for="modeCar"><i class="bi bi-car-front-fill me-1"></i> Car</label>
-                <input type="radio" class="btn-check" name="travelMode" id="modeBike" value="Motorcycle">
-                <label class="btn-mode-switch flex-grow-1" for="modeBike"><i class="bi bi-scooter me-1"></i> Motorcycle</label>
+                <label class="btn-mode-switch flex-grow-1" for="modeCar"><i class="bi bi-car-front-fill me-1"></i>
+                    Car</label>
+                <input type="radio" class="btn-check" name="travelMode" id="modeTruck" value="Truck">
+                <label class="btn-mode-switch flex-grow-1" for="modeTruck"><i class="bi bi-truck me-1"></i>
+                    Truck</label>
             </div>
 
             <div class="mode-switch-container mb-3">
-                <input type="radio" class="btn-check" name="optMode" id="optFast" value="fast" checked>
-                <label class="btn-mode-switch flex-grow-1" for="optFast" title="Sort by direct distance (Faster)">
-                    <i class="bi bi-rulers me-1"></i> Straight Line
+                <input type="radio" class="btn-check" name="roadType" id="roadNormal" value="false" checked>
+                <label class="btn-mode-switch flex-grow-1" for="roadNormal" title="Normal Roads">
+                    <i class="bi bi-signpost-split-fill me-1"></i> Normal
                 </label>
-                <input type="radio" class="btn-check" name="optMode" id="optPrecise" value="real">
-                <label class="btn-mode-switch flex-grow-1" for="optPrecise" title="Sort by actual driving route (More Accurate)">
-                    <i class="bi bi-sign-turn-slight-right-fill me-1"></i> Real Road
+                <input type="radio" class="btn-check" name="roadType" id="roadToll" value="true">
+                <label class="btn-mode-switch flex-grow-1" for="roadToll" title="Enable Toll Roads">
+                    <i class="bi bi-cash-coin me-1"></i> Toll
                 </label>
             </div>
 
             <div class="d-flex gap-2 mb-3">
-                <button class="btn btn-action-primary flex-grow-1 d-flex align-items-center justify-content-center py-2" onclick="calculateRoute()" title="Hitung Rute A ke B">
+                <button class="btn btn-action-primary flex-grow-1 d-flex align-items-center justify-content-center py-2"
+                    onclick="calculateRoute()" title="Hitung Rute A ke B">
                     <i class="bi bi-sign-turn-right-fill me-2"></i> A&rarr;B
                 </button>
-                <button class="btn btn-action-secondary flex-grow-1 d-flex align-items-center justify-content-center py-2" onclick="calculateMultiRoute()" title="Hitung Rute Multi-Stop">
+                <button
+                    class="btn btn-action-secondary flex-grow-1 d-flex align-items-center justify-content-center py-2"
+                    onclick="calculateMultiRoute()" title="Hitung Rute Multi-Stop">
                     <i class="bi bi-diagram-3-fill me-2"></i> Multi
                 </button>
             </div>
@@ -122,7 +106,8 @@
                 <div id="listContainer"></div>
 
                 <div id="emptyState" class="text-center mt-4" style="font-size: 0.82rem;">
-                    <div style="width: 48px; height: 48px; border-radius: 14px; background: var(--bg-subtle); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                    <div
+                        style="width: 48px; height: 48px; border-radius: 14px; background: var(--bg-subtle); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px;">
                         <i class="bi bi-pin-map-fill" style="font-size: 1.3rem; color: var(--text-muted);"></i>
                     </div>
                     <p class="mb-1" style="font-weight: 600; color: var(--text-secondary);">No locations yet</p>
@@ -150,10 +135,12 @@
                 </div>
 
                 <div id="routeEmptyState" class="text-center mt-5">
-                    <div style="width: 56px; height: 56px; border-radius: 16px; background: var(--bg-subtle); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                    <div
+                        style="width: 56px; height: 56px; border-radius: 16px; background: var(--bg-subtle); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
                         <i class="bi bi-map" style="font-size: 1.5rem; color: var(--text-muted);"></i>
                     </div>
-                    <p style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">No route yet</p>
+                    <p style="font-size: 0.88rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">
+                        No route yet</p>
                     <p style="font-size: 0.75rem; color: var(--text-muted);">Add locations then press Calculate</p>
                 </div>
 
@@ -167,7 +154,8 @@
             <div class="modal-content modal-content-pro">
                 <div class="modal-header modal-header-pro">
                     <div class="d-flex align-items-center gap-3">
-                        <div style="width: 36px; height: 36px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                        <div
+                            style="width: 36px; height: 36px; background: rgba(255,255,255,0.2); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
                             <i class="bi bi-book-fill fs-5"></i>
                         </div>
                         <div>
@@ -175,30 +163,36 @@
                             <small style="opacity: 0.8; font-size: 0.75rem;">Everything you need to know</small>
                         </div>
                     </div>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
                 </div>
 
                 <div class="modal-body modal-body-pro">
 
-                    <p class="text-uppercase fw-bold small mb-2 ms-1" style="font-size: 0.68rem; color: var(--text-muted); letter-spacing: 1px;">Basic Controls</p>
-                    <div class="bg-white p-3 rounded-3 border mb-4" style="border-color: var(--border-light) !important;">
+                    <p class="text-uppercase fw-bold small mb-2 ms-1"
+                        style="font-size: 0.68rem; color: var(--text-muted); letter-spacing: 1px;">Basic Controls</p>
+                    <div class="bg-white p-3 rounded-3 border mb-4"
+                        style="border-color: var(--border-light) !important;">
                         <div class="row g-3 text-center">
                             <div class="col-4 border-end">
-                                <div style="width: 36px; height: 36px; border-radius: 10px; background: #fef2f2; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px;">
+                                <div
+                                    style="width: 36px; height: 36px; border-radius: 10px; background: #fef2f2; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px;">
                                     <i class="bi bi-geo-alt-fill text-danger"></i>
                                 </div>
                                 <div class="small fw-bold text-dark">Add</div>
                                 <div style="font-size: 0.68rem; color: var(--text-muted);">Click Map / Search</div>
                             </div>
                             <div class="col-4 border-end">
-                                <div style="width: 36px; height: 36px; border-radius: 10px; background: #eff6ff; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px;">
+                                <div
+                                    style="width: 36px; height: 36px; border-radius: 10px; background: #eff6ff; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px;">
                                     <i class="bi bi-arrows-move text-primary"></i>
                                 </div>
                                 <div class="small fw-bold text-dark">Move</div>
                                 <div style="font-size: 0.68rem; color: var(--text-muted);">Drag Marker</div>
                             </div>
                             <div class="col-4">
-                                <div style="width: 36px; height: 36px; border-radius: 10px; background: var(--bg-subtle); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px;">
+                                <div
+                                    style="width: 36px; height: 36px; border-radius: 10px; background: var(--bg-subtle); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 6px;">
                                     <i class="bi bi-x-circle text-secondary"></i>
                                 </div>
                                 <div class="small fw-bold text-dark">Remove</div>
@@ -207,8 +201,11 @@
                         </div>
                     </div>
 
-                    <p class="text-uppercase fw-bold small mb-2 ms-1" style="font-size: 0.68rem; color: var(--text-muted); letter-spacing: 1px;">1. Optimization Methods</p>
-                    <div class="p-3 bg-white rounded-3 border mb-3" style="border-color: var(--border-light) !important;">
+                    <p class="text-uppercase fw-bold small mb-2 ms-1"
+                        style="font-size: 0.68rem; color: var(--text-muted); letter-spacing: 1px;">1. Optimization
+                        Methods</p>
+                    <div class="p-3 bg-white rounded-3 border mb-3"
+                        style="border-color: var(--border-light) !important;">
                         <table class="table table-borderless table-sm small mb-0">
                             <thead class="border-bottom" style="color: var(--text-muted);">
                                 <tr>
@@ -233,16 +230,20 @@
                         <div class="mt-2 pt-2 border-top d-flex align-items-start gap-2">
                             <i class="bi bi-lightbulb-fill text-warning mt-1"></i>
                             <p class="small mb-0" style="font-size: 0.73rem; color: var(--text-secondary);">
-                                <strong>Tip:</strong> Use "Straight Line" to list points quickly, then "Real Road" to finalize.
+                                <strong>Tip:</strong> Use "Straight Line" to list points quickly, then "Real Road" to
+                                finalize.
                             </p>
                         </div>
                     </div>
 
-                    <p class="text-uppercase fw-bold small mb-2 ms-1" style="font-size: 0.68rem; color: var(--text-muted); letter-spacing: 1px;">2. Travel Modes</p>
+                    <p class="text-uppercase fw-bold small mb-2 ms-1"
+                        style="font-size: 0.68rem; color: var(--text-muted); letter-spacing: 1px;">2. Travel Modes</p>
                     <div class="row g-2 mb-4">
                         <div class="col-6">
-                            <div class="p-2 border rounded-3 bg-white d-flex align-items-center gap-2" style="border-color: var(--border-light) !important;">
-                                <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--grab-green-light); display: flex; align-items: center; justify-content: center;">
+                            <div class="p-2 border rounded-3 bg-white d-flex align-items-center gap-2"
+                                style="border-color: var(--border-light) !important;">
+                                <div
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: var(--grab-green-light); display: flex; align-items: center; justify-content: center;">
                                     <i class="bi bi-car-front-fill" style="color: var(--grab-green);"></i>
                                 </div>
                                 <div style="line-height: 1.2;">
@@ -252,8 +253,10 @@
                             </div>
                         </div>
                         <div class="col-6">
-                            <div class="p-2 border rounded-3 bg-white d-flex align-items-center gap-2" style="border-color: var(--border-light) !important;">
-                                <div style="width: 32px; height: 32px; border-radius: 8px; background: var(--grab-green-light); display: flex; align-items: center; justify-content: center;">
+                            <div class="p-2 border rounded-3 bg-white d-flex align-items-center gap-2"
+                                style="border-color: var(--border-light) !important;">
+                                <div
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: var(--grab-green-light); display: flex; align-items: center; justify-content: center;">
                                     <i class="bi bi-scooter" style="color: var(--grab-green);"></i>
                                 </div>
                                 <div style="line-height: 1.2;">
@@ -264,10 +267,13 @@
                         </div>
                     </div>
 
-                    <p class="text-uppercase fw-bold small mb-2 ms-1" style="font-size: 0.68rem; color: var(--text-muted); letter-spacing: 1px;">3. Calculation Actions</p>
+                    <p class="text-uppercase fw-bold small mb-2 ms-1"
+                        style="font-size: 0.68rem; color: var(--text-muted); letter-spacing: 1px;">3. Calculation
+                        Actions</p>
 
                     <div class="info-section py-2 mb-2">
-                        <div class="info-icon-box" style="background: #eff6ff; color: #3b82f6; width: 32px; height: 32px; font-size: 1rem;">
+                        <div class="info-icon-box"
+                            style="background: #eff6ff; color: #3b82f6; width: 32px; height: 32px; font-size: 1rem;">
                             <i class="bi bi-sign-turn-right-fill"></i>
                         </div>
                         <div class="info-content">
@@ -277,12 +283,14 @@
                     </div>
 
                     <div class="info-section py-2 mb-0">
-                        <div class="info-icon-box" style="background: #eff6ff; color: #3b82f6; width: 32px; height: 32px; font-size: 1rem;">
+                        <div class="info-icon-box"
+                            style="background: #eff6ff; color: #3b82f6; width: 32px; height: 32px; font-size: 1rem;">
                             <i class="bi bi-diagram-3-fill"></i>
                         </div>
                         <div class="info-content">
                             <h6 style="font-size: 0.88rem;">Multi-Stop (Optimized)</h6>
-                            <p style="font-size: 0.78rem;">Automatically <b>reorders</b> all stops to find the most efficient path.</p>
+                            <p style="font-size: 0.78rem;">Automatically <b>reorders</b> all stops to find the most
+                                efficient path.</p>
                         </div>
                     </div>
 
@@ -309,22 +317,57 @@
        ========================================= */
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-        // Helper for POST requests to our proxy
+        // ====== KONFIGURASI DASAR (DIISI DARI ENV/LARAVEL) ======
+        const region = "{{ env('AWS_REGION') }}";
+        const mapName = "{{ env('AWS_MAP_NAME') }}";
+        const mapPlace = "{{ env('AWS_MAP_PLACE') }}";
+        const mapRoute = "{{ env('AWS_MAP_ROUTE') }}";
+        const apiKey = "{{ env('AWS_API_KEY') }}";
+
+        // Helper for POST requests directly to AWS
         function proxyPost(url, body) {
-            return fetch(url, {
+            let awsUrl = '';
+            let awsBody = { ...body };
+
+            if (url === '/api/places/reverse') {
+                awsUrl = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${mapPlace}/search/position?key=${apiKey}`;
+                awsBody = { Position: body.Position, MaxResults: 1, Language: 'en' };
+            } else if (url === '/api/places/search') {
+                awsUrl = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${mapPlace}/search/text?key=${apiKey}`;
+                awsBody = { Text: body.Text, MaxResults: 1 };
+            } else if (url === '/api/places/suggestions') {
+                awsUrl = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${mapPlace}/search/suggestions?key=${apiKey}`;
+                awsBody = { Text: body.Text, MaxResults: 5, Language: 'en' };
+            } else if (url === '/api/routes/calculate') {
+                awsUrl = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${mapRoute}/calculate/route?key=${apiKey}`;
+
+                const isToll = document.querySelector('input[name="roadType"]:checked').value === 'true';
+                awsBody = { ...body, AvoidTolls: !isToll };
+            } else if (url === '/api/routes/matrix') {
+                awsUrl = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${mapRoute}/calculate/route-matrix?key=${apiKey}`;
+                const isToll = document.querySelector('input[name="roadType"]:checked').value === 'true';
+                awsBody = { ...body, AvoidTolls: !isToll };
+            }
+
+            return fetch(awsUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(body)
+                body: JSON.stringify(awsBody)
             });
         }
 
-        // Helper for GET requests to our proxy
+        // Helper for GET requests directly to AWS
         function proxyGet(url) {
-            return fetch(url, {
+            let awsUrl = '';
+            if (url.startsWith('/api/places/')) {
+                const placeId = url.split('/')[3];
+                awsUrl = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${mapPlace}/places/${placeId}?key=${apiKey}`;
+            }
+
+            return fetch(awsUrl, {
+                method: 'GET',
                 headers: {
                     'Accept': 'application/json'
                 }
@@ -408,10 +451,11 @@
            3. MAP INITIALIZATION
            ========================================= */
         function initMap() {
+            const mapStyle = `https://maps.geo.${region}.amazonaws.com/maps/v0/maps/${mapName}/style-descriptor?key=${apiKey}`;
             map = new maplibregl.Map({
                 container: 'map',
-                style: '/api/map-style',
-                center: [106.8456, -6.2088],
+                style: mapStyle,
+                center: [106.873687, -6.252809],
                 zoom: 13,
                 attributionControl: false
             });
@@ -420,6 +464,15 @@
             map.addControl(new maplibregl.AttributionControl({
                 customAttribution: '© Grab, © AWS'
             }), 'bottom-right');
+
+            // Add Geolocation Control
+            const geolocate = new maplibregl.GeolocateControl({
+                positionOptions: {
+                    enableHighAccuracy: true
+                },
+                trackUserLocation: true
+            });
+            map.addControl(geolocate, 'top-right');
 
             // Click map to add location
             map.on('click', async (e) => {
@@ -459,9 +512,9 @@
         function addLocation(coords, label) {
             const id = Date.now();
             const newMarker = new maplibregl.Marker({
-                    color: '#00B14F',
-                    draggable: true
-                })
+                color: '#00B14F',
+                draggable: true
+            })
                 .setLngLat(coords)
                 .setPopup(new maplibregl.Popup({
                     offset: 25
@@ -638,7 +691,7 @@
             const selectedMode = document.querySelector('input[name="travelMode"]:checked').value;
 
             //Ambil mode optimasi (Fast / Precise)
-            const optimizationMode = document.querySelector('input[name="optMode"]:checked').value;
+            const optimizationMode = 'real';
 
             const colors = ['#00B14F', '#007bff', '#dc3545', '#fd7e14', '#6f42c1', '#e83e8c', '#17a2b8'];
             const MAX_STOPS = 25;
@@ -1043,8 +1096,8 @@
             const endCoord = seg.geometry[seg.geometry.length - 1];
 
             const startMarker = new maplibregl.Marker({
-                    element: createPOIElement('A', seg.color)
-                })
+                element: createPOIElement('A', seg.color)
+            })
                 .setLngLat(startCoord)
                 .setPopup(new maplibregl.Popup({
                     offset: 20,
@@ -1055,8 +1108,8 @@
                 .addTo(map);
 
             const endMarker = new maplibregl.Marker({
-                    element: createPOIElement('B', seg.color)
-                })
+                element: createPOIElement('B', seg.color)
+            })
                 .setLngLat(endCoord)
                 .setPopup(new maplibregl.Popup({
                     offset: 20,
@@ -1212,7 +1265,7 @@
 
         function debounce(func, wait) {
             let timeout;
-            return function(...args) {
+            return function (...args) {
                 clearTimeout(timeout);
                 timeout = setTimeout(() => func.apply(this, args), wait);
             };
@@ -1319,7 +1372,7 @@
         }
 
         // Close dropdown when clicking outside
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             const wrapper = document.querySelector('.more-menu-wrapper');
             if (wrapper && !wrapper.contains(e.target)) {
                 document.getElementById('moreMenuDropdown').classList.remove('show');
