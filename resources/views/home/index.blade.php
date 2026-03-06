@@ -60,6 +60,10 @@
                         <div class="menu-icon icon-address"><i class="bi bi-patch-check-fill"></i></div>
                         <div class="menu-label">Address Verification<small>Verify & geocode addresses</small></div>
                     </a>
+                    <a href="{{ route('admin.companies.index') }}" class="more-menu-item" hidden>
+                        <div class="menu-icon" style="background:#f0faf4; color:#00B14F;"><i class="bi bi-building"></i></div>
+                        <div class="menu-label">Company Admin<small>Manage client map pages</small></div>
+                    </a>
                 </div>
             </div>
         </div>
