@@ -600,7 +600,7 @@
 
         .loc-info {
             flex-grow: 1;
-            padding-left: 6px;
+            padding-left: 2px;
             padding-right: 10px;
             min-width: 0;
         }
@@ -623,6 +623,22 @@
             align-items: center;
             gap: 4px;
             font-variant-numeric: tabular-nums;
+        }
+
+        /* Marker Letter Badge (A / B) */
+        .loc-marker-badge {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.78rem;
+            flex-shrink: 0;
+            margin-right: 10px;
+            border: 2px solid currentColor;
+            opacity: 0.9;
         }
 
         /* B. Segment Card (Tab 2 - Route Detail) */
@@ -792,6 +808,29 @@
         }
 
         .btn-action-secondary:active {
+            transform: translateY(1px);
+        }
+
+        /* My Location Outline Button */
+        .btn-outline-location {
+            background: var(--bg-surface);
+            color: #3b82f6;
+            border: 1.5px solid rgba(59, 130, 246, 0.35);
+            font-weight: 600;
+            font-size: 0.82rem;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+        }
+
+        .btn-outline-location:hover {
+            background: #eff6ff;
+            border-color: #3b82f6;
+            color: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+
+        .btn-outline-location:active {
             transform: translateY(1px);
         }
 

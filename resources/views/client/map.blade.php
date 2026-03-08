@@ -93,6 +93,12 @@
             </div>
             @endif
 
+            <!-- <div class="d-flex gap-2 mb-2">
+                <button class="btn btn-outline-location flex-grow-1 d-flex align-items-center justify-content-center py-2"
+                    onclick="useCurrentLocation()" title="Gunakan lokasi saat ini sebagai titik asal">
+                    <i class="bi bi-crosshair2 me-2"></i> My Location
+                </button>
+            </div> -->
             <div class="d-flex gap-2 mb-3">
                 <button class="btn btn-action-primary flex-grow-1 d-flex align-items-center justify-content-center py-2"
                     onclick="calculateRoute()" title="Hitung Rute A ke B">
@@ -311,13 +317,13 @@
 
         // Feature flags passed from server
         const features = {
-            search: "{{ $features['search'] ? 'true' : 'false'}}",
-            route: "{{ $features['route'] ? 'true' : 'false'}}",
-            reverse_geocode: "{{ $features['reverse_geocode'] ? 'true' : 'false'}}",
-            route_matrix: "{{ $features['route_matrix'] ? 'true' : 'false'}}",
+            search: !!"{{ $features['search'] ? '1' : '' }}",
+            route: !!"{{ $features['route'] ? '1' : '' }}",
+            reverse_geocode: !!"{{ $features['reverse_geocode'] ? '1' : '' }}",
+            route_matrix: !!"{{ $features['route_matrix'] ? '1' : '' }}",
         };
-        const searchLang = "{{ $features[' search_settings '][' language '] ?? ' id ' }}";
-        const geocodeLang = "{{ $features[' reverse_geocode_settings '][' language '] ?? ' id ' }}";
+        const searchLang = "{{ $features['search_settings']['language'] ?? 'id' }}";
+        const geocodeLang = "{{ $features['reverse_geocode_settings']['language'] ?? 'id' }}";
 
         // All API calls go through Laravel proxy — API keys stay server-side
         function proxyPost(url, body) {
@@ -400,15 +406,12 @@
             });
         }
 
-        @if($features['route'])
-
         function switchTab(tabName) {
             document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
             document.getElementById(`tabBtn-${tabName}`).classList.add('active');
             document.getElementById(`tabPane-${tabName}`).classList.add('active');
         }
-        @endif
 
 
         /* =========================================
@@ -439,45 +442,32 @@
 
             // Click map to add location
             map.on('click', async (e) => {
-                @if(!$features['route'] && !$features['reverse_geocode'])
-                return; // no click features enabled
-                @endif
-                if (!features.route_matrix && markersData.length >= 2) {
-                    showToast('Max 2 Lokasi', 'Fitur Route hanya mendukung titik asal dan tujuan.', 'warning');
-                    return;
-                }
+                if (!features.route && !features.reverse_geocode) return;
 
                 const coords = [e.lngLat.lng, e.lngLat.lat];
 
-                @if($features['route'])
-                addLocation(coords, "Loading address...");
-                const currentId = selectedMarkerId;
+                if (features.route) {
+                    // addLocation / replaceDestination handles max-2 logic internally
+                    addLocation(coords, 'Loading address...');
+                    const currentId = selectedMarkerId;
 
-                @if($features['reverse_geocode'])
-                try {
-                    const addressName = await getPlaceNameByCoords(coords);
-                    if (addressName) {
-                        const item = markersData.find(m => m.id === currentId);
-                        if (item) {
-                            item.name = addressName;
-                            item.marker.setPopup(new maplibregl.Popup({
-                                offset: 25
-                            }).setText(addressName));
-                            renderLocationList();
-                            showToast('Location Found', addressName, 'success');
-                        }
-                    } else {
-                        const item = markersData.find(m => m.id === currentId);
-                        if (item) {
-                            item.name = `Location (${coords[1].toFixed(4)}, ${coords[0].toFixed(4)})`;
-                            renderLocationList();
+                    if (features.reverse_geocode) {
+                        try {
+                            const addressName = await getPlaceNameByCoords(coords);
+                            const item = markersData.find(m => m.id === currentId);
+                            if (item) {
+                                item.name = addressName || `Location (${coords[1].toFixed(4)}, ${coords[0].toFixed(4)})`;
+                                item.marker.setPopup(new maplibregl.Popup({
+                                    offset: 25
+                                }).setText(item.name));
+                                renderLocationList();
+                                if (addressName) showToast('Location Found', addressName, 'success');
+                            }
+                        } catch (error) {
+                            console.error(error);
                         }
                     }
-                } catch (error) {
-                    console.error(error);
                 }
-                @endif
-                @endif
             });
         }
 
@@ -485,16 +475,13 @@
         /* =========================================
            4. LOCATION MANAGEMENT (CRUD)
            ========================================= */
-        @if($features['route'])
+        // Marker colors: A=green, B=red/orange
+        const MARKER_COLORS = ['#00B14F', '#E8341C'];
 
-        function addLocation(coords, label) {
-            if (!features.route_matrix && markersData.length >= 2) {
-                showToast('Max 2 Lokasi', 'Fitur Route hanya mendukung titik asal dan tujuan.', 'warning');
-                return;
-            }
-            const id = Date.now();
+        function createMarkerForIndex(coords, label, index, id) {
+            const color = MARKER_COLORS[index] || '#00B14F';
             const newMarker = new maplibregl.Marker({
-                    color: '#00B14F',
+                    color,
                     draggable: true
                 })
                 .setLngLat(coords)
@@ -512,24 +499,37 @@
                 if (item) {
                     item.coords = updatedCoords;
                     showToast('Loading...', 'Finding new address...', 'info');
-                    @if($features['reverse_geocode'])
-                    const newName = await getPlaceNameByCoords(updatedCoords);
-                    if (newName) {
-                        item.name = newName;
-                        newMarker.setPopup(new maplibregl.Popup({
-                            offset: 25
-                        }).setText(newName));
-                        renderLocationList();
-                        showToast('Location Updated', newName, 'success');
+                    if (features.reverse_geocode) {
+                        const newName = await getPlaceNameByCoords(updatedCoords);
+                        if (newName) {
+                            item.name = newName;
+                            newMarker.setPopup(new maplibregl.Popup({
+                                offset: 25
+                            }).setText(newName));
+                            renderLocationList();
+                            showToast('Location Updated', newName, 'success');
+                        } else {
+                            showToast('Info', 'Location name not found.', 'warning');
+                        }
                     } else {
-                        showToast('Info', 'Location name not found.', 'warning');
+                        item.name = `Location (${updatedCoords[1].toFixed(4)}, ${updatedCoords[0].toFixed(4)})`;
+                        renderLocationList();
                     }
-                    @else
-                    item.name = `Location (${updatedCoords[1].toFixed(4)}, ${updatedCoords[0].toFixed(4)})`;
-                    renderLocationList();
-                    @endif
                 }
             });
+            return newMarker;
+        }
+
+        function addLocation(coords, label) {
+            // Route only: max 2 markers (replace destination when full)
+            // Route matrix: unlimited markers
+            if (!features.route_matrix && markersData.length >= 2) {
+                replaceDestination(coords, label);
+                return;
+            }
+            const id = Date.now();
+            const index = markersData.length;
+            const newMarker = createMarkerForIndex(coords, label, index, id);
 
             selectedMarkerId = id;
             markersData.push({
@@ -543,6 +543,102 @@
                 center: coords,
                 zoom: 15
             });
+        }
+
+        function replaceDestination(coords, label) {
+            // Replace the destination (index 1) marker
+            if (markersData.length < 1) return;
+
+            if (markersData.length >= 2) {
+                // Remove existing destination marker
+                markersData[1].marker.remove();
+                markersData = markersData.slice(0, 1);
+            }
+
+            const id = Date.now();
+            const resolvedLabel = label || 'Loading address...';
+            const newMarker = createMarkerForIndex(coords, resolvedLabel, 1, id);
+            selectedMarkerId = id;
+            markersData.push({
+                id,
+                marker: newMarker,
+                name: resolvedLabel,
+                coords
+            });
+
+            // Reverse geocode if needed and label not yet resolved
+            if (!label && features.reverse_geocode) {
+                getPlaceNameByCoords(coords).then(name => {
+                    const item = markersData.find(m => m.id === id);
+                    if (item && name) {
+                        item.name = name;
+                        newMarker.setPopup(new maplibregl.Popup({
+                            offset: 25
+                        }).setText(name));
+                        renderLocationList();
+                    }
+                });
+            }
+
+            renderLocationList();
+            map.flyTo({
+                center: coords,
+                zoom: 15
+            });
+            showToast('Destination Updated', 'Titik tujuan diperbarui.', 'info');
+        }
+
+        async function useCurrentLocation() {
+            showToast('Getting Location...', 'Mengambil posisi GPS saat ini...', 'info');
+            try {
+                const coords = await getCurrentPosition();
+
+                // Save existing destination (index 1) if any
+                let existingDest = null;
+                if (markersData.length >= 2) {
+                    existingDest = {
+                        name: markersData[1].name,
+                        coords: markersData[1].coords
+                    };
+                }
+
+                // Remove all existing markers from map
+                markersData.forEach(m => m.marker.remove());
+                markersData = [];
+
+                // Create new origin marker (A - green)
+                const originId = Date.now();
+                const originLabel = '📍 My Location (GPS)';
+                const originMarker = createMarkerForIndex(coords, originLabel, 0, originId);
+                markersData.push({
+                    id: originId,
+                    marker: originMarker,
+                    name: originLabel,
+                    coords
+                });
+
+                // Re-create destination marker if there was one (B - red)
+                if (existingDest) {
+                    const destId = Date.now() + 1;
+                    const destMarker = createMarkerForIndex(existingDest.coords, existingDest.name, 1, destId);
+                    markersData.push({
+                        id: destId,
+                        marker: destMarker,
+                        name: existingDest.name,
+                        coords: existingDest.coords
+                    });
+                }
+
+                selectedMarkerId = originId;
+                renderLocationList();
+                map.flyTo({
+                    center: coords,
+                    zoom: 15
+                });
+                showToast('Origin Set ✓', 'Posisi GPS digunakan sebagai titik asal.', 'success');
+            } catch (e) {
+                showToast('GPS Error', 'Tidak dapat mengambil lokasi. Pastikan izin GPS aktif.', 'error');
+            }
         }
 
         function removeLocation(id) {
@@ -579,15 +675,13 @@
                 renderLocationList();
             }
         }
-        @endif
 
-        @if($features['reverse_geocode'])
         async function getPlaceNameByCoords(coords) {
             try {
                 const response = await proxyPost('/api/places/reverse', {
                     Position: coords,
                     MaxResults: 1,
-                    Language: 'en'
+                    Language: geocodeLang
                 });
                 if (!response.ok) throw new Error('API Error');
                 const data = await response.json();
@@ -598,19 +692,49 @@
                 return null;
             }
         }
-        @endif
 
 
         /* =========================================
            5. ROUTING LOGIC
            ========================================= */
-        @if($features['route'])
+        function getCurrentPosition() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) return reject(new Error('Geolocation not supported'));
+                navigator.geolocation.getCurrentPosition(
+                    pos => resolve([pos.coords.longitude, pos.coords.latitude]),
+                    err => reject(err), {
+                        enableHighAccuracy: true,
+                        timeout: 8000
+                    }
+                );
+            });
+        }
+
         async function calculateRoute() {
-            if (markersData.length < 2) return showToast('Insufficient Data', 'Add at least 2 locations.', 'warning');
-            const origin = markersData[0].coords;
-            const destination = markersData[1].coords;
+            if (markersData.length < 1) {
+                return showToast('Belum Ada Lokasi', 'Tambahkan minimal 1 titik tujuan di peta, atau tekan "My Location" untuk menentukan asal.', 'warning');
+            }
+
+            let origin, destination, usingGPS = false;
+
+            if (markersData.length === 1) {
+                // Only destination set — use GPS as origin
+                showToast('Getting Location...', 'Mengambil posisi GPS sebagai titik asal...', 'info');
+                try {
+                    origin = await getCurrentPosition();
+                    usingGPS = true;
+                } catch (e) {
+                    return showToast('GPS Error', 'Tidak dapat mengambil lokasi GPS. Tambahkan titik asal secara manual atau tekan "My Location".', 'error');
+                }
+                destination = markersData[0].coords;
+            } else {
+                origin = markersData[0].coords;
+                destination = markersData[1].coords;
+            }
+
             const selectedMode = document.querySelector('input[name="travelMode"]:checked').value;
-            showToast('Processing...', 'Calculating single route...', 'info');
+            showToast('Processing...', 'Menghitung rute terbaik...', 'info');
+
             try {
                 const response = await proxyPost('/api/routes/calculate', {
                     DeparturePosition: origin,
@@ -637,24 +761,38 @@
                         }]
                     };
                     drawRouteOnMap(featureCollection);
+
+                    // If GPS was used as origin, add temporary A marker
+                    if (usingGPS) {
+                        const gpsMark = new maplibregl.Marker({
+                                color: '#00B14F'
+                            })
+                            .setLngLat(origin)
+                            .setPopup(new maplibregl.Popup({
+                                offset: 25
+                            }).setText('📍 My Location'))
+                            .addTo(map);
+                        gpsMark.togglePopup();
+                        highlightMarkers.push(gpsMark);
+                    }
+
                     const summary = data.Summary;
                     document.getElementById('resDistance').innerText = summary.Distance.toFixed(1) + ' km';
-                    document.getElementById('resDuration').innerText = Math.round(summary.DurationSeconds / 60) + ' min';
+                    document.getElementById('resDuration').innerText = formatDuration(summary.DurationSeconds);
                     document.getElementById('routeEmptyState').style.display = 'none';
                     document.getElementById('routeResultCard').style.display = 'block';
-                    document.getElementById('segmentListContainer').style.display = 'block';
+                    document.getElementById('segmentListContainer').style.display = 'none';
                     switchTab('routes');
+                    showToast('Rute Ditemukan! 🎉', `${summary.Distance.toFixed(1)} km · ${formatDuration(summary.DurationSeconds)}`, 'success');
                 } else {
-                    showToast('Error', 'Path not found.', 'error');
+                    showToast('Error', 'Rute tidak ditemukan.', 'error');
                 }
             } catch (e) {
                 console.error(e);
-                showToast('Error', 'Failed.', 'error');
+                showToast('Error', 'Gagal menghitung rute.', 'error');
             }
         }
-        @endif
 
-        @if($features['route_matrix'])
         async function calculateMultiRoute() {
             if (markersData.length < 2) return showToast('Insufficient Data', 'Add at least 2 locations.', 'warning');
             const selectedMode = document.querySelector('input[name="travelMode"]:checked').value;
@@ -827,14 +965,11 @@
             }
             return sorted;
         }
-        @endif
 
 
         /* =========================================
            6. VISUALIZATION & HELPERS
            ========================================= */
-        @if($features['route'])
-
         function drawRouteOnMap(geoJsonFeatureCollection) {
             removeRouteLayer();
             map.addSource('routeSource', {
@@ -1006,6 +1141,20 @@
         /* =========================================
            7. UI RENDERING (LISTS)
            ========================================= */
+        const MARKER_LABELS = [{
+                letter: 'A',
+                role: 'Origin',
+                color: '#00B14F',
+                bg: '#e6f7ee'
+            },
+            {
+                letter: 'B',
+                role: 'Destination',
+                color: '#E8341C',
+                bg: '#fdecea'
+            }
+        ];
+
         function renderLocationList() {
             const panel = document.getElementById('locationsPanel');
             const container = document.getElementById('listContainer');
@@ -1013,29 +1162,48 @@
             const emptyState = document.getElementById('emptyState');
             panel.style.display = 'flex';
             countBadge.innerText = markersData.length;
+
             if (markersData.length === 0) {
                 emptyState.style.display = 'block';
                 container.innerHTML = '';
-            } else {
-                emptyState.style.display = 'none';
-                container.innerHTML = '';
-                markersData.forEach((item, index) => {
-                    const div = document.createElement('div');
-                    div.className = 'location-item';
-                    if (item.id === selectedMarkerId) div.classList.add('active');
-                    div.style.animation = `slideInPanel 0.3s ease forwards ${index * 0.05}s`;
-                    const lat = item.coords[1].toFixed(5),
-                        lng = item.coords[0].toFixed(5);
-                    div.innerHTML = `
-                    <div class="loc-info" onclick="zoomToLocation(${item.id})">
-                        <span class="loc-name text-truncate" title="${item.name}">${item.name}</span>
-                        <span class="loc-coord"><i class="bi bi-crosshair"></i> ${lat}, ${lng}</span>
-                    </div>
-                    <button class="btn-delete-item shadow-sm" onclick="event.stopPropagation(); removeLocation(${item.id})">
-                        <i class="bi bi-x-lg"></i>
-                    </button>`;
-                    container.appendChild(div);
-                });
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            container.innerHTML = '';
+
+            markersData.forEach((item, index) => {
+                const meta = MARKER_LABELS[index] || {
+                    letter: String.fromCharCode(65 + index),
+                    role: `Stop ${index + 1}`,
+                    color: '#6f42c1',
+                    bg: '#f3eeff'
+                };
+                const div = document.createElement('div');
+                div.className = 'location-item';
+                if (item.id === selectedMarkerId) div.classList.add('active');
+                div.style.animation = `slideInPanel 0.3s ease forwards ${index * 0.05}s`;
+                const lat = item.coords[1].toFixed(5),
+                    lng = item.coords[0].toFixed(5);
+                div.innerHTML = `
+                <div class="loc-marker-badge" style="background:${meta.bg}; color:${meta.color};">${meta.letter}</div>
+                <div class="loc-info" onclick="zoomToLocation(${item.id})" style="flex:1;">
+                    <span class="loc-role" style="font-size:0.65rem; font-weight:700; color:${meta.color}; text-transform:uppercase; letter-spacing:0.5px;">${meta.role}</span>
+                    <span class="loc-name text-truncate d-block" title="${item.name}">${item.name}</span>
+                    <span class="loc-coord"><i class="bi bi-crosshair"></i> ${lat}, ${lng}</span>
+                </div>
+                <button class="btn-delete-item shadow-sm" onclick="event.stopPropagation(); removeLocation(${item.id})">
+                    <i class="bi bi-x-lg"></i>
+                </button>`;
+                container.appendChild(div);
+            });
+
+            // Show hint if only 1 marker
+            if (markersData.length === 1) {
+                const hint = document.createElement('div');
+                hint.style.cssText = 'font-size:0.75rem; color:var(--text-muted); text-align:center; padding:10px 0 4px; display:flex; align-items:center; justify-content:center; gap:6px;';
+                hint.innerHTML = `<i class="bi bi-info-circle"></i> Tap map to set destination, or press Calculate to use GPS as origin.`;
+                container.appendChild(hint);
             }
         }
 
@@ -1068,13 +1236,11 @@
                 container.appendChild(item);
             });
         }
-        @endif
 
 
         /* =========================================
            8. SEARCH FUNCTIONALITY
            ========================================= */
-        @if($features['search'])
         const input = document.getElementById('searchInput');
         const list = document.getElementById('suggestionsList');
 
@@ -1086,24 +1252,26 @@
             };
         }
 
-        input.addEventListener('input', debounce(async (e) => {
-            const query = e.target.value;
-            if (query.length < 3) {
-                list.classList.remove('show');
-                return;
-            }
-            try {
-                const res = await proxyPost('/api/places/suggestions', {
-                    Text: query,
-                    MaxResults: 5,
-                    Language: 'en'
-                });
-                const data = await res.json();
-                renderSuggestions(data.Results);
-            } catch (err) {
-                console.error(err);
-            }
-        }, 300));
+        if (input) {
+            input.addEventListener('input', debounce(async (e) => {
+                const query = e.target.value;
+                if (query.length < 3) {
+                    list.classList.remove('show');
+                    return;
+                }
+                try {
+                    const res = await proxyPost('/api/places/suggestions', {
+                        Text: query,
+                        MaxResults: 5,
+                        Language: searchLang
+                    });
+                    const data = await res.json();
+                    renderSuggestions(data.Results);
+                } catch (err) {
+                    console.error(err);
+                }
+            }, 300));
+        }
 
         function renderSuggestions(results) {
             list.innerHTML = '';
@@ -1127,14 +1295,14 @@
             try {
                 const res = await proxyGet(`/api/places/${placeId}`);
                 const data = await res.json();
-                @if($features['route'])
-                addLocation(data.Place.Geometry.Point, data.Place.Label);
-                @else
-                map.flyTo({
-                    center: data.Place.Geometry.Point,
-                    zoom: 15
-                });
-                @endif
+                if (features.route) {
+                    addLocation(data.Place.Geometry.Point, data.Place.Label);
+                } else {
+                    map.flyTo({
+                        center: data.Place.Geometry.Point,
+                        zoom: 15
+                    });
+                }
                 showToast('Added', placeName, 'success');
             } catch (err) {
                 showToast('Failed', 'Cannot fetch location', 'error');
@@ -1153,14 +1321,14 @@
                 const data = await res.json();
                 if (data.Results && data.Results.length > 0) {
                     const place = data.Results[0].Place;
-                    @if($features['route'])
-                    addLocation(place.Geometry.Point, place.Label);
-                    @else
-                    map.flyTo({
-                        center: place.Geometry.Point,
-                        zoom: 15
-                    });
-                    @endif
+                    if (features.route) {
+                        addLocation(place.Geometry.Point, place.Label);
+                    } else {
+                        map.flyTo({
+                            center: place.Geometry.Point,
+                            zoom: 15
+                        });
+                    }
                     showToast('Found', place.Label, 'success');
                 } else {
                     showToast('Not Found', 'Try another keyword.', 'warning');
@@ -1169,24 +1337,23 @@
                 showToast('Error', 'API search failed.', 'error');
             }
         }
-        @endif
 
 
         /* =========================================
            9. INITIALIZATION & EVENTS
            ========================================= */
         function setupEventListeners() {
-            @if($features['search'])
-            document.addEventListener('click', (e) => {
-                if (!input.contains(e.target) && !list.contains(e.target)) list.classList.remove('show');
-            });
-            input.addEventListener("keypress", (event) => {
-                if (event.key === "Enter") {
-                    event.preventDefault();
-                    handleManualSearch();
-                }
-            });
-            @endif
+            if (input) {
+                document.addEventListener('click', (e) => {
+                    if (!input.contains(e.target) && !list.contains(e.target)) list.classList.remove('show');
+                });
+                input.addEventListener('keypress', (event) => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        handleManualSearch();
+                    }
+                });
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
