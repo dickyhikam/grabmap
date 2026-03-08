@@ -26,7 +26,7 @@
             <img src="{{ asset('logo.png') }}" alt="Grab Logo" class="grab-logo">
             @if($company->logo_path)
             <span class="logo-x">x</span>
-            <img src="{{ asset('storage/' . $company->logo_path) }}" alt="{{ $company->name }} Logo" class="partner-logo">
+            <img src="{{ asset($company->logo_path) }}" alt="{{ $company->name }} Logo" class="partner-logo">
             @endif
         </div>
 

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class CompanyController extends Controller
@@ -34,7 +33,10 @@ class CompanyController extends Controller
 
         $logoPath = null;
         if ($request->hasFile('logo')) {
-            $logoPath = $request->file('logo')->store('logos', 'public');
+            $file = $request->file('logo');
+            $filename = Str::random(40) . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('logos'), $filename);
+            $logoPath = 'logos/' . $filename;
         }
 
         $company = Company::create([
@@ -75,10 +77,13 @@ class CompanyController extends Controller
 
         $logoPath = $company->logo_path;
         if ($request->hasFile('logo')) {
-            if ($company->logo_path) {
-                Storage::disk('public')->delete($company->logo_path);
+            if ($company->logo_path && file_exists(public_path($company->logo_path))) {
+                unlink(public_path($company->logo_path));
             }
-            $logoPath = $request->file('logo')->store('logos', 'public');
+            $file = $request->file('logo');
+            $filename = Str::random(40) . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('logos'), $filename);
+            $logoPath = 'logos/' . $filename;
         }
 
         $company->update([

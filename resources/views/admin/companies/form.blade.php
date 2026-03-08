@@ -209,7 +209,7 @@
                     <div class="d-flex align-items-center gap-3">
                         <div class="logo-preview-wrap">
                             @if($isEdit && $company->logo_path)
-                            <img id="logoPreviewImg" src="{{ asset('storage/' . $company->logo_path) }}" alt="{{ $company->name }}">
+                            <img id="logoPreviewImg" src="{{ asset($company->logo_path) }}" alt="{{ $company->name }}">
                             <i class="bi bi-image text-muted fs-4" id="logoPlaceholder" style="display:none;"></i>
                             @else
                             <i class="bi bi-image text-muted fs-4" id="logoPlaceholder"></i>

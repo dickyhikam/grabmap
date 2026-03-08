@@ -77,7 +77,7 @@
                             <td>
                                 <div class="d-flex align-items-center gap-3">
                                     @if($company->logo_path)
-                                        <img src="{{ asset('storage/' . $company->logo_path) }}" alt="{{ $company->name }}" class="logo-thumb">
+                                        <img src="{{ asset($company->logo_path) }}" alt="{{ $company->name }}" class="logo-thumb">
                                     @else
                                         <div class="logo-thumb d-flex align-items-center justify-content-center text-muted">
                                             <i class="bi bi-building"></i>

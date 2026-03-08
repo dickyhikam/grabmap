@@ -89,13 +89,6 @@ Route::get('/tester-api', function () {
     return view('testing.index');
 })->name('pageRouteTester');
 
-// Fallback: serve storage files when symlink is missing on server
-Route::get('/storage/{path}', function (string $path) {
-    $fullPath = storage_path('app/public/' . $path);
-    if (!file_exists($fullPath)) abort(404);
-    return response()->file($fullPath);
-})->where('path', '.*')->name('storage.fallback');
-
 // Admin Company Management
 Route::prefix('admin/companies')->group(function () {
     Route::get('/', [CompanyController::class, 'index'])->name('admin.companies.index');
