@@ -303,6 +303,10 @@
     </div>
     @endif
 
+    <button class="btn-map-mode" id="btnMapMode" onclick="toggleMapMode()" title="Mode Siang/Malam">
+        <i class="bi bi-moon-fill" id="mapModeIcon"></i>
+    </button>
+
     <div id="map"></div>
     <div class="toast-container position-fixed top-0 end-0 p-3" id="toastContainer"></div>
 
@@ -1340,7 +1344,24 @@
 
 
         /* =========================================
-           9. INITIALIZATION & EVENTS
+           9. MAP MODE (Day/Night)
+           ========================================= */
+        let isDarkMode = false;
+
+        function toggleMapMode() {
+            isDarkMode = !isDarkMode;
+            const mapEl = document.getElementById('map');
+            const icon  = document.getElementById('mapModeIcon');
+
+            mapEl.classList.toggle('dark-mode', isDarkMode);
+            document.body.classList.toggle('dark-mode-active', isDarkMode);
+
+            icon.className = isDarkMode ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+        }
+
+
+        /* =========================================
+           10. INITIALIZATION & EVENTS
            ========================================= */
         function setupEventListeners() {
             if (input) {

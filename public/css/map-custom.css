@@ -36,6 +36,51 @@
         }
 
         /* =========================================
+       1b. MAP MODE TOGGLE (Day/Night)
+       ========================================= */
+        .btn-map-mode {
+            position: fixed;
+            bottom: 28px;
+            left: 16px;
+            z-index: var(--z-header);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-glass-strong);
+            backdrop-filter: blur(12px);
+            box-shadow: var(--shadow-md);
+            color: var(--text-primary);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-map-mode:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Dark mode: invert map canvas + compensate hue */
+        #map.dark-mode .maplibregl-canvas {
+            filter: invert(1) hue-rotate(180deg);
+        }
+        /* Keep markers/popups/controls normal */
+        #map.dark-mode .maplibregl-marker,
+        #map.dark-mode .maplibregl-popup,
+        #map.dark-mode .maplibregl-ctrl {
+            filter: invert(1) hue-rotate(180deg);
+        }
+
+        /* Dark style for UI when map is dark */
+        body.dark-mode-active .btn-map-mode {
+            background: rgba(30, 30, 30, 0.9);
+            color: #fbbf24;
+        }
+
+        /* =========================================
        2. BASE LAYOUT & MAP
        ========================================= */
         body {
