@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ApiUsageLog;
+use App\Models\Company;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -13,11 +15,23 @@ class MapController extends Controller
         return view('maps');
     }
 
-    public function getMapStyle()
+    public function getMapStyle(Request $request)
     {
         $region = config('services.aws.region');
         $apiKey = config('services.aws.api_key');
         $mapName = config('services.aws.map_name');
+
+        // Use company-specific API key if available
+        $companySlug = $request->query('company');
+        if ($companySlug) {
+            $company = Company::where('slug', $companySlug)->where('is_active', true)->first();
+            if ($company) {
+                $companyKey = $company->getActiveApiKey();
+                if ($companyKey) {
+                    $apiKey = $companyKey;
+                }
+            }
+        }
 
         Log::info('Map style request', [
             'region' => $region,
@@ -327,90 +341,126 @@ class MapController extends Controller
        PROXY ENDPOINTS — Places & Routes
        ========================================= */
 
-    private function awsConfig()
+    private function resolveAwsConfig(Request $request): array
     {
-        return [
-            'region'     => config('services.aws.region'),
-            'api_key'    => config('services.aws.api_key'),
-            'place_index'=> config('services.aws.place_index'),
-            'route_calc' => config('services.aws.route_calculator'),
+        $cfg = [
+            'region'      => config('services.aws.region'),
+            'api_key'     => config('services.aws.api_key'),
+            'place_index' => config('services.aws.place_index'),
+            'route_calc'  => config('services.aws.route_calculator'),
+            'company'     => null,
         ];
+
+        $slug = $request->header('X-Company-Slug');
+        if ($slug) {
+            $company = Company::where('slug', $slug)->where('is_active', true)->first();
+            if ($company) {
+                $cfg['company'] = $company;
+                $companyKey = $company->getActiveApiKey();
+                if ($companyKey) {
+                    $cfg['api_key'] = $companyKey;
+                }
+            }
+        }
+
+        return $cfg;
+    }
+
+    private function logUsage(?Company $company, string $endpointType, int $status): void
+    {
+        ApiUsageLog::create([
+            'company_id'      => $company?->id,
+            'endpoint_type'   => $endpointType,
+            'response_status' => $status,
+        ]);
     }
 
     public function searchSuggestions(Request $request)
     {
-        $cfg = $this->awsConfig();
+        $cfg = $this->resolveAwsConfig($request);
         $url = "https://places.geo.{$cfg['region']}.amazonaws.com/places/v0/indexes/{$cfg['place_index']}/search/suggestions?key={$cfg['api_key']}";
 
         try {
             $response = Http::timeout(15)->post($url, $request->all());
+            $this->logUsage($cfg['company'], 'search_suggestions', $response->status());
             return response()->json($response->json(), $response->status());
         } catch (\Exception $e) {
+            $this->logUsage($cfg['company'], 'search_suggestions', 500);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
     public function searchText(Request $request)
     {
-        $cfg = $this->awsConfig();
+        $cfg = $this->resolveAwsConfig($request);
         $url = "https://places.geo.{$cfg['region']}.amazonaws.com/places/v0/indexes/{$cfg['place_index']}/search/text?key={$cfg['api_key']}";
 
         try {
             $response = Http::timeout(15)->post($url, $request->all());
+            $this->logUsage($cfg['company'], 'search_text', $response->status());
             return response()->json($response->json(), $response->status());
         } catch (\Exception $e) {
+            $this->logUsage($cfg['company'], 'search_text', 500);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
-    public function getPlace($placeId)
+    public function getPlace(Request $request, $placeId)
     {
-        $cfg = $this->awsConfig();
+        $cfg = $this->resolveAwsConfig($request);
         $url = "https://places.geo.{$cfg['region']}.amazonaws.com/places/v0/indexes/{$cfg['place_index']}/places/{$placeId}?key={$cfg['api_key']}";
 
         try {
             $response = Http::timeout(15)->get($url);
+            $this->logUsage($cfg['company'], 'get_place', $response->status());
             return response()->json($response->json(), $response->status());
         } catch (\Exception $e) {
+            $this->logUsage($cfg['company'], 'get_place', 500);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
     public function reverseGeocode(Request $request)
     {
-        $cfg = $this->awsConfig();
+        $cfg = $this->resolveAwsConfig($request);
         $url = "https://places.geo.{$cfg['region']}.amazonaws.com/places/v0/indexes/{$cfg['place_index']}/search/position?key={$cfg['api_key']}";
 
         try {
             $response = Http::timeout(15)->post($url, $request->all());
+            $this->logUsage($cfg['company'], 'reverse_geocode', $response->status());
             return response()->json($response->json(), $response->status());
         } catch (\Exception $e) {
+            $this->logUsage($cfg['company'], 'reverse_geocode', 500);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
     public function calculateRoute(Request $request)
     {
-        $cfg = $this->awsConfig();
+        $cfg = $this->resolveAwsConfig($request);
         $url = "https://routes.geo.{$cfg['region']}.amazonaws.com/routes/v0/calculators/{$cfg['route_calc']}/calculate/route?key={$cfg['api_key']}";
 
         try {
             $response = Http::timeout(30)->post($url, $request->all());
+            $this->logUsage($cfg['company'], 'calculate_route', $response->status());
             return response()->json($response->json(), $response->status());
         } catch (\Exception $e) {
+            $this->logUsage($cfg['company'], 'calculate_route', 500);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
     public function calculateRouteMatrix(Request $request)
     {
-        $cfg = $this->awsConfig();
+        $cfg = $this->resolveAwsConfig($request);
         $url = "https://routes.geo.{$cfg['region']}.amazonaws.com/routes/v0/calculators/{$cfg['route_calc']}/calculate/route-matrix?key={$cfg['api_key']}";
 
         try {
             $response = Http::timeout(30)->post($url, $request->all());
+            $this->logUsage($cfg['company'], 'calculate_route_matrix', $response->status());
             return response()->json($response->json(), $response->status());
         } catch (\Exception $e) {
+            $this->logUsage($cfg['company'], 'calculate_route_matrix', 500);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }

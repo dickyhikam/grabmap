@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\ApiKeyController;
 use App\Http\Controllers\Admin\CompanyController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\ClientMapController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\PricingController;
@@ -89,6 +91,17 @@ Route::get('/tester-api', function () {
     return view('testing.index');
 })->name('pageRouteTester');
 
+// Admin Dashboard
+Route::get('/admin', [DashboardController::class, 'index'])->name('admin.dashboard');
+
+// Admin API Key Management
+Route::prefix('admin/api-keys')->group(function () {
+    Route::get('/', [ApiKeyController::class, 'index'])->name('admin.api-keys.index');
+    Route::post('/assign', [ApiKeyController::class, 'assign'])->name('admin.api-keys.assign');
+    Route::post('/unassign', [ApiKeyController::class, 'unassign'])->name('admin.api-keys.unassign');
+    Route::get('/{keyName}/usage', [ApiKeyController::class, 'usage'])->name('admin.api-keys.usage');
+});
+
 // Admin Company Management
 Route::prefix('admin/companies')->group(function () {
     Route::get('/', [CompanyController::class, 'index'])->name('admin.companies.index');
@@ -97,6 +110,7 @@ Route::prefix('admin/companies')->group(function () {
     Route::get('/{company}/edit', [CompanyController::class, 'edit'])->name('admin.companies.edit');
     Route::put('/{company}', [CompanyController::class, 'update'])->name('admin.companies.update');
     Route::patch('/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])->name('admin.companies.toggle-status');
+    Route::get('/{company}/usage', [CompanyController::class, 'usage'])->name('admin.companies.usage');
 });
 
 // Dynamic company map — must be last (catch-all)

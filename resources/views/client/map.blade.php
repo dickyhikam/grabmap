@@ -318,6 +318,7 @@
            1. CONFIGURATION & GLOBAL STATE
            ========================================= */
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        const companySlug = "{{ $company->slug }}";
 
         // Feature flags passed from server
         const features = {
@@ -336,6 +337,7 @@
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
+                    'X-Company-Slug': companySlug,
                     'Accept': 'application/json'
                 },
                 body: JSON.stringify(body)
@@ -345,7 +347,8 @@
         function proxyGet(url) {
             return fetch(url, {
                 headers: {
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'X-Company-Slug': companySlug,
                 }
             });
         }
@@ -424,7 +427,7 @@
         function initMap() {
             map = new maplibregl.Map({
                 container: 'map',
-                style: '/api/map-style',
+                style: '/api/map-style?company=' + companySlug,
                 center: [106.8456, -6.2088],
                 zoom: 13,
                 attributionControl: false

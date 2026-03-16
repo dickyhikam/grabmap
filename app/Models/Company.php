@@ -7,15 +7,30 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Company extends Model
 {
-    protected $fillable = ['name', 'slug', 'logo_path', 'is_active'];
+    protected $fillable = ['name', 'slug', 'logo_path', 'is_active', 'aws_api_key', 'aws_api_key_name', 'aws_key_active'];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'aws_key_active' => 'boolean',
+        'aws_api_key' => 'encrypted',
     ];
 
     public function features(): HasMany
     {
         return $this->hasMany(CompanyFeature::class);
+    }
+
+    public function usageLogs(): HasMany
+    {
+        return $this->hasMany(ApiUsageLog::class);
+    }
+
+    public function getActiveApiKey(): ?string
+    {
+        if ($this->aws_key_active && $this->aws_api_key) {
+            return $this->aws_api_key;
+        }
+        return null;
     }
 
     public function isFeatureEnabled(string $key): bool
