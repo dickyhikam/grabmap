@@ -27,9 +27,9 @@
 <div style="max-width: 680px; margin: 0 auto;">
     <div class="mb-4">
         <a href="{{ route('admin.companies.index') }}" class="text-decoration-none text-muted">
-            <i class="bi bi-arrow-left me-1"></i>Kembali
+            <i class="bi bi-arrow-left me-1"></i>{{ __('admin.back') }}
         </a>
-        <h4 class="fw-bold mt-2 mb-0">{{ isset($company) ? 'Edit Company' : 'Tambah Company Baru' }}</h4>
+        <h4 class="fw-bold mt-2 mb-0">{{ isset($company) ? __('admin.edit_company') : __('admin.add_new_company') }}</h4>
         @isset($company)
         <small class="text-muted">{{ $company->name }}</small>
         @endisset
@@ -75,15 +75,15 @@
 
         <div class="card mb-3">
             <div class="card-body">
-                <h6 class="fw-semibold mb-3">Informasi Company</h6>
+                <h6 class="fw-semibold mb-3">{{ __('admin.company_info') }}</h6>
                 <div class="mb-3">
-                    <label class="form-label fw-medium">Nama Company <span class="text-danger">*</span></label>
+                    <label class="form-label fw-medium">{{ __('admin.company_name') }} <span class="text-danger">*</span></label>
                     <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror"
                         value="{{ old('name', $isEdit ? $company->name : '') }}" placeholder="e.g. TransJakarta" required>
                     @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-medium">Slug (URL) <span class="text-danger">*</span></label>
+                    <label class="form-label fw-medium">{{ __('admin.slug_url') }} <span class="text-danger">*</span></label>
                     <input type="text" name="slug" id="slug" class="form-control @error('slug') is-invalid @enderror"
                         value="{{ old('slug', $isEdit ? $company->slug : '') }}" placeholder="e.g. transjakarta" required
                         pattern="[a-z0-9\-]+" title="Hanya huruf kecil, angka, dan tanda hubung">
@@ -97,7 +97,7 @@
                     <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" name="is_active" id="is_active" value="1"
                             {{ old('is_active', $isEdit ? $company->is_active : true) ? 'checked' : '' }}>
-                        <label class="form-check-label" for="is_active">Aktif (company page dapat diakses)</label>
+                        <label class="form-check-label" for="is_active">{{ __('admin.status_active_desc') }}</label>
                     </div>
                 </div>
             </div>
@@ -105,8 +105,8 @@
 
         <div class="card mb-3">
             <div class="card-body">
-                <h6 class="fw-semibold mb-1">Logo Company</h6>
-                <small class="text-muted d-block mb-3">Format: PNG, JPG, SVG, WebP. Max 2MB.</small>
+                <h6 class="fw-semibold mb-1">{{ __('admin.company_logo') }}</h6>
+                <small class="text-muted d-block mb-3">{{ __('admin.logo_format') }}</small>
                 <div class="d-flex align-items-center gap-3">
                     <div class="logo-preview-wrap">
                         @if($isEdit && $company->logo_path)
@@ -128,15 +128,15 @@
 
         <div class="card mb-3">
             <div class="card-body">
-                <h6 class="fw-semibold mb-1">AWS API Key</h6>
-                <small class="text-muted d-block mb-3">Assign dari halaman API Keys. Jika tidak di-assign, pakai key default.</small>
+                <h6 class="fw-semibold mb-1">{{ __('admin.aws_api_key') }}</h6>
+                <small class="text-muted d-block mb-3">{{ __('admin.aws_key_desc') }}</small>
                 @if($isEdit && $company->aws_api_key_name)
                     <div class="d-flex align-items-center justify-content-between p-3 rounded-3 mb-3" style="background: var(--grab-green-light); border: 1px solid #a3cfbb;">
                         <div>
                             <div class="fw-medium" style="color:var(--grab-green-dark);"><i class="bi bi-key-fill me-1"></i>{{ $company->aws_api_key_name }}</div>
-                            <small class="text-muted">API key dari AWS Location Service</small>
+                            <small class="text-muted">{{ __('admin.api_key_from_aws') }}</small>
                         </div>
-                        <span class="badge {{ $company->aws_key_active ? 'bg-success' : 'bg-secondary' }}">{{ $company->aws_key_active ? 'Aktif' : 'Nonaktif' }}</span>
+                        <span class="badge {{ $company->aws_key_active ? 'bg-success' : 'bg-secondary' }}">{{ $company->aws_key_active ? __('admin.key_active') : __('admin.key_inactive') }}</span>
                     </div>
                     <div class="form-check form-switch mb-3">
                         <input class="form-check-input" type="checkbox" name="aws_key_active" id="aws_key_active" value="1"
@@ -145,21 +145,21 @@
                     </div>
                 @elseif($isEdit)
                     <div class="p-3 rounded-3 mb-3" style="background: #f8f9fa; border: 1.5px dashed #e2e8f0;">
-                        <span class="text-muted"><i class="bi bi-dash-circle me-1"></i>Belum ada API key yang di-assign</span>
+                        <span class="text-muted"><i class="bi bi-dash-circle me-1"></i>{{ __('admin.key_not_assigned') }}</span>
                     </div>
                 @else
                     <div class="p-3 rounded-3 mb-3" style="background: #f8f9fa; border: 1.5px dashed #e2e8f0;">
-                        <span class="text-muted"><i class="bi bi-info-circle me-1"></i>API key bisa di-assign setelah company dibuat</span>
+                        <span class="text-muted"><i class="bi bi-info-circle me-1"></i>{{ __('admin.key_assign_after') }}</span>
                     </div>
                 @endif
-                <a href="{{ route('admin.api-keys.index') }}" class="btn btn-sm btn-outline-grab"><i class="bi bi-key me-1"></i>Kelola API Keys</a>
+                <a href="{{ route('admin.api-keys.index') }}" class="btn btn-sm btn-outline-grab"><i class="bi bi-key me-1"></i>{{ __('admin.manage_keys') }}</a>
             </div>
         </div>
 
         <div class="card mb-4">
             <div class="card-body">
-                <h6 class="fw-semibold mb-1">Fitur Maps</h6>
-                <small class="text-muted d-block mb-3">Pilih fitur dan konfigurasi detail masing-masing.</small>
+                <h6 class="fw-semibold mb-1">{{ __('admin.map_features') }}</h6>
+                <small class="text-muted d-block mb-3">{{ __('admin.map_features_desc') }}</small>
                 <div class="d-flex flex-column gap-2">
                     @foreach($features as $key)
                     @php
@@ -182,7 +182,7 @@
                         <div class="feature-sub" id="sub-{{ $key }}" style="{{ $isChecked ? '' : 'display:none;' }}">
                             <div class="pt-2 mt-2 border-top">
                                 @if($subType === 'modes')
-                                <small class="fw-semibold text-dark d-block mb-2">Travel Mode:</small>
+                                <small class="fw-semibold text-dark d-block mb-2">{{ __('admin.travel_mode') }}</small>
                                 <div class="d-flex gap-3 flex-wrap">
                                     @foreach($travelModes as $mode => $modeInfo)
                                     <div class="form-check">
@@ -196,7 +196,7 @@
                                     @endforeach
                                 </div>
                                 @elseif($subType === 'language')
-                                <small class="fw-semibold text-dark d-block mb-2">Bahasa Hasil:</small>
+                                <small class="fw-semibold text-dark d-block mb-2">{{ __('admin.result_language') }}</small>
                                 <div class="d-flex gap-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="radio" name="feature_settings[{{ $key }}][language]"
@@ -219,8 +219,8 @@
         </div>
 
         <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-grab px-4"><i class="bi bi-check-lg me-1"></i>{{ $isEdit ? 'Simpan Perubahan' : 'Simpan Company' }}</button>
-            <a href="{{ route('admin.companies.index') }}" class="btn btn-outline-secondary" style="border-radius:10px;">Batal</a>
+            <button type="submit" class="btn btn-grab px-4"><i class="bi bi-check-lg me-1"></i>{{ $isEdit ? __('admin.save_changes') : __('admin.save_company') }}</button>
+            <a href="{{ route('admin.companies.index') }}" class="btn btn-outline-secondary" style="border-radius:10px;">{{ __('admin.cancel') }}</a>
         </div>
     </form>
 </div>

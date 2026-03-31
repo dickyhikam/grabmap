@@ -75,20 +75,33 @@ class DashboardController extends Controller
                 $result = $service->listApiKeys();
                 $totalRequests = 0;
                 $byCategory = ['maps' => 0, 'places' => 0, 'routes' => 0];
+                $byOperation = [];
+                $byKey = [];
+                $daily = [];
 
                 $mapOps = ['GetMapTile', 'GetMapStyleDescriptor', 'GetMapGlyphs', 'GetMapSprites'];
                 $placeOps = ['SearchPlaceIndexForSuggestions', 'SearchPlaceIndexForText', 'SearchPlaceIndexForPosition', 'GetPlace'];
                 $routeOps = ['CalculateRoute', 'CalculateRouteMatrix'];
 
                 foreach ($result['keys'] ?? [] as $key) {
-                    $metrics = $service->getKeyUsageMetrics($key['key_name'], now()->startOfMonth()->format('Y-m-d'), now()->format('Y-m-d'));
+                    $metrics = $service->getKeyUsageMetrics($key['key_name'], now()->subDays(29)->format('Y-m-d'), now()->format('Y-m-d'));
                     $totalRequests += $metrics['total'];
+                    if ($metrics['total'] > 0) {
+                        $byKey[$key['key_name']] = $metrics['total'];
+                    }
+                    foreach ($metrics['daily'] ?? [] as $date => $count) {
+                        $daily[$date] = ($daily[$date] ?? 0) + $count;
+                    }
                     foreach ($metrics['operations'] ?? [] as $op => $count) {
+                        $byOperation[$op] = ($byOperation[$op] ?? 0) + $count;
                         if (in_array($op, $mapOps)) $byCategory['maps'] += $count;
                         elseif (in_array($op, $placeOps)) $byCategory['places'] += $count;
                         elseif (in_array($op, $routeOps)) $byCategory['routes'] += $count;
                     }
                 }
+                arsort($byOperation);
+                arsort($byKey);
+                ksort($daily);
 
                 // Estimate cost
                 $pricing = ['maps' => 0.04, 'places' => 4.00, 'routes' => 5.00];
@@ -100,6 +113,9 @@ class DashboardController extends Controller
                 return [
                     'total_requests' => $totalRequests,
                     'by_category' => $byCategory,
+                    'by_operation' => $byOperation,
+                    'by_key' => $byKey,
+                    'daily' => $daily,
                     'total_cost' => $totalCost,
                 ];
             });

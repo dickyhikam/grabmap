@@ -13,13 +13,13 @@
 <div class="page-header">
     <div class="container">
         <a href="{{ route('admin.companies.index') }}" class="back-link d-inline-flex align-items-center gap-1 mb-3">
-            <i class="bi bi-arrow-left"></i> Companies
+            <i class="bi bi-arrow-left"></i> {{ __('admin.companies') }}
         </a>
         <h4 class="fw-bold mb-1" style="font-size:1.4rem;">
-            <i class="bi bi-bar-chart-line me-2" style="opacity:0.7;"></i>Usage Dashboard
+            <i class="bi bi-bar-chart-line me-2" style="opacity:0.7;"></i>{{ __('admin.usage_dashboard') }}
         </h4>
         <p style="color:rgba(255,255,255,0.5); font-size:0.85rem; margin-bottom:0;">
-            {{ $company->name }} ({{ $company->slug }}) — Data dari database lokal
+            {{ $company->name }} ({{ $company->slug }}) — {{ __('admin.data_from_local') }}
         </p>
     </div>
 </div>
@@ -30,25 +30,25 @@
     <div class="card mb-4">
         <div class="card-body d-flex align-items-center justify-content-between">
             <div>
-                <h6 class="fw-semibold mb-1">API Key Status</h6>
+                <h6 class="fw-semibold mb-1">{{ __('admin.api_key_status') }}</h6>
                 @if($company->aws_api_key)
                     @if($company->aws_key_active)
                         <span class="key-status bg-success bg-opacity-10 text-success">
-                            <i class="bi bi-key-fill"></i> Aktif — Menggunakan API key sendiri
+                            <i class="bi bi-key-fill"></i> {{ __('admin.key_active_own') }}
                         </span>
                     @else
                         <span class="key-status bg-secondary bg-opacity-10 text-secondary">
-                            <i class="bi bi-key"></i> Nonaktif — Fallback ke key default
+                            <i class="bi bi-key"></i> {{ __('admin.key_inactive_fallback') }}
                         </span>
                     @endif
                 @else
                     <span class="key-status bg-light text-muted">
-                        <i class="bi bi-dash-circle"></i> Belum diset — Menggunakan key default
+                        <i class="bi bi-dash-circle"></i> {{ __('admin.key_not_set') }}
                     </span>
                 @endif
             </div>
             <a href="{{ route('admin.companies.edit', $company) }}" class="btn btn-sm btn-outline-grab">
-                <i class="bi bi-pencil me-1"></i>Edit
+                <i class="bi bi-pencil me-1"></i>{{ __('admin.edit') }}
             </a>
         </div>
     </div>
@@ -62,7 +62,7 @@
                         <i class="bi bi-lightning-charge-fill"></i>
                     </div>
                     <div>
-                        <div class="stat-label">Total (All Time)</div>
+                        <div class="stat-label">{{ __('admin.total_all_time') }}</div>
                         <div class="stat-value">{{ number_format($totalAllTime) }}</div>
                     </div>
                 </div>
@@ -75,7 +75,7 @@
                         <i class="bi bi-graph-up"></i>
                     </div>
                     <div>
-                        <div class="stat-label">Bulan Ini</div>
+                        <div class="stat-label">{{ __('admin.this_month') }}</div>
                         <div class="stat-value">{{ number_format($totalThisMonth) }}</div>
                     </div>
                 </div>
@@ -88,7 +88,7 @@
                         <i class="bi bi-wallet2"></i>
                     </div>
                     <div>
-                        <div class="stat-label">Est. Biaya Bulan Ini</div>
+                        <div class="stat-label">{{ __('admin.est_cost_month') }}</div>
                         <div class="stat-value" style="color:var(--grab-green);">${{ number_format($estimatedCost, 2) }}</div>
                     </div>
                 </div>
@@ -99,15 +99,15 @@
     {{-- Breakdown Table --}}
     <div class="card mb-4">
         <div class="card-body">
-            <h6 class="fw-semibold mb-3"><i class="bi bi-diagram-3 me-1 text-muted"></i> Breakdown per Endpoint (Bulan Ini)</h6>
+            <h6 class="fw-semibold mb-3"><i class="bi bi-diagram-3 me-1 text-muted"></i> {{ __('admin.breakdown_endpoint') }}</h6>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>Endpoint</th>
-                            <th class="text-end">Jumlah Request</th>
-                            <th class="text-end">Harga / 1.000</th>
-                            <th class="text-end">Subtotal</th>
+                            <th>{{ __('admin.endpoint') }}</th>
+                            <th class="text-end">{{ __('admin.requests') }}</th>
+                            <th class="text-end">{{ __('admin.price_per_1k') }}</th>
+                            <th class="text-end">{{ __('admin.subtotal') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -132,7 +132,7 @@
                     </tbody>
                     <tfoot class="table-light">
                         <tr>
-                            <th>Total</th>
+                            <th>{{ __('admin.total') }}</th>
                             <th class="text-end">{{ number_format($totalThisMonth) }}</th>
                             <th></th>
                             <th class="text-end" style="color:var(--grab-green);">${{ number_format($estimatedCost, 4) }}</th>
@@ -146,11 +146,11 @@
     {{-- Daily Chart --}}
     <div class="card mb-4">
         <div class="card-body">
-            <h6 class="fw-semibold mb-3"><i class="bi bi-bar-chart-line me-1 text-muted"></i> Request per Hari (30 Hari Terakhir)</h6>
+            <h6 class="fw-semibold mb-3"><i class="bi bi-bar-chart-line me-1 text-muted"></i> {{ __('admin.daily_requests_30') }}</h6>
             @if($dailyCounts->isEmpty())
                 <div class="empty-state">
                     <i class="bi bi-bar-chart d-block"></i>
-                    <p class="text-muted mb-0">Belum ada data request.</p>
+                    <p class="text-muted mb-0">{{ __('admin.no_request_data') }}</p>
                 </div>
             @else
                 @php

@@ -22,14 +22,14 @@
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 <h4 class="fw-bold mb-1" style="font-size:1.4rem;">
-                    <i class="bi bi-building me-2" style="opacity:0.7;"></i>Companies
+                    <i class="bi bi-building me-2" style="opacity:0.7;"></i>{{ __('admin.companies_title') }}
                 </h4>
                 <p style="color:rgba(255,255,255,0.5); font-size:0.85rem; margin-bottom:0;">
-                    Kelola perusahaan dan fitur maps mereka
+                    {{ __('admin.companies_subtitle') }}
                 </p>
             </div>
             <a href="{{ route('admin.companies.create') }}" class="btn btn-grab px-4">
-                <i class="bi bi-plus-lg me-1"></i>Tambah Company
+                <i class="bi bi-plus-lg me-1"></i>{{ __('admin.add_company') }}
             </a>
         </div>
     </div>
@@ -43,8 +43,8 @@
             <div style="width:64px; height:64px; border-radius:16px; background:#f0f2f5; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
                 <i class="bi bi-building" style="font-size:1.5rem; color:#adb5bd;"></i>
             </div>
-            <h5 class="fw-semibold mb-1">Belum ada company</h5>
-            <p class="text-muted mb-0">Klik "Tambah Company" untuk memulai.</p>
+            <h5 class="fw-semibold mb-1">{{ __('admin.no_companies') }}</h5>
+            <p class="text-muted mb-0">{{ __('admin.no_companies_desc') }}</p>
         </div>
     </div>
     @else
@@ -53,12 +53,12 @@
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>Company</th>
-                        <th>URL</th>
-                        <th>Fitur Aktif</th>
-                        <th>API Key</th>
-                        <th>Status</th>
-                        <th class="text-end">Aksi</th>
+                        <th>{{ __('admin.company') }}</th>
+                        <th>{{ __('admin.url') }}</th>
+                        <th>{{ __('admin.active_features') }}</th>
+                        <th>{{ __('admin.api_key') }}</th>
+                        <th>{{ __('admin.status') }}</th>
+                        <th class="text-end">{{ __('admin.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -96,9 +96,9 @@
                         <td>
                             @if($company->aws_api_key)
                                 @if($company->aws_key_active)
-                                    <span class="badge" style="background:var(--grab-green);"><i class="bi bi-key-fill"></i> Aktif</span>
+                                    <span class="badge" style="background:var(--grab-green);"><i class="bi bi-key-fill"></i> {{ __('admin.key_active') }}</span>
                                 @else
-                                    <span class="badge bg-secondary"><i class="bi bi-key"></i> Nonaktif</span>
+                                    <span class="badge bg-secondary"><i class="bi bi-key"></i> {{ __('admin.key_inactive') }}</span>
                                 @endif
                             @else
                                 <span class="text-muted">—</span>
@@ -106,9 +106,9 @@
                         </td>
                         <td>
                             @if($company->is_active)
-                                <span class="badge badge-active">Active</span>
+                                <span class="badge badge-active">{{ __('admin.active') }}</span>
                             @else
-                                <span class="badge badge-inactive">Inactive</span>
+                                <span class="badge badge-inactive">{{ __('admin.inactive') }}</span>
                             @endif
                         </td>
                         <td class="text-end">

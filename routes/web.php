@@ -91,26 +91,37 @@ Route::get('/tester-api', function () {
     return view('testing.index');
 })->name('pageRouteTester');
 
-// Admin Dashboard
-Route::get('/admin', [DashboardController::class, 'index'])->name('admin.dashboard');
+// Admin Language Switcher (no middleware needed — just sets session)
+Route::get('/admin/language/{lang}', function (string $lang) {
+    if (in_array($lang, ['en', 'id'])) {
+        session(['admin_locale' => $lang]);
+    }
+    return back();
+})->name('admin.language');
 
-// Admin API Key Management
-Route::prefix('admin/api-keys')->group(function () {
-    Route::get('/', [ApiKeyController::class, 'index'])->name('admin.api-keys.index');
-    Route::post('/assign', [ApiKeyController::class, 'assign'])->name('admin.api-keys.assign');
-    Route::post('/unassign', [ApiKeyController::class, 'unassign'])->name('admin.api-keys.unassign');
-    Route::get('/{keyName}/usage', [ApiKeyController::class, 'usage'])->name('admin.api-keys.usage');
-});
+// All admin routes with locale middleware
+Route::middleware('admin.locale')->group(function () {
+    // Dashboard
+    Route::get('/admin', [DashboardController::class, 'index'])->name('admin.dashboard');
 
-// Admin Company Management
-Route::prefix('admin/companies')->group(function () {
-    Route::get('/', [CompanyController::class, 'index'])->name('admin.companies.index');
-    Route::get('/create', [CompanyController::class, 'create'])->name('admin.companies.create');
-    Route::post('/', [CompanyController::class, 'store'])->name('admin.companies.store');
-    Route::get('/{company}/edit', [CompanyController::class, 'edit'])->name('admin.companies.edit');
-    Route::put('/{company}', [CompanyController::class, 'update'])->name('admin.companies.update');
-    Route::patch('/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])->name('admin.companies.toggle-status');
-    Route::get('/{company}/usage', [CompanyController::class, 'usage'])->name('admin.companies.usage');
+    // API Key Management
+    Route::prefix('admin/api-keys')->group(function () {
+        Route::get('/', [ApiKeyController::class, 'index'])->name('admin.api-keys.index');
+        Route::post('/assign', [ApiKeyController::class, 'assign'])->name('admin.api-keys.assign');
+        Route::post('/unassign', [ApiKeyController::class, 'unassign'])->name('admin.api-keys.unassign');
+        Route::get('/{keyName}/usage', [ApiKeyController::class, 'usage'])->name('admin.api-keys.usage');
+    });
+
+    // Company Management
+    Route::prefix('admin/companies')->group(function () {
+        Route::get('/', [CompanyController::class, 'index'])->name('admin.companies.index');
+        Route::get('/create', [CompanyController::class, 'create'])->name('admin.companies.create');
+        Route::post('/', [CompanyController::class, 'store'])->name('admin.companies.store');
+        Route::get('/{company}/edit', [CompanyController::class, 'edit'])->name('admin.companies.edit');
+        Route::put('/{company}', [CompanyController::class, 'update'])->name('admin.companies.update');
+        Route::patch('/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])->name('admin.companies.toggle-status');
+        Route::get('/{company}/usage', [CompanyController::class, 'usage'])->name('admin.companies.usage');
+    });
 });
 
 // Dynamic company map — must be last (catch-all)

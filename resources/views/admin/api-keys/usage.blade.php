@@ -35,7 +35,7 @@
 <div class="page-header">
     <div class="container header-content">
         <a href="{{ route('admin.api-keys.index') }}" class="back-link d-inline-flex align-items-center gap-1 mb-3">
-            <i class="bi bi-arrow-left"></i> Kembali ke API Keys
+            <i class="bi bi-arrow-left"></i> {{ __('admin.back_to_keys') }}
         </a>
         <div class="d-flex align-items-start justify-content-between">
             <div>
@@ -58,7 +58,7 @@
                     </span>
                 @else
                     <span class="header-badge" style="background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4);">
-                        <i class="bi bi-dash-circle"></i> Belum di-assign
+                        <i class="bi bi-dash-circle"></i> {{ __('admin.not_assigned') }}
                     </span>
                 @endif
             </div>
@@ -66,25 +66,25 @@
         @if($keyInfo)
         <div class="header-meta">
             <div class="header-meta-item">
-                <span class="header-meta-label">Dibuat</span>
+                <span class="header-meta-label">{{ __('admin.created') }}</span>
                 <span class="header-meta-value">{{ $keyInfo['create_time'] ? \Carbon\Carbon::parse($keyInfo['create_time'])->format('d M Y') : '—' }}</span>
             </div>
             <div class="header-meta-item">
-                <span class="header-meta-label">Expire</span>
-                <span class="header-meta-value">{{ $keyInfo['expire_time'] ? \Carbon\Carbon::parse($keyInfo['expire_time'])->format('d M Y') : 'Tidak ada' }}</span>
+                <span class="header-meta-label">{{ __('admin.expire') }}</span>
+                <span class="header-meta-value">{{ $keyInfo['expire_time'] ? \Carbon\Carbon::parse($keyInfo['expire_time'])->format('d M Y') : __('admin.no_expire') }}</span>
             </div>
             <div class="header-meta-item">
-                <span class="header-meta-label">Status</span>
+                <span class="header-meta-label">{{ __('admin.status') }}</span>
                 <span class="header-meta-value">
                     @if($keyInfo['expire_time'] && \Carbon\Carbon::parse($keyInfo['expire_time'])->isPast())
-                        <span style="color:#ff6b6b;">Expired</span>
+                        <span style="color:#ff6b6b;">{{ __('admin.expired') }}</span>
                     @else
-                        <span style="color:#5eff9e;">Active</span>
+                        <span style="color:#5eff9e;">{{ __('admin.active') }}</span>
                     @endif
                 </span>
             </div>
             <div class="header-meta-item">
-                <span class="header-meta-label">Region</span>
+                <span class="header-meta-label">{{ __('admin.region') }}</span>
                 <span class="header-meta-value">{{ config('aws.region') }}</span>
             </div>
         </div>
@@ -102,14 +102,14 @@
     <div class="filter-bar mb-4">
         <form method="GET" action="{{ route('admin.api-keys.usage', $keyName) }}" id="filterForm">
             <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-                <span class="text-muted" style="font-size:0.78rem; font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Quick Range</span>
+                <span class="text-muted" style="font-size:0.78rem; font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">{{ __('admin.quick_range') }}</span>
                 @foreach([7 => '7D', 14 => '14D', 30 => '30D', 60 => '60D', 90 => '90D'] as $d => $label)
                 @php $qStart = now()->subDays($d - 1)->format('Y-m-d'); $qEnd = now()->format('Y-m-d'); $isActive = ($startDate === $qStart && $endDate === $qEnd); @endphp
                 <button type="button" class="btn btn-sm {{ $isActive ? 'btn-grab' : 'btn-outline-secondary' }} quick-range"
                     style="border-radius:8px; min-width:48px; font-size:0.8rem;" data-start="{{ $qStart }}" data-end="{{ $qEnd }}">{{ $label }}</button>
                 @endforeach
                 <div class="vr mx-1" style="height:20px;"></div>
-                @if($isCached)<span class="text-muted" style="font-size:0.72rem;"><i class="bi bi-clock-history"></i> Cached 30m</span>@endif
+                @if($isCached)<span class="text-muted" style="font-size:0.72rem;"><i class="bi bi-clock-history"></i> {{ __('admin.cached', ['min' => 30]) }}</span>@endif
                 <a href="{{ route('admin.api-keys.usage', array_filter(['keyName' => $keyName, 'start' => $startDate, 'end' => $endDate, 'operation' => $filterOperation, 'refresh' => 1])) }}"
                     class="btn btn-sm btn-outline-grab" style="margin-left:auto;"><i class="bi bi-arrow-clockwise"></i></a>
             </div>
@@ -128,14 +128,14 @@
                 <div class="filter-input-box">
                     <i class="bi bi-diagram-3 text-muted"></i>
                     <select name="operation" class="border-0 bg-transparent" style="font-weight:500; outline:none; width:180px; -webkit-appearance:none; appearance:none;">
-                        <option value="">Semua Operation</option>
+                        <option value="">{{ __('admin.all_operations') }}</option>
                         @foreach($operations as $op)
                         <option value="{{ $op }}" {{ $filterOperation === $op ? 'selected' : '' }}>{{ $op }}</option>
                         @endforeach
                     </select>
                     <i class="bi bi-chevron-down text-muted" style="font-size:0.65rem;"></i>
                 </div>
-                <button type="submit" class="btn btn-grab filter-btn"><i class="bi bi-search me-1"></i>Filter</button>
+                <button type="submit" class="btn btn-grab filter-btn"><i class="bi bi-search me-1"></i>{{ __('admin.filter') }}</button>
                 @if($filterOperation || $startDate !== now()->subDays(29)->format('Y-m-d') || $endDate !== now()->format('Y-m-d'))
                 <a href="{{ route('admin.api-keys.usage', $keyName) }}" class="btn btn-outline-secondary filter-btn d-flex align-items-center justify-content-center" style="width:40px; padding:0;"><i class="bi bi-x-lg"></i></a>
                 @endif
@@ -147,9 +147,9 @@
     <div class="card mb-4">
         <div class="card-body empty-state">
             <i class="bi bi-exclamation-triangle d-block" style="color:#dc3545;"></i>
-            <h6 class="fw-semibold mb-2">Gagal Mengambil Metrics</h6>
+            <h6 class="fw-semibold mb-2">{{ __('admin.failed_metrics') }}</h6>
             <p class="text-muted mb-2" style="font-size:0.85rem;">{{ $metrics['error'] }}</p>
-            <small class="text-muted">Pastikan IAM user punya permission <code>cloudwatch:GetMetricData</code></small>
+            <small class="text-muted">{{ __('admin.permission_needed', ['permission' => 'cloudwatch:GetMetricData']) }}</small>
         </div>
     </div>
     @else
@@ -159,7 +159,7 @@
             <div class="card stat-card">
                 <div class="card-body d-flex align-items-center gap-3">
                     <div class="stat-icon" style="background: var(--grab-green-light); color: var(--grab-green);"><i class="bi bi-lightning-charge-fill"></i></div>
-                    <div><div class="stat-label">Total Request</div><div class="stat-value">{{ number_format($metrics['total']) }}</div></div>
+                    <div><div class="stat-label">{{ __('admin.total_request') }}</div><div class="stat-value">{{ number_format($metrics['total']) }}</div></div>
                 </div>
             </div>
         </div>
@@ -167,7 +167,7 @@
             <div class="card stat-card">
                 <div class="card-body d-flex align-items-center gap-3">
                     <div class="stat-icon" style="background: #eef2ff; color: #6366f1;"><i class="bi bi-graph-up"></i></div>
-                    <div><div class="stat-label">Rata-rata / Hari</div><div class="stat-value">{{ $metrics['total'] > 0 ? number_format($metrics['total'] / $days, 0) : '0' }}</div></div>
+                    <div><div class="stat-label">{{ __('admin.avg_per_day') }}</div><div class="stat-value">{{ $metrics['total'] > 0 ? number_format($metrics['total'] / $days, 0) : '0' }}</div></div>
                 </div>
             </div>
         </div>
@@ -175,7 +175,7 @@
             <div class="card stat-card">
                 <div class="card-body d-flex align-items-center gap-3">
                     <div class="stat-icon" style="background: #fff3e0; color: #f59e0b;"><i class="bi bi-calendar-range"></i></div>
-                    <div><div class="stat-label">Periode</div><div class="stat-value" style="font-size:1.1rem;">{{ $days }} hari</div></div>
+                    <div><div class="stat-label">{{ __('admin.period') }}</div><div class="stat-value" style="font-size:1.1rem;">{{ __('admin.days', ['count' => $days]) }}</div></div>
                 </div>
             </div>
         </div>
@@ -185,7 +185,7 @@
     <div class="card mb-4">
         <div class="card-body">
             <div class="d-flex align-items-center justify-content-between mb-3">
-                <h6 class="fw-semibold mb-0"><i class="bi bi-bar-chart-line me-1 text-muted"></i> Request per Hari</h6>
+                <h6 class="fw-semibold mb-0"><i class="bi bi-bar-chart-line me-1 text-muted"></i> {{ __('admin.request_per_day') }}</h6>
                 @if($filterOperation)
                 <span class="badge fw-normal px-3 py-2" style="background: var(--grab-green-light); color: var(--grab-green); border-radius: 8px; font-size:0.78rem;">
                     <i class="bi bi-funnel-fill me-1"></i>{{ $filterOperation }}
@@ -193,7 +193,7 @@
                 @endif
             </div>
             @if(empty($metrics['daily']))
-            <div class="empty-state"><i class="bi bi-bar-chart d-block"></i><p class="text-muted mb-0">Belum ada data request untuk periode ini.</p></div>
+            <div class="empty-state"><i class="bi bi-bar-chart d-block"></i><p class="text-muted mb-0">{{ __('admin.no_request_period') }}</p></div>
             @else
             @php
                 $allDays = collect();
@@ -244,14 +244,14 @@
 
     <div class="card mb-4">
         <div class="card-body">
-            <h6 class="fw-semibold mb-3"><i class="bi bi-diagram-3 me-1 text-muted"></i> Breakdown per Operation</h6>
+            <h6 class="fw-semibold mb-3"><i class="bi bi-diagram-3 me-1 text-muted"></i> {{ __('admin.breakdown_operation') }}</h6>
             <div class="table-responsive">
                 <table class="table align-middle mb-0" style="font-size:0.85rem;">
                     <thead>
                         <tr style="border-bottom: 2px solid #e2e8f0;">
-                            <th style="width:220px;">Operation</th><th>Usage</th>
-                            <th class="text-end" style="width:90px;">Requests</th><th class="text-end" style="width:80px;">$/1K</th>
-                            <th class="text-end" style="width:90px;">Est. Cost</th>
+                            <th style="width:220px;">{{ __('admin.operation') }}</th><th>{{ __('admin.usage') }}</th>
+                            <th class="text-end" style="width:90px;">{{ __('admin.requests') }}</th><th class="text-end" style="width:80px;">{{ __('admin.per_1k') }}</th>
+                            <th class="text-end" style="width:90px;">{{ __('admin.est_cost') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -268,7 +268,7 @@
                     </tbody>
                     <tfoot>
                         <tr style="border-top: 2px solid #e2e8f0;">
-                            <td class="fw-bold">Total</td><td></td>
+                            <td class="fw-bold">{{ __('admin.total') }}</td><td></td>
                             <td class="text-end fw-bold">{{ number_format(array_sum($metrics['operations'])) }}</td><td></td>
                             <td class="text-end fw-bold" style="color: var(--grab-green); font-size:1rem;">${{ number_format($totalCost, 2) }}</td>
                         </tr>
@@ -295,8 +295,8 @@
             <div class="stat-icon" style="background: {{ $budgetOver ? '#fde8e8' : '#fff8e1' }}; color: {{ $budgetColor }};"><i class="bi bi-exclamation-triangle-fill"></i></div>
             <div class="flex-grow-1">
                 <div class="fw-semibold" style="font-size:0.9rem;">
-                    @if($budgetOver) Estimasi biaya sudah melebihi ${{ number_format($budgetLimit) }}!
-                    @else Estimasi biaya sudah mencapai {{ number_format($budgetPct, 0) }}% dari batas ${{ number_format($budgetLimit) }}
+                    @if($budgetOver) {{ __('admin.budget_exceeded', ['limit' => number_format($budgetLimit)]) }}
+                    @else {{ __('admin.budget_warning', ['pct' => number_format($budgetPct, 0), 'limit' => number_format($budgetLimit)]) }}
                     @endif
                 </div>
                 <small class="text-muted">Periode: {{ \Carbon\Carbon::parse($startDate)->format('d M Y') }} — {{ \Carbon\Carbon::parse($endDate)->format('d M Y') }}</small>
@@ -312,9 +312,9 @@
     <div class="card mb-4">
         <div class="card-body">
             <div class="d-flex align-items-center justify-content-between mb-3">
-                <h6 class="fw-semibold mb-0"><i class="bi bi-wallet2 me-1 text-muted"></i> Estimasi Biaya per Kategori</h6>
+                <h6 class="fw-semibold mb-0"><i class="bi bi-wallet2 me-1 text-muted"></i> {{ __('admin.cost_by_cat') }}</h6>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="text-muted" style="font-size:0.75rem;">Budget</span>
+                    <span class="text-muted" style="font-size:0.75rem;">{{ __('admin.budget') }}</span>
                     <div style="width:120px; height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden;">
                         <div style="height:100%; width:{{ $budgetPct }}%; background:{{ $budgetColor }}; border-radius:3px;"></div>
                     </div>
@@ -332,7 +332,7 @@
                         </div>
                         <div class="fw-bold" style="font-size:1.25rem; color: {{ $catCost > 0 ? '#1a1a2e' : '#6c757d' }};">${{ number_format($catCost, 2) }}</div>
                         <div class="d-flex align-items-center justify-content-between mt-2">
-                            <small class="text-muted">{{ number_format($catCount) }} requests</small>
+                            <small class="text-muted">{{ number_format($catCount) }} {{ __('admin.requests') }}</small>
                             @if($catPct > 0)<small class="fw-medium" style="color: var(--grab-green);">{{ number_format($catPct, 0) }}%</small>@endif
                         </div>
                         <div style="height:4px; background:#e2e8f0; border-radius:2px; overflow:hidden; margin-top:6px;">

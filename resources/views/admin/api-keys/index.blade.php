@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'AWS API Keys')
+@section('title', __('admin.api_keys_title'))
 
 @push('styles')
     .key-card {
@@ -67,10 +67,10 @@
 <div class="page-header">
     <div class="container">
         <h4 class="fw-bold mb-1" style="font-size:1.4rem;">
-            <i class="bi bi-key-fill me-2" style="opacity:0.7;"></i>AWS API Keys
+            <i class="bi bi-key-fill me-2" style="opacity:0.7;"></i>{{ __('admin.api_keys_title') }}
         </h4>
         <p style="color:rgba(255,255,255,0.5); font-size:0.85rem; margin-bottom:20px;">
-            Kelola API keys dari AWS Location Service — assign ke company dan lihat usage.
+            {{ __('admin.api_keys_subtitle') }}
         </p>
 
         @if($hasCredentials && !$error && !empty($keys))
@@ -84,21 +84,21 @@
                 <div class="stat-mini-icon"><i class="bi bi-key"></i></div>
                 <div>
                     <div class="stat-mini-value">{{ $totalKeys }}</div>
-                    <div class="stat-mini-label">Total Keys</div>
+                    <div class="stat-mini-label">{{ __('admin.total_keys') }}</div>
                 </div>
             </div>
             <div class="stat-mini">
                 <div class="stat-mini-icon"><i class="bi bi-check-circle"></i></div>
                 <div>
                     <div class="stat-mini-value">{{ $activeKeys }}</div>
-                    <div class="stat-mini-label">Active</div>
+                    <div class="stat-mini-label">{{ __('admin.active') }}</div>
                 </div>
             </div>
             <div class="stat-mini">
                 <div class="stat-mini-icon"><i class="bi bi-link-45deg"></i></div>
                 <div>
                     <div class="stat-mini-value">{{ $assignedCount }}</div>
-                    <div class="stat-mini-label">Assigned</div>
+                    <div class="stat-mini-label">{{ __('admin.assigned') }}</div>
                 </div>
             </div>
         </div>
@@ -114,16 +114,16 @@
             <div style="width:64px; height:64px; border-radius:16px; background:#fff3e0; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
                 <i class="bi bi-shield-lock" style="font-size:1.5rem; color:#f59e0b;"></i>
             </div>
-            <h5 class="fw-semibold mb-2">AWS Credentials Belum Dikonfigurasi</h5>
+            <h5 class="fw-semibold mb-2">{{ __('admin.no_credentials_title') }}</h5>
             <p class="text-muted mb-3" style="max-width:450px; margin:0 auto;">
-                Untuk mengakses API keys dari AWS Location Service, isi credentials di file <code>.env</code>
+                {{ __('admin.no_credentials_desc') }}
             </p>
             <div class="rounded-3 p-3 mx-auto" style="max-width: 380px; text-align: left; background: #f8f9fa; font-family: monospace; font-size: 0.82rem;">
                 AWS_ACCESS_KEY_ID=your_access_key<br>
                 AWS_SECRET_ACCESS_KEY=your_secret_key
             </div>
             <p class="text-muted mt-3 mb-0" style="font-size: 0.8rem;">
-                IAM permission: <code>geo:ListKeys</code>, <code>geo:DescribeKey</code>, <code>cloudwatch:GetMetricData</code>
+                {{ __('admin.iam_permission') }}: <code>geo:ListKeys</code>, <code>geo:DescribeKey</code>, <code>cloudwatch:GetMetricData</code>
             </p>
         </div>
     </div>
@@ -133,10 +133,10 @@
             <div style="width:64px; height:64px; border-radius:16px; background:#fde8e8; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
                 <i class="bi bi-exclamation-triangle" style="font-size:1.5rem; color:#dc3545;"></i>
             </div>
-            <h5 class="fw-semibold mb-2">Gagal Mengambil Data dari AWS</h5>
+            <h5 class="fw-semibold mb-2">{{ __('admin.aws_error_title') }}</h5>
             <div class="alert alert-danger d-inline-block" style="border-radius:10px;">{{ $error }}</div>
             <p class="text-muted mt-3 mb-0" style="font-size: 0.8rem;">
-                Pastikan IAM user memiliki permission <code>geo:ListKeys</code> dan credentials sudah benar.
+                {{ __('admin.aws_error_desc', ['permission' => 'geo:ListKeys']) }}
             </p>
         </div>
     </div>
@@ -146,8 +146,8 @@
             <div style="width:64px; height:64px; border-radius:16px; background:#f0f2f5; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
                 <i class="bi bi-key" style="font-size:1.5rem; color:#adb5bd;"></i>
             </div>
-            <h5 class="fw-semibold mb-1">Tidak Ada API Key</h5>
-            <p class="text-muted mb-0">Belum ada API key di AWS Location Service untuk region <strong>{{ config('aws.region') }}</strong>.</p>
+            <h5 class="fw-semibold mb-1">{{ __('admin.no_keys_title') }}</h5>
+            <p class="text-muted mb-0">{{ __('admin.no_keys_desc', ['region' => config('aws.region')]) }}</p>
         </div>
     </div>
     @else
@@ -166,51 +166,51 @@
                         </div>
                         <div>
                             <div class="key-name">{{ $key['key_name'] }}</div>
-                            <div class="key-desc">{{ $key['description'] ?: 'No description' }}</div>
+                            <div class="key-desc">{{ $key['description'] ?: __('admin.no_description') }}</div>
                         </div>
                     </div>
-                    <span class="status-dot" style="background:{{ $isExpired ? '#dc3545' : 'var(--grab-green)' }};" title="{{ $isExpired ? 'Expired' : 'Active' }}"></span>
+                    <span class="status-dot" style="background:{{ $isExpired ? '#dc3545' : 'var(--grab-green)' }};" title="{{ $isExpired ? __('admin.expired') : __('admin.active') }}"></span>
                 </div>
 
                 <div class="mt-3">
                     @if($assignedCompany)
                         <span class="badge-company"><i class="bi bi-building"></i> {{ $assignedCompany->name }}</span>
                     @else
-                        <span class="badge-unassigned"><i class="bi bi-dash-circle"></i> Belum di-assign</span>
+                        <span class="badge-unassigned"><i class="bi bi-dash-circle"></i> {{ __('admin.not_assigned') }}</span>
                     @endif
                 </div>
 
                 <div class="key-meta">
                     <div class="key-meta-item">
-                        <span class="key-meta-label">Status</span>
-                        <span class="key-meta-value" style="color:{{ $isExpired ? '#dc3545' : 'var(--grab-green)' }};">{{ $isExpired ? 'Expired' : 'Active' }}</span>
+                        <span class="key-meta-label">{{ __('admin.status') }}</span>
+                        <span class="key-meta-value" style="color:{{ $isExpired ? '#dc3545' : 'var(--grab-green)' }};">{{ $isExpired ? __('admin.expired') : __('admin.active') }}</span>
                     </div>
                     <div class="key-meta-item">
-                        <span class="key-meta-label">Dibuat</span>
+                        <span class="key-meta-label">{{ __('admin.created') }}</span>
                         <span class="key-meta-value">{{ $key['create_time'] ? \Carbon\Carbon::parse($key['create_time'])->format('d M Y') : '—' }}</span>
                     </div>
                     <div class="key-meta-item">
-                        <span class="key-meta-label">Expire</span>
+                        <span class="key-meta-label">{{ __('admin.expire') }}</span>
                         <span class="key-meta-value">{{ $key['expire_time'] ? \Carbon\Carbon::parse($key['expire_time'])->format('d M Y') : '—' }}</span>
                     </div>
                     <div class="key-meta-item">
-                        <span class="key-meta-label">Region</span>
+                        <span class="key-meta-label">{{ __('admin.region') }}</span>
                         <span class="key-meta-value">{{ config('aws.region') }}</span>
                     </div>
                 </div>
 
                 <div class="key-actions">
-                    <a href="{{ route('admin.api-keys.usage', $key['key_name']) }}" class="btn-key"><i class="bi bi-bar-chart"></i> Usage</a>
+                    <a href="{{ route('admin.api-keys.usage', $key['key_name']) }}" class="btn-key"><i class="bi bi-bar-chart"></i> {{ __('admin.usage') }}</a>
                     @if(!$isExpired)
                     <button type="button" class="btn-key btn-key-primary" data-bs-toggle="modal" data-bs-target="#assignModal" data-key-name="{{ $key['key_name'] }}">
-                        <i class="bi bi-link-45deg"></i> Assign
+                        <i class="bi bi-link-45deg"></i> {{ __('admin.assign') }}
                     </button>
                     @endif
                     @if($assignedCompany)
                     <form method="POST" action="{{ route('admin.api-keys.unassign') }}" class="d-inline">
                         @csrf
                         <input type="hidden" name="company_id" value="{{ $assignedCompany->id }}">
-                        <button type="submit" class="btn-key btn-key-danger"><i class="bi bi-x-lg"></i> Unassign</button>
+                        <button type="submit" class="btn-key btn-key-danger"><i class="bi bi-x-lg"></i> {{ __('admin.unassign') }}</button>
                     </form>
                     @endif
                 </div>
@@ -228,8 +228,8 @@
                     <input type="hidden" name="key_name" id="modalKeyName">
                     <div class="modal-header border-0 pb-0">
                         <div>
-                            <h5 class="modal-title fw-bold">Assign API Key</h5>
-                            <small class="text-muted">Pilih company untuk key ini</small>
+                            <h5 class="modal-title fw-bold">{{ __('admin.assign_api_key') }}</h5>
+                            <small class="text-muted">{{ __('admin.select_company') }}</small>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
@@ -242,18 +242,18 @@
                         </div>
                         <label class="form-label fw-medium">Company</label>
                         <select name="company_id" class="form-select" required>
-                            <option value="">— Pilih Company —</option>
+                            <option value="">{{ __('admin.choose_company') }}</option>
                             @foreach($companies as $company)
                             <option value="{{ $company->id }}">
                                 {{ $company->name }}
-                                @if($company->aws_api_key_name) (key: {{ $company->aws_api_key_name }}) @endif
+                                @if($company->aws_api_key_name) ({{ __('admin.has_key', ['name' => $company->aws_api_key_name]) }}) @endif
                             </option>
                             @endforeach
                         </select>
                     </div>
                     <div class="modal-footer border-0 pt-0">
-                        <button type="button" class="btn btn-outline-secondary" style="border-radius:10px;" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-grab px-4"><i class="bi bi-link-45deg me-1"></i>Assign Key</button>
+                        <button type="button" class="btn btn-outline-secondary" style="border-radius:10px;" data-bs-dismiss="modal">{{ __('admin.cancel') }}</button>
+                        <button type="submit" class="btn btn-grab px-4"><i class="bi bi-link-45deg me-1"></i>{{ __('admin.assign_key') }}</button>
                     </div>
                 </form>
             </div>

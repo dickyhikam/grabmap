@@ -111,8 +111,8 @@
 @section('content')
     {{-- Welcome Banner --}}
     <div class="welcome-banner">
-        <h4>GrabMaps Admin Dashboard</h4>
-        <p>Overview penggunaan AWS Location Service dan manajemen company</p>
+        <h4>{{ __('admin.dashboard_title') }}</h4>
+        <p>{{ __('admin.dashboard_subtitle') }}</p>
     </div>
 
     {{-- Stat Grid --}}
@@ -123,7 +123,7 @@
             </div>
             <div>
                 <div class="stat-num">{{ $activeCompanies }}<span style="font-size:0.85rem; color:#6c757d; font-weight:400;">/{{ $totalCompanies }}</span></div>
-                <div class="stat-lbl">Companies Aktif</div>
+                <div class="stat-lbl">{{ __('admin.active_companies') }}</div>
             </div>
         </div>
         <div class="mini-stat">
@@ -132,7 +132,7 @@
             </div>
             <div>
                 <div class="stat-num">{{ $apiKeysData['active'] }}<span style="font-size:0.85rem; color:#6c757d; font-weight:400;">/{{ $apiKeysData['total'] }}</span></div>
-                <div class="stat-lbl">API Keys Aktif</div>
+                <div class="stat-lbl">{{ __('admin.active_api_keys') }}</div>
             </div>
         </div>
         <div class="mini-stat">
@@ -140,17 +140,18 @@
                 <i class="bi bi-lightning-charge-fill"></i>
             </div>
             <div>
-                <div class="stat-num">{{ number_format($localRequestsThisMonth) }}</div>
-                <div class="stat-lbl">Requests Bulan Ini</div>
+                <div class="stat-num">{{ number_format($cloudwatchData ? $cloudwatchData['total_requests'] : $localRequestsThisMonth) }}</div>
+                <div class="stat-lbl">{{ __('admin.requests_this_month') }}</div>
             </div>
         </div>
         <div class="mini-stat">
             <div class="icon-box" style="background: #fde8e8; color: #dc3545;">
                 <i class="bi bi-wallet2"></i>
             </div>
+            @php $dashCost = $cloudwatchData ? $cloudwatchData['total_cost'] : $localEstimatedCost; @endphp
             <div>
-                <div class="stat-num" style="color: {{ $localEstimatedCost > 0 ? '#1a1a2e' : '#6c757d' }};">${{ number_format($localEstimatedCost, 2) }}</div>
-                <div class="stat-lbl">Est. Biaya Bulan Ini</div>
+                <div class="stat-num" style="color: {{ $dashCost > 0 ? '#1a1a2e' : '#6c757d' }};">${{ number_format($dashCost, 2) }}</div>
+                <div class="stat-lbl">{{ __('admin.est_cost_this_month') }}</div>
             </div>
         </div>
     </div>
@@ -161,18 +162,19 @@
             {{-- Daily Chart --}}
             <div class="card mb-4">
                 <div class="card-body">
-                    <div class="section-title"><i class="bi bi-bar-chart-line"></i> Request Harian (30 Hari Terakhir)</div>
+                    <div class="section-title"><i class="bi bi-bar-chart-line"></i> {{ __('admin.daily_requests') }}</div>
                     @php
+                        $cwDaily = $cloudwatchData['daily'] ?? [];
                         $allDays = collect();
                         for ($i = 29; $i >= 0; $i--) {
                             $date = now()->subDays($i)->format('Y-m-d');
-                            $allDays[$date] = $localDaily[$date] ?? 0;
+                            $allDays[$date] = $cwDaily[$date] ?? ($localDaily[$date] ?? 0);
                         }
                         $maxCount = $allDays->max() ?: 1;
                     @endphp
 
                     @if($allDays->sum() === 0)
-                    <div class="empty-state"><i class="bi bi-bar-chart d-block"></i><p class="text-muted mb-0">Belum ada data request.</p></div>
+                    <div class="empty-state"><i class="bi bi-bar-chart d-block"></i><p class="text-muted mb-0">{{ __('admin.no_request_data') }}</p></div>
                     @else
                     <div class="chart-container">
                         <div class="chart-bar">
@@ -198,7 +200,7 @@
             <div class="card mb-4">
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between mb-3">
-                        <div class="section-title mb-0"><i class="bi bi-wallet2"></i> Estimasi Biaya Bulan Ini (CloudWatch)</div>
+                        <div class="section-title mb-0"><i class="bi bi-wallet2"></i> {{ __('admin.cost_by_category') }}</div>
                         <span class="fw-bold" style="font-size:1.1rem; color:var(--grab-green);">${{ number_format($cloudwatchData['total_cost'], 2) }}</span>
                     </div>
                     @php
@@ -230,16 +232,16 @@
             @if($localByEndpoint->isNotEmpty())
             <div class="card mb-4">
                 <div class="card-body">
-                    <div class="section-title"><i class="bi bi-diagram-3"></i> Breakdown per Endpoint (Bulan Ini)</div>
+                    <div class="section-title"><i class="bi bi-diagram-3"></i> {{ __('admin.endpoint_breakdown') }}</div>
                     @php $endpointMax = $localByEndpoint->max() ?: 1; @endphp
                     <div class="table-responsive">
                         <table class="table align-middle mb-0" style="font-size:0.85rem;">
                             <thead>
                                 <tr style="border-bottom: 2px solid #e2e8f0;">
-                                    <th style="width:200px;">Endpoint</th>
-                                    <th>Usage</th>
-                                    <th class="text-end" style="width:100px;">Requests</th>
-                                    <th class="text-end" style="width:90px;">Est. Cost</th>
+                                    <th style="width:200px;">{{ __('admin.endpoint') }}</th>
+                                    <th>{{ __('admin.usage') }}</th>
+                                    <th class="text-end" style="width:100px;">{{ __('admin.requests') }}</th>
+                                    <th class="text-end" style="width:90px;">{{ __('admin.est_cost') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -264,26 +266,27 @@
 
         {{-- Right Column --}}
         <div class="col-lg-4">
-            {{-- Top Companies --}}
+            {{-- Most Used API Keys (CloudWatch) --}}
             <div class="card mb-4">
                 <div class="card-body">
-                    <div class="section-title"><i class="bi bi-trophy"></i> Top Companies Bulan Ini</div>
-                    @if($topCompanies->isEmpty())
+                    <div class="section-title"><i class="bi bi-trophy"></i> {{ __('admin.most_used_apis') }}</div>
+                    @if(!$cloudwatchData || empty($cloudwatchData['by_key']))
                     <div class="text-center text-muted py-3" style="font-size:0.85rem;">
                         <i class="bi bi-inbox d-block mb-2" style="font-size:1.5rem;"></i>
-                        Belum ada data
+                        {{ __('admin.no_data') }}
                     </div>
                     @else
-                    @foreach($topCompanies as $idx => $item)
+                    @foreach(collect($cloudwatchData['by_key'])->take(5) as $keyName => $count)
                     <div class="top-company-row">
-                        <div class="top-rank {{ $idx === 0 ? 'r1' : ($idx === 1 ? 'r2' : 'r3') }}">{{ $idx + 1 }}</div>
+                        <div class="top-rank {{ $loop->index === 0 ? 'r1' : ($loop->index === 1 ? 'r2' : 'r3') }}">{{ $loop->iteration }}</div>
                         <div class="flex-grow-1">
-                            <div class="fw-semibold" style="font-size:0.85rem;">{{ $item->company->name }}</div>
-                            <small class="text-muted">{{ $item->company->slug }}</small>
+                            <div class="fw-semibold" style="font-size:0.85rem;">
+                                <i class="bi bi-key me-1" style="color:var(--grab-green); font-size:0.8rem;"></i>{{ $keyName }}
+                            </div>
                         </div>
                         <div class="text-end">
-                            <div class="fw-bold" style="font-size:0.9rem;">{{ number_format($item->count) }}</div>
-                            <small class="text-muted">requests</small>
+                            <div class="fw-bold" style="font-size:0.9rem;">{{ number_format($count) }}</div>
+                            <small class="text-muted">{{ __('admin.requests') }}</small>
                         </div>
                     </div>
                     @endforeach
@@ -300,10 +303,10 @@
             @endphp
             <div class="card mb-4">
                 <div class="card-body">
-                    <div class="section-title"><i class="bi bi-speedometer2"></i> Budget Status</div>
+                    <div class="section-title"><i class="bi bi-speedometer2"></i> {{ __('admin.budget_status') }}</div>
                     <div class="text-center mb-3">
                         <div class="fw-bold" style="font-size: 2rem; color: {{ $budgetColor }};">${{ number_format($spent, 2) }}</div>
-                        <small class="text-muted">dari ${{ number_format($budget) }} budget bulanan</small>
+                        <small class="text-muted">{{ __('admin.of_budget', ['amount' => '$' . number_format($budget)]) }}</small>
                     </div>
                     <div style="height:10px; background:#e2e8f0; border-radius:5px; overflow:hidden;">
                         <div style="height:100%; width:{{ $budgetPct }}%; background:{{ $budgetColor }}; border-radius:5px; transition: width 0.5s;"></div>
@@ -319,27 +322,27 @@
             {{-- Quick Links --}}
             <div class="card mb-4">
                 <div class="card-body">
-                    <div class="section-title"><i class="bi bi-lightning"></i> Quick Links</div>
+                    <div class="section-title"><i class="bi bi-lightning"></i> {{ __('admin.quick_links') }}</div>
                     <div class="d-flex flex-column gap-2">
                         <a href="{{ route('admin.companies.create') }}" class="quick-link">
                             <div class="ql-icon"><i class="bi bi-plus-lg"></i></div>
                             <div>
-                                <div class="ql-text">Tambah Company</div>
-                                <div class="ql-desc">Buat company baru dengan fitur maps</div>
+                                <div class="ql-text">{{ __('admin.add_company') }}</div>
+                                <div class="ql-desc">{{ __('admin.add_company_desc') }}</div>
                             </div>
                         </a>
                         <a href="{{ route('admin.api-keys.index') }}" class="quick-link">
                             <div class="ql-icon"><i class="bi bi-key"></i></div>
                             <div>
-                                <div class="ql-text">Manage API Keys</div>
-                                <div class="ql-desc">Lihat dan assign keys dari AWS</div>
+                                <div class="ql-text">{{ __('admin.manage_api_keys') }}</div>
+                                <div class="ql-desc">{{ __('admin.manage_api_keys_desc') }}</div>
                             </div>
                         </a>
                         <a href="{{ url('/') }}" class="quick-link" target="_blank">
                             <div class="ql-icon"><i class="bi bi-map"></i></div>
                             <div>
-                                <div class="ql-text">Buka Homepage</div>
-                                <div class="ql-desc">Lihat demo map utama</div>
+                                <div class="ql-text">{{ __('admin.open_homepage') }}</div>
+                                <div class="ql-desc">{{ __('admin.open_homepage_desc') }}</div>
                             </div>
                         </a>
                     </div>
