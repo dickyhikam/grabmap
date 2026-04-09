@@ -156,6 +156,181 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
 
+        /* User dropdown */
+        .user-menu {
+            position: relative;
+        }
+
+        .user-trigger {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f0f2f5;
+            border: none;
+            border-radius: 999px;
+            padding: 4px 14px 4px 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .user-trigger:hover {
+            background: #e2e8f0;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--grab-green) 0%, var(--grab-green-dark) 100%);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            box-shadow: 0 2px 6px rgba(0, 177, 79, 0.25);
+        }
+
+        .user-trigger .user-name {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #1a1a2e;
+            line-height: 1.2;
+            max-width: 120px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-trigger .user-chevron {
+            color: #6c757d;
+            font-size: 0.7rem;
+        }
+
+        .user-dropdown {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            min-width: 240px;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
+            padding: 6px;
+            display: none;
+            z-index: 1050;
+            animation: userDropdownIn 0.2s ease-out;
+        }
+
+        @keyframes userDropdownIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-dropdown.show {
+            display: block;
+        }
+
+        .user-info-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 14px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 6px;
+        }
+
+        .user-info-header .user-avatar {
+            width: 42px;
+            height: 42px;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .user-info-header .info-text {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .user-info-header .info-name {
+            font-size: 0.86rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.3;
+        }
+
+        .user-info-header .info-email {
+            font-size: 0.72rem;
+            color: #6c757d;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 1px;
+        }
+
+        .user-info-header .verified-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.62rem;
+            font-weight: 600;
+            color: var(--grab-green-dark);
+            background: var(--grab-green-light);
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+
+        .user-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            color: #1a1a2e;
+            text-decoration: none;
+            background: none;
+            border: none;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.12s;
+        }
+
+        .user-menu-item:hover {
+            background: #f0f2f5;
+            color: #1a1a2e;
+        }
+
+        .user-menu-item i {
+            font-size: 1rem;
+            color: #6c757d;
+            width: 18px;
+            text-align: center;
+        }
+
+        .user-menu-item.danger {
+            color: #dc2626;
+        }
+
+        .user-menu-item.danger i {
+            color: #dc2626;
+        }
+
+        .user-menu-item.danger:hover {
+            background: #fef2f2;
+        }
+
+        .user-menu-divider {
+            height: 1px;
+            background: #e2e8f0;
+            margin: 4px 0;
+        }
+
         /* Legacy compat */
         .nav-link-admin {
             color: rgba(255, 255, 255, 0.7);
@@ -454,9 +629,74 @@
                 <a href="{{ url('/') }}" class="nav-icon" title="{{ __('admin.view_homepage') }}" target="_blank">
                     <i class="bi bi-box-arrow-up-right"></i>
                 </a>
+
+                @auth
+                @php
+                    $authUser = auth()->user();
+                    $initials = collect(explode(' ', $authUser->name))
+                        ->map(fn($w) => mb_substr($w, 0, 1))
+                        ->take(2)
+                        ->implode('');
+                @endphp
+                <div class="user-menu" id="userMenu">
+                    <button type="button" class="user-trigger" onclick="toggleUserMenu()" aria-haspopup="true">
+                        <div class="user-avatar">{{ $initials }}</div>
+                        <span class="user-name">{{ $authUser->name }}</span>
+                        <i class="bi bi-chevron-down user-chevron"></i>
+                    </button>
+                    <div class="user-dropdown" id="userDropdown">
+                        <div class="user-info-header">
+                            <div class="user-avatar">{{ $initials }}</div>
+                            <div class="info-text">
+                                <div class="info-name">{{ $authUser->name }}</div>
+                                <div class="info-email">{{ $authUser->email }}</div>
+                                @if ($authUser->hasVerifiedEmail())
+                                    <span class="verified-badge">
+                                        <i class="bi bi-patch-check-fill"></i> Verified
+                                    </span>
+                                @else
+                                    <span class="verified-badge" style="background:#fef3c7;color:#92400e;">
+                                        <i class="bi bi-exclamation-circle-fill"></i> Unverified
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+
+                        <a href="{{ url('/') }}" target="_blank" class="user-menu-item">
+                            <i class="bi bi-house-door"></i> Homepage
+                        </a>
+                        <a href="{{ route('pageRouteTester') }}" target="_blank" class="user-menu-item">
+                            <i class="bi bi-code-slash"></i> API Tester
+                        </a>
+
+                        <div class="user-menu-divider"></div>
+
+                        <form method="POST" action="{{ route('logout') }}" style="margin:0;">
+                            @csrf
+                            <button type="submit" class="user-menu-item danger">
+                                <i class="bi bi-box-arrow-right"></i> Sign Out
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                @endauth
             </div>
         </div>
     </nav>
+
+    <script>
+        function toggleUserMenu() {
+            const dropdown = document.getElementById('userDropdown');
+            if (dropdown) dropdown.classList.toggle('show');
+        }
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('userMenu');
+            const dropdown = document.getElementById('userDropdown');
+            if (menu && dropdown && !menu.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+    </script>
 
     @yield('header')
 
@@ -479,6 +719,66 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Global double-submit prevention -->
+    <script>
+        (function () {
+            // Prevent double form submission + show spinner state
+            document.addEventListener('submit', function (e) {
+                const form = e.target;
+                if (!(form instanceof HTMLFormElement)) return;
+                if (form.dataset.allowResubmit === 'true') return;
+
+                // Find the submit button (clicked or default)
+                const btn = form.querySelector('button[type="submit"], input[type="submit"]');
+                if (!btn) return;
+
+                // If already submitted, block
+                if (form.dataset.submitted === 'true') {
+                    e.preventDefault();
+                    return;
+                }
+                form.dataset.submitted = 'true';
+
+                // Disable + show spinner after a tick (so form data is collected first)
+                setTimeout(() => {
+                    btn.disabled = true;
+                    btn.dataset.originalHtml = btn.innerHTML;
+                    const spinner = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>';
+                    btn.innerHTML = spinner + 'Processing...';
+                }, 0);
+
+                // Safety reset after 15s in case something goes wrong
+                setTimeout(() => {
+                    if (form.dataset.submitted === 'true' && btn.dataset.originalHtml) {
+                        btn.disabled = false;
+                        btn.innerHTML = btn.dataset.originalHtml;
+                        delete form.dataset.submitted;
+                    }
+                }, 15000);
+            }, true);
+
+            // Prevent rapid double-click on action buttons (non-form, e.g. JS-triggered)
+            document.addEventListener('click', function (e) {
+                const btn = e.target.closest('button[data-once], a[data-once]');
+                if (!btn) return;
+                if (btn.dataset.clicked === 'true') {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    return;
+                }
+                btn.dataset.clicked = 'true';
+                btn.classList.add('disabled');
+                if (btn.tagName === 'BUTTON') btn.disabled = true;
+                setTimeout(() => {
+                    delete btn.dataset.clicked;
+                    btn.classList.remove('disabled');
+                    if (btn.tagName === 'BUTTON') btn.disabled = false;
+                }, 1500);
+            }, true);
+        })();
+    </script>
+
     @stack('scripts')
 </body>
 

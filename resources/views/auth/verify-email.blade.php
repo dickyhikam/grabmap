@@ -333,6 +333,34 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // Prevent double-submit on all forms in this page
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', (e) => {
+                if (form.dataset.submitted === 'true') {
+                    e.preventDefault();
+                    return;
+                }
+                form.dataset.submitted = 'true';
+                const btn = form.querySelector('button[type="submit"]');
+                if (btn) {
+                    btn.disabled = true;
+                    const original = btn.innerHTML;
+                    btn.dataset.originalHtml = original;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processing...';
+                    // Safety reset after 15s
+                    setTimeout(() => {
+                        if (form.dataset.submitted === 'true') {
+                            btn.disabled = false;
+                            btn.innerHTML = original;
+                            delete form.dataset.submitted;
+                        }
+                    }, 15000);
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>

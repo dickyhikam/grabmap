@@ -250,6 +250,39 @@
             box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
         }
 
+        /* Password show/hide toggle */
+        .input-wrap.has-toggle .form-control-modern {
+            padding-right: 42px;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            z-index: 3;
+        }
+
+        .password-toggle:hover {
+            color: var(--grab-green);
+            background: rgba(0, 177, 79, 0.08);
+        }
+
+        .password-toggle:focus {
+            outline: none;
+        }
+
         .field-error {
             display: flex;
             align-items: flex-start;
@@ -552,11 +585,13 @@
 
                 <div class="form-group">
                     <label class="form-label">Password <span class="required">*</span></label>
-                    <div class="input-wrap" id="passwordWrap">
+                    <div class="input-wrap has-toggle" id="passwordWrap">
                         <i class="bi bi-lock-fill input-icon"></i>
                         <input type="password" name="password" class="form-control-modern" id="passwordInput"
                             placeholder="Min 8 characters" required>
-                        <i class="bi bi-check-circle-fill input-validator"></i>
+                        <button type="button" class="password-toggle" data-target="passwordInput" tabindex="-1" aria-label="Toggle password visibility">
+                            <i class="bi bi-eye"></i>
+                        </button>
                     </div>
                     <div class="strength-row">
                         <div class="strength-meter">
@@ -571,11 +606,13 @@
 
                 <div class="form-group">
                     <label class="form-label">Confirm Password <span class="required">*</span></label>
-                    <div class="input-wrap" id="confirmWrap">
+                    <div class="input-wrap has-toggle" id="confirmWrap">
                         <i class="bi bi-lock-fill input-icon"></i>
                         <input type="password" name="password_confirmation" class="form-control-modern" id="confirmInput"
                             placeholder="Repeat password" required>
-                        <i class="bi bi-check-circle-fill input-validator"></i>
+                        <button type="button" class="password-toggle" data-target="confirmInput" tabindex="-1" aria-label="Toggle password visibility">
+                            <i class="bi bi-eye"></i>
+                        </button>
                     </div>
                     <div class="field-error">
                         <i class="bi bi-info-circle-fill"></i>
@@ -772,18 +809,40 @@
             else if (confirmInput.value) validateConfirm(false);
         });
 
+        // Password show/hide toggle
+        document.querySelectorAll('.password-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.dataset.target;
+                const input = document.getElementById(targetId);
+                const icon = btn.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.className = 'bi bi-eye-slash';
+                } else {
+                    input.type = 'password';
+                    icon.className = 'bi bi-eye';
+                }
+            });
+        });
+
         // Pre-validate
         if (nameInput.value) validateName(true);
         if (emailInput.value) validateEmail(true);
 
-        // Submit guard
-        document.getElementById('registerForm').addEventListener('submit', (e) => {
+        // Submit guard (prevents double-submit)
+        const registerForm = document.getElementById('registerForm');
+        registerForm.addEventListener('submit', (e) => {
+            if (registerForm.dataset.submitted === 'true') {
+                e.preventDefault();
+                return;
+            }
             const ok = [validateName(true), validateEmail(true), validatePassword(true), validateConfirm(true)]
                 .every(v => v);
             if (!ok) {
                 e.preventDefault();
                 return;
             }
+            registerForm.dataset.submitted = 'true';
             const btn = document.getElementById('submitBtn');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating account...';

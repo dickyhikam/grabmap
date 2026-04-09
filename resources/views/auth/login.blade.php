@@ -243,6 +243,39 @@
             box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
         }
 
+        /* Password show/hide toggle */
+        .input-wrap.has-toggle .form-control-modern {
+            padding-right: 46px;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            z-index: 3;
+        }
+
+        .password-toggle:hover {
+            color: var(--grab-green);
+            background: rgba(0, 177, 79, 0.08);
+        }
+
+        .password-toggle:focus {
+            outline: none;
+        }
+
         .field-error {
             display: flex;
             align-items: flex-start;
@@ -499,11 +532,13 @@
 
                 <div class="form-group">
                     <label class="form-label">Password <span class="required">*</span></label>
-                    <div class="input-wrap" id="passwordWrap">
+                    <div class="input-wrap has-toggle" id="passwordWrap">
                         <i class="bi bi-lock-fill input-icon"></i>
                         <input type="password" name="password" class="form-control-modern" id="passwordInput"
                             placeholder="••••••••" required>
-                        <i class="bi bi-check-circle-fill input-validator"></i>
+                        <button type="button" class="password-toggle" data-target="passwordInput" tabindex="-1" aria-label="Toggle password visibility">
+                            <i class="bi bi-eye"></i>
+                        </button>
                     </div>
                     <div class="field-error" id="passwordError">
                         <i class="bi bi-info-circle-fill"></i>
@@ -592,17 +627,39 @@
             else if (passwordInput.value) validatePassword(false);
         });
 
+        // Password show/hide toggle
+        document.querySelectorAll('.password-toggle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.dataset.target;
+                const input = document.getElementById(targetId);
+                const icon = btn.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.className = 'bi bi-eye-slash';
+                } else {
+                    input.type = 'password';
+                    icon.className = 'bi bi-eye';
+                }
+            });
+        });
+
         // Pre-validate on load if old value exists
         if (emailInput.value) validateEmail(true);
 
-        // Form submit guard
-        document.getElementById('loginForm').addEventListener('submit', (e) => {
+        // Form submit guard (prevents double-submit)
+        const loginForm = document.getElementById('loginForm');
+        loginForm.addEventListener('submit', (e) => {
+            if (loginForm.dataset.submitted === 'true') {
+                e.preventDefault();
+                return;
+            }
             const okEmail = validateEmail(true);
             const okPwd = validatePassword(true);
             if (!okEmail || !okPwd) {
                 e.preventDefault();
                 return;
             }
+            loginForm.dataset.submitted = 'true';
             const btn = document.getElementById('submitBtn');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Signing in...';
