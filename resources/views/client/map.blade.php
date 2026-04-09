@@ -1267,10 +1267,12 @@
                     return;
                 }
                 try {
+                    const center = map.getCenter();
                     const res = await proxyPost('/api/places/suggestions', {
                         Text: query,
                         MaxResults: 5,
-                        Language: searchLang
+                        Language: searchLang,
+                        BiasPosition: [center.lng, center.lat]
                     });
                     const data = await res.json();
                     renderSuggestions(data.Results);
@@ -1321,9 +1323,11 @@
             if (!query) return showToast('Empty Search', 'Enter a keyword.', 'warning');
             list.classList.remove('show');
             try {
+                const center = map.getCenter();
                 const res = await proxyPost('/api/places/search', {
                     Text: query,
-                    MaxResults: 1
+                    MaxResults: 10,
+                    BiasPosition: [center.lng, center.lat]
                 });
                 const data = await res.json();
                 if (data.Results && data.Results.length > 0) {
@@ -1354,7 +1358,7 @@
         function toggleMapMode() {
             isDarkMode = !isDarkMode;
             const mapEl = document.getElementById('map');
-            const icon  = document.getElementById('mapModeIcon');
+            const icon = document.getElementById('mapModeIcon');
 
             mapEl.classList.toggle('dark-mode', isDarkMode);
             document.body.classList.toggle('dark-mode-active', isDarkMode);

@@ -1229,10 +1229,12 @@
                 return;
             }
             try {
+                const center = map.getCenter();
                 const res = await proxyPost('/api/places/suggestions', {
                     Text: query,
-                    MaxResults: 5,
-                    Language: 'en'
+                    MaxResults: 10,
+                    Language: 'en',
+                    BiasPosition: [center.lng, center.lat]
                 });
                 const data = await res.json();
                 renderSuggestions(data.Results);
@@ -1277,9 +1279,11 @@
             list.classList.remove('show');
 
             try {
+                const center = map.getCenter();
                 const res = await proxyPost('/api/places/search', {
                     Text: query,
-                    MaxResults: 1
+                    MaxResults: 10,
+                    BiasPosition: [center.lng, center.lat]
                 });
                 const data = await res.json();
 
