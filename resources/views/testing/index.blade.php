@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AWS Location Service API Tester</title>
-    
+
     <link rel="shortcut icon" href="{{ asset('logo2.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('logo2.png') }}" type="image/png" sizes="32x32">
 
@@ -808,41 +808,52 @@
                 </div>
 
                 <!-- API Config -->
-                <div class="card-glass p-4 mb-4">
+                <div class="card-glass p-4 mb-4" hidden>
                     <div class="section-title">
                         <i class="bi bi-gear me-1"></i> API Configuration
+                        <span class="badge ms-2" style="background:#6b7280;color:#fff;font-size:0.65rem;">readonly</span>
                     </div>
                     <div class="mb-3" id="cfgRouteCalc">
                         <label class="form-label small fw-semibold">Route Calculator Name</label>
-                        <input type="text" class="form-control coord-input" id="routeCalc" value="{{ env('AWS_MAP_ROUTE') }}" readonly>
+                        <input type="text" class="form-control coord-input" id="routeCalc" value="{{ env('AWS_MAP_ROUTE') }}" readonly tabindex="-1">
                     </div>
                     <div class="mb-3" id="cfgPlaceIndex" style="display:none;">
                         <label class="form-label small fw-semibold">Place Index Name</label>
-                        <input type="text" class="form-control coord-input" id="placeIndex" value="{{ env('AWS_MAP_PLACE') }}" readonly>
+                        <input type="text" class="form-control coord-input" id="placeIndex" value="{{ env('AWS_MAP_PLACE') }}" readonly tabindex="-1">
                     </div>
                     <div class="mb-3" id="cfgMapName" style="display:none;">
                         <label class="form-label small fw-semibold">Map Name</label>
-                        <input type="text" class="form-control coord-input" id="mapNameInput" value="{{ env('AWS_MAP_NAME') }}" readonly>
+                        <input type="text" class="form-control coord-input" id="mapNameInput" value="{{ env('AWS_MAP_NAME') }}" readonly tabindex="-1">
                     </div>
                     <div class="mb-3" id="cfgGeofenceCollection" style="display:none;">
                         <label class="form-label small fw-semibold">Geofence Collection Name</label>
-                        <input type="text" class="form-control coord-input" id="geofenceCollection" value="{{ env('AWS_GEOFENCE_COLLECTION', 'explore.geofence-collection') }}" readonly>
+                        <input type="text" class="form-control coord-input" id="geofenceCollection" value="{{ env('AWS_GEOFENCE_COLLECTION', 'explore.geofence-collection') }}" readonly tabindex="-1">
                     </div>
                     <div class="mb-3" id="cfgTrackerName" style="display:none;">
                         <label class="form-label small fw-semibold">Tracker Name</label>
-                        <input type="text" class="form-control coord-input" id="trackerName" value="{{ env('AWS_TRACKER_NAME', 'explore.tracker') }}" readonly>
+                        <input type="text" class="form-control coord-input" id="trackerName" value="{{ env('AWS_TRACKER_NAME', 'explore.tracker') }}" readonly tabindex="-1">
                     </div>
                     <div class="row g-2">
                         <div class="col-6">
                             <label class="form-label small fw-semibold">Region</label>
-                            <input type="text" class="form-control coord-input" id="awsRegion" value="{{ env('AWS_REGION') }}" readonly>
+                            <input type="text" class="form-control coord-input" id="awsRegion" value="{{ env('AWS_REGION') }}" readonly tabindex="-1">
                         </div>
                         <div class="col-6">
-                            <label class="form-label small fw-semibold">API Key</label>
+                            <label class="form-label small fw-semibold">
+                                API Key <span class="text-danger">*</span>
+                            </label>
                             <div class="input-group">
-                                <input type="password" class="form-control coord-input" id="awsApiKey" value="{{ env('AWS_API_KEY') }}" style="border-radius:10px 0 0 10px;">
+                                <input type="password" class="form-control coord-input" id="awsApiKey" value="" placeholder="Enter your API key..." required style="border-radius:10px 0 0 10px;">
                                 <button class="btn btn-outline-secondary" type="button" onclick="toggleApiKey()" style="border-radius:0 10px 10px 0;">
                                     <i class="bi bi-eye" id="apiKeyToggleIcon"></i>
+                                </button>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between mt-1">
+                                <small class="text-muted" style="font-size:0.7rem;">
+                                    <i class="bi bi-shield-lock me-1"></i> Saved in browser only
+                                </small>
+                                <button class="btn btn-link btn-sm p-0" type="button" onclick="showApiKeyGate(document.getElementById('awsApiKey').value)" style="font-size:0.7rem;text-decoration:none;color:#7c3aed;">
+                                    <i class="bi bi-pencil-square me-1"></i>Change
                                 </button>
                             </div>
                         </div>
@@ -1523,6 +1534,71 @@
                     <div id="historyContainer">
                         <div class="text-center text-muted small py-3">No requests yet</div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ API KEY GATE MODAL ============ -->
+    <div class="modal fade" id="apiKeyGateModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:18px;border:none;overflow:hidden;">
+                <div class="modal-header" style="background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%);color:#fff;border:none;padding:22px 24px;">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-shield-lock-fill" style="font-size:1.4rem;"></i>
+                        <div>
+                            <h5 class="modal-title mb-0" style="font-weight:700;">API Key Required</h5>
+                            <small style="opacity:0.85;font-size:0.75rem;">Enter your AWS Location Service API key to continue</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-body" style="padding:24px;">
+                    <div class="p-3 rounded-3 mb-3" style="background:#f5f3ff;border:1px solid #ddd6fe;">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="bi bi-info-circle-fill" style="color:#7c3aed;font-size:1rem;margin-top:2px;"></i>
+                            <div style="font-size:0.8rem;color:#5b21b6;line-height:1.5;">
+                                Tester ini butuh <b>AWS API Key</b> untuk render map dan call API.
+                                Key kamu akan disimpan di browser (<code>localStorage</code>) dan tidak dikirim ke server kami.
+                            </div>
+                        </div>
+                    </div>
+
+                    <label class="form-label small fw-semibold">
+                        AWS Location Service API Key <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text" style="background:#f3f4f6;border-radius:10px 0 0 10px;">
+                            <i class="bi bi-key-fill" style="color:#7c3aed;"></i>
+                        </span>
+                        <input type="password" class="form-control" id="gateApiKey" placeholder="v1.public.xxxxxxxxxxxxxxxxxxx" autocomplete="off" style="border-radius:0;">
+                        <button class="btn btn-outline-secondary" type="button" id="gateApiKeyToggle" style="border-radius:0 10px 10px 0;">
+                            <i class="bi bi-eye" id="gateApiKeyToggleIcon"></i>
+                        </button>
+                    </div>
+                    <div id="gateError" class="text-danger small mb-2" style="display:none;font-size:0.78rem;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i> <span id="gateErrorMsg">API Key tidak boleh kosong</span>
+                    </div>
+
+                    <details class="mt-3">
+                        <summary style="cursor:pointer;color:#7c3aed;font-weight:600;font-size:0.8rem;">
+                            <i class="bi bi-question-circle me-1"></i> Bagaimana cara dapat API Key?
+                        </summary>
+                        <div class="mt-2 p-3 rounded-3 small" style="background:#f9fafb;border:1px solid #e5e7eb;color:#4b5563;font-size:0.75rem;line-height:1.6;">
+                            <ol class="mb-0 ps-3">
+                                <li>Buka <a href="https://console.aws.amazon.com/location/" target="_blank" style="color:#7c3aed;">AWS Console → Location Service</a></li>
+                                <li>Klik <b>API keys → Create API key</b></li>
+                                <li>Pilih region <b>ap-southeast-1</b> (Singapore)</li>
+                                <li>Centang resources yang dibutuhkan: Maps, Places, Routes</li>
+                                <li>Copy API key value (format: <code>v1.public.xxx...</code>)</li>
+                                <li>Paste di field di atas</li>
+                            </ol>
+                        </div>
+                    </details>
+                </div>
+                <div class="modal-footer" style="border:none;padding:0 24px 24px;">
+                    <button type="button" class="btn rounded-pill px-4 w-100 py-2" id="gateContinueBtn" style="background:#7c3aed;color:#fff;font-weight:600;">
+                        <i class="bi bi-arrow-right-circle-fill me-1"></i> Continue
+                    </button>
                 </div>
             </div>
         </div>
@@ -3047,6 +3123,27 @@
            SEND REQUEST (Mode-aware)
            ========================================= */
         async function sendRequest() {
+            // Guard: API key wajib diisi
+            const apiKeyInput = document.getElementById('awsApiKey');
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                setStatus('Missing API Key', 'Please enter your AWS Location Service API key in the API Configuration section.', 0, false);
+                document.getElementById('statusCard').style.display = 'block';
+                apiKeyInput.classList.add('is-invalid');
+                apiKeyInput.focus();
+                // Visual shake feedback
+                apiKeyInput.style.transition = 'transform 0.1s';
+                apiKeyInput.style.transform = 'translateX(-4px)';
+                setTimeout(() => {
+                    apiKeyInput.style.transform = 'translateX(4px)';
+                }, 100);
+                setTimeout(() => {
+                    apiKeyInput.style.transform = '';
+                }, 200);
+                return;
+            }
+            apiKeyInput.classList.remove('is-invalid');
+
             const btn = document.getElementById('btnSend');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Sending...';
@@ -3111,7 +3208,9 @@
                     LegGeometryFormat: includeGeometry ? 'Simple' : 'FlexiblePolyline'
                 };
                 if (departNow) requestBody.DepartureTime = new Date().toISOString();
-                if (waypoints.length > 0) requestBody.Waypoints = waypoints.map(w => ({ Position: w }));
+                if (waypoints.length > 0) requestBody.Waypoints = waypoints.map(w => ({
+                    Position: w
+                }));
             }
 
             const startTime = performance.now();
@@ -3234,10 +3333,16 @@
             } else {
                 url = `https://routes.geo.${region}.amazonaws.com/v2/route-matrix?key=${apiKey}`;
                 requestBody = {
-                    Origins: [{ Position: [depLng, depLat] }],
-                    Destinations: destinations.map(d => ({ Position: d })),
+                    Origins: [{
+                        Position: [depLng, depLat]
+                    }],
+                    Destinations: destinations.map(d => ({
+                        Position: d
+                    })),
                     TravelMode: travelMode,
-                    RoutingBoundary: { Unbounded: true }
+                    RoutingBoundary: {
+                        Unbounded: true
+                    }
                 };
             }
 
@@ -4175,8 +4280,101 @@
         /* =========================================
            INIT
            ========================================= */
-        document.addEventListener('DOMContentLoaded', () => {
+        // === API Key Gate ===
+        let mapInitialized = false;
+
+        function bootstrapTester() {
+            if (mapInitialized) return;
+            mapInitialized = true;
             initMiniMap();
+        }
+
+        function showApiKeyGate(prefill) {
+            const modalEl = document.getElementById('apiKeyGateModal');
+            const gateInput = document.getElementById('gateApiKey');
+            const gateError = document.getElementById('gateError');
+            if (prefill) gateInput.value = prefill;
+            gateError.style.display = 'none';
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+            setTimeout(() => gateInput.focus(), 300);
+        }
+
+        function setupApiKeyGate() {
+            const gateInput = document.getElementById('gateApiKey');
+            const gateBtn = document.getElementById('gateContinueBtn');
+            const gateError = document.getElementById('gateError');
+            const gateToggle = document.getElementById('gateApiKeyToggle');
+            const gateToggleIcon = document.getElementById('gateApiKeyToggleIcon');
+            const apiKeyInput = document.getElementById('awsApiKey');
+            const modalEl = document.getElementById('apiKeyGateModal');
+
+            // Toggle show/hide on gate input
+            gateToggle.addEventListener('click', () => {
+                const isPassword = gateInput.type === 'password';
+                gateInput.type = isPassword ? 'text' : 'password';
+                gateToggleIcon.className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+            });
+
+            // Submit on Continue
+            const submit = () => {
+                const val = gateInput.value.trim();
+                if (!val) {
+                    gateError.querySelector('#gateErrorMsg').textContent = 'API Key tidak boleh kosong';
+                    gateError.style.display = 'block';
+                    gateInput.focus();
+                    return;
+                }
+                if (val.length < 20) {
+                    gateError.querySelector('#gateErrorMsg').textContent = 'API Key terlalu pendek — pastikan kamu copy lengkap';
+                    gateError.style.display = 'block';
+                    return;
+                }
+                // Save & sync to main input
+                localStorage.setItem('tester_aws_api_key', val);
+                apiKeyInput.value = val;
+                apiKeyInput.classList.remove('is-invalid');
+                // Hide modal
+                bootstrap.Modal.getInstance(modalEl).hide();
+                // Init map (one-time)
+                bootstrapTester();
+            };
+
+            gateBtn.addEventListener('click', submit);
+            gateInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    submit();
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupApiKeyGate();
+
+            // Load saved key
+            const apiKeyInput = document.getElementById('awsApiKey');
+            const saved = localStorage.getItem('tester_aws_api_key');
+            if (saved) {
+                apiKeyInput.value = saved;
+                bootstrapTester();
+            } else {
+                // No saved key — show gate modal, block until entered
+                showApiKeyGate();
+            }
+
+            // Sync changes from main input → localStorage
+            if (apiKeyInput) {
+                apiKeyInput.addEventListener('input', () => {
+                    const val = apiKeyInput.value.trim();
+                    if (val) {
+                        apiKeyInput.classList.remove('is-invalid');
+                        localStorage.setItem('tester_aws_api_key', val);
+                    } else {
+                        localStorage.removeItem('tester_aws_api_key');
+                    }
+                });
+            }
             ['depLng', 'depLat', 'destLng', 'destLat'].forEach(id => {
                 document.getElementById(id).addEventListener('change', updateMapMarkers);
             });

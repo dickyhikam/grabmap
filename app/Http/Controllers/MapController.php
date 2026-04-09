@@ -378,10 +378,11 @@ class MapController extends Controller
     public function searchSuggestions(Request $request)
     {
         $cfg = $this->resolveAwsConfig($request);
-        $url = "https://places.geo.{$cfg['region']}.amazonaws.com/places/v0/indexes/{$cfg['place_index']}/search/suggestions?key={$cfg['api_key']}";
+        $url = "https://places.geo.{$cfg['region']}.amazonaws.com/v2/suggest?key={$cfg['api_key']}";
 
         try {
-            $response = Http::timeout(15)->post($url, $request->all());
+            $body = $request->all();
+            $response = Http::timeout(15)->post($url, $body);
             $this->logUsage($cfg['company'], 'search_suggestions', $response->status());
             return response()->json($response->json(), $response->status());
         } catch (\Exception $e) {
@@ -393,10 +394,13 @@ class MapController extends Controller
     public function searchText(Request $request)
     {
         $cfg = $this->resolveAwsConfig($request);
-        $url = "https://places.geo.{$cfg['region']}.amazonaws.com/places/v0/indexes/{$cfg['place_index']}/search/text?key={$cfg['api_key']}";
+        $url = "https://places.geo.{$cfg['region']}.amazonaws.com/v2/search-text?key={$cfg['api_key']}";
 
         try {
-            $response = Http::timeout(15)->post($url, $request->all());
+            $body = $request->all();
+            // GrabMaps in ap-southeast-1/5 only supports 'TimeZone' (Contact/Access/Phonemes return 400)
+            $body['AdditionalFeatures'] = $body['AdditionalFeatures'] ?? ['TimeZone'];
+            $response = Http::timeout(15)->post($url, $body);
             $this->logUsage($cfg['company'], 'search_text', $response->status());
             return response()->json($response->json(), $response->status());
         } catch (\Exception $e) {
@@ -408,7 +412,10 @@ class MapController extends Controller
     public function getPlace(Request $request, $placeId)
     {
         $cfg = $this->resolveAwsConfig($request);
-        $url = "https://places.geo.{$cfg['region']}.amazonaws.com/places/v0/indexes/{$cfg['place_index']}/places/{$placeId}?key={$cfg['api_key']}";
+        // GrabMaps in ap-southeast-1/5 only supports 'TimeZone' (Contact/Access/Phonemes return 400)
+        $features = 'TimeZone';
+        $url = "https://places.geo.{$cfg['region']}.amazonaws.com/v2/place/" . urlencode($placeId)
+            . "?key={$cfg['api_key']}&additional-features={$features}&language=" . ($request->query('language', 'en'));
 
         try {
             $response = Http::timeout(15)->get($url);
@@ -423,10 +430,12 @@ class MapController extends Controller
     public function reverseGeocode(Request $request)
     {
         $cfg = $this->resolveAwsConfig($request);
-        $url = "https://places.geo.{$cfg['region']}.amazonaws.com/places/v0/indexes/{$cfg['place_index']}/search/position?key={$cfg['api_key']}";
+        $url = "https://places.geo.{$cfg['region']}.amazonaws.com/v2/reverse-geocode?key={$cfg['api_key']}";
 
         try {
-            $response = Http::timeout(15)->post($url, $request->all());
+            $body = $request->all();
+            $body['AdditionalFeatures'] = $body['AdditionalFeatures'] ?? ['TimeZone'];
+            $response = Http::timeout(15)->post($url, $body);
             $this->logUsage($cfg['company'], 'reverse_geocode', $response->status());
             return response()->json($response->json(), $response->status());
         } catch (\Exception $e) {
