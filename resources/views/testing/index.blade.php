@@ -883,7 +883,7 @@
                             </label>
                         </div>
                         <small class="text-muted d-block mt-1" style="font-size:0.7rem;">
-                            v2 mendukung <b>Scooter mode</b> 🏍️, alternative routes, toll info, ferry info
+                            v2 mendukung <b>Motorcycle mode</b> 🏍️, alternative routes, toll info, ferry info
                         </small>
                     </div>
 
@@ -896,7 +896,7 @@
                             </label>
                             <input type="radio" class="btn-check" name="travelMode" id="mScooter" value="Scooter">
                             <label class="btn btn-outline-success rounded-pill flex-grow-1" for="mScooter">
-                                <i class="bi bi-scooter me-1"></i> Scooter <small style="opacity:0.7;">(v2)</small>
+                                <i class="bi bi-scooter me-1"></i> Motorcycle <small style="opacity:0.7;">(v2)</small>
                             </label>
                             <input type="radio" class="btn-check" name="travelMode" id="mTruck" value="Truck">
                             <label class="btn btn-outline-success rounded-pill flex-grow-1" for="mTruck">
