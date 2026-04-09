@@ -853,25 +853,47 @@
                 <div class="card-glass p-4 mb-4" id="cardTravelMode">
                     <div class="section-title">
                         <i class="bi bi-sliders me-1"></i> Request Options
+                        <span class="badge ms-2" id="routeApiVersionBadge" style="background:#7c3aed;color:#fff;font-size:0.7rem;">v2</span>
                     </div>
+
+                    <!-- API Version Toggle (v0 vs v2) -->
+                    <div class="mb-3 p-2 rounded" style="background:#f3f4f6;">
+                        <label class="form-label small fw-semibold mb-2 d-block">
+                            <i class="bi bi-arrow-left-right me-1"></i> API Version
+                        </label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="routeApiVersion" id="routeApiV0" value="v0" onchange="switchRouteApiVersion('v0')">
+                            <label class="btn btn-sm btn-outline-secondary" for="routeApiV0">
+                                <i class="bi bi-clock-history me-1"></i> v0 (Legacy)
+                            </label>
+                            <input type="radio" class="btn-check" name="routeApiVersion" id="routeApiV2" value="v2" checked onchange="switchRouteApiVersion('v2')">
+                            <label class="btn btn-sm btn-outline-primary" for="routeApiV2">
+                                <i class="bi bi-stars me-1"></i> v2 (New)
+                            </label>
+                        </div>
+                        <small class="text-muted d-block mt-1" style="font-size:0.7rem;">
+                            v2 mendukung <b>Scooter mode</b> 🏍️, alternative routes, toll info, ferry info
+                        </small>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label small fw-semibold">Travel Mode</label>
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2 flex-wrap">
                             <input type="radio" class="btn-check" name="travelMode" id="mCar" value="Car" checked>
                             <label class="btn btn-outline-success rounded-pill flex-grow-1" for="mCar">
                                 <i class="bi bi-car-front-fill me-1"></i> Car
                             </label>
-                            <input type="radio" class="btn-check" name="travelMode" id="mBike" value="Motorcycle">
-                            <label class="btn btn-outline-success rounded-pill flex-grow-1" for="mBike">
-                                <i class="bi bi-scooter me-1"></i> Motorcycle
+                            <input type="radio" class="btn-check" name="travelMode" id="mScooter" value="Scooter">
+                            <label class="btn btn-outline-success rounded-pill flex-grow-1" for="mScooter">
+                                <i class="bi bi-scooter me-1"></i> Scooter <small style="opacity:0.7;">(v2)</small>
                             </label>
-                            <input type="radio" class="btn-check" name="travelMode" id="mWalk" value="Walking">
+                            <input type="radio" class="btn-check" name="travelMode" id="mTruck" value="Truck">
+                            <label class="btn btn-outline-success rounded-pill flex-grow-1" for="mTruck">
+                                <i class="bi bi-truck me-1"></i> Truck
+                            </label>
+                            <input type="radio" class="btn-check" name="travelMode" id="mWalk" value="Pedestrian">
                             <label class="btn btn-outline-success rounded-pill flex-grow-1" for="mWalk">
                                 <i class="bi bi-person-walking me-1"></i> Walk
-                            </label>
-                            <input type="radio" class="btn-check" name="travelMode" id="mBicycle" value="Bicycle">
-                            <label class="btn btn-outline-success rounded-pill flex-grow-1" for="mBicycle">
-                                <i class="bi bi-bicycle me-1"></i> Bike
                             </label>
                         </div>
                     </div>
@@ -904,6 +926,27 @@
                     <div class="section-title">
                         <i class="bi bi-search me-1"></i> Places API
                         <span class="mode-info-chip chip-location ms-2">Location mode</span>
+                        <span class="badge ms-2" id="locApiVersionBadge" style="background:#7c3aed;color:#fff;font-size:0.7rem;">v2</span>
+                    </div>
+
+                    <!-- API Version Toggle (v0 vs v2) -->
+                    <div class="mb-3 p-2 rounded" style="background:#f3f4f6;">
+                        <label class="form-label small fw-semibold mb-2 d-block">
+                            <i class="bi bi-arrow-left-right me-1"></i> API Version
+                        </label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="locApiVersion" id="locApiV0" value="v0" onchange="switchLocApiVersion('v0')">
+                            <label class="btn btn-sm btn-outline-secondary" for="locApiV0">
+                                <i class="bi bi-clock-history me-1"></i> v0 (Legacy)
+                            </label>
+                            <input type="radio" class="btn-check" name="locApiVersion" id="locApiV2" value="v2" checked onchange="switchLocApiVersion('v2')">
+                            <label class="btn btn-sm btn-outline-primary" for="locApiV2">
+                                <i class="bi bi-stars me-1"></i> v2 (New)
+                            </label>
+                        </div>
+                        <small class="text-muted d-block mt-1" style="font-size:0.7rem;">
+                            v0 = legacy place index • v2 = standalone API dengan POI Title terpisah
+                        </small>
                     </div>
 
                     <!-- Sub-mode selector -->
@@ -1020,12 +1063,140 @@
                     <div id="locResultsContainer" style="max-height:250px;overflow-y:auto;"></div>
                 </div>
 
+                <!-- Places v0 vs v2 Comparison (Location mode only) -->
+                <div class="card-glass p-4 mb-4" id="cardLocComparison" style="display:none;border:2px solid #7c3aed;">
+                    <div class="section-title mb-2">
+                        <i class="bi bi-arrow-left-right me-1" style="color:#7c3aed;"></i> Places API: v0 vs v2
+                        <span class="badge bg-success ms-1" style="font-size:0.65rem;">v2 Available</span>
+                    </div>
+                    <div class="small text-muted mb-3">Perbandingan utama legacy v0 vs standalone v2 API GrabMaps</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm small mb-0" style="font-size:0.75rem;">
+                            <thead style="background:#f3f4f6;">
+                                <tr>
+                                    <th style="width:25%;">Aspek</th>
+                                    <th class="text-muted" style="width:37.5%;">v0 (Legacy)</th>
+                                    <th class="text-success" style="width:37.5%;">v2 (Baru)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><b>Hostname</b></td>
+                                    <td><code>places.geo.{region}.amazonaws.com</code></td>
+                                    <td><code>places.geo.{region}.amazonaws.com/v2</code></td>
+                                </tr>
+                                <tr>
+                                    <td><b>Resource setup</b></td>
+                                    <td>Wajib bikin Place Index</td>
+                                    <td>✅ Resource-less</td>
+                                </tr>
+                                <tr>
+                                    <td><b>Path search</b></td>
+                                    <td><code>/places/v0/indexes/{idx}/search/text</code></td>
+                                    <td><code>/v2/search-text</code></td>
+                                </tr>
+                                <tr>
+                                    <td><b>Path suggest</b></td>
+                                    <td><code>/.../search/suggestions</code></td>
+                                    <td><code>/v2/suggest</code></td>
+                                </tr>
+                                <tr>
+                                    <td><b>Path reverse</b></td>
+                                    <td><code>/.../search/position</code></td>
+                                    <td><code>/v2/reverse-geocode</code></td>
+                                </tr>
+                                <tr>
+                                    <td><b>Path get place</b></td>
+                                    <td><code>/.../places/{id}</code></td>
+                                    <td><code>/v2/place/{id}</code></td>
+                                </tr>
+                                <tr>
+                                    <td><b>Field query (text)</b></td>
+                                    <td><code>Text</code></td>
+                                    <td><code>QueryText</code></td>
+                                </tr>
+                                <tr>
+                                    <td><b>Field query (pos)</b></td>
+                                    <td><code>Position</code></td>
+                                    <td><code>QueryPosition</code></td>
+                                </tr>
+                                <tr>
+                                    <td><b>Wrapper hasil</b></td>
+                                    <td><code>data.Results[]</code></td>
+                                    <td><code>data.ResultItems[]</code></td>
+                                </tr>
+                                <tr style="background:#fef3c7;">
+                                    <td><b>POI Name</b></td>
+                                    <td>❌ Tidak ada (cuma <code>Label</code>)</td>
+                                    <td>✅ <code>Title</code> terpisah</td>
+                                </tr>
+                                <tr>
+                                    <td><b>Full Address</b></td>
+                                    <td><code>Place.Label</code></td>
+                                    <td><code>Address.Label</code></td>
+                                </tr>
+                                <tr>
+                                    <td><b>Koordinat</b></td>
+                                    <td><code>Place.Geometry.Point</code></td>
+                                    <td><code>Position</code> (root)</td>
+                                </tr>
+                                <tr>
+                                    <td><b>Suggest PlaceId</b></td>
+                                    <td><code>item.PlaceId</code></td>
+                                    <td><code>item.Place.PlaceId</code></td>
+                                </tr>
+                                <tr>
+                                    <td><b>Suggest label</b></td>
+                                    <td><code>item.Text</code></td>
+                                    <td><code>item.Title</code></td>
+                                </tr>
+                                <tr>
+                                    <td><b>Auth</b></td>
+                                    <td><code>?key=...</code></td>
+                                    <td><code>?key=...</code> (sama)</td>
+                                </tr>
+                                <tr>
+                                    <td><b>IAM service</b></td>
+                                    <td><code>geo:*</code></td>
+                                    <td><code>geo-places:*</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 p-2 rounded" style="background:#dcfce7;font-size:0.75rem;">
+                        <i class="bi bi-check-circle-fill text-success me-1"></i>
+                        <b>Keuntungan v2:</b> POI <code>Title</code> dipisah dari address, resource-less (tanpa place index), response lebih kaya (kategori, contacts, opening hours, dll).
+                    </div>
+                </div>
+
                 <!-- ============ MAPS INSPECTOR CARD ============ -->
                 <div class="card-glass p-4 mb-4" id="cardMaps" style="display:none;">
                     <div class="section-title">
                         <i class="bi bi-map-fill me-1" style="color:#0891b2;"></i> Maps API
                         <span class="mode-info-chip chip-maps ms-2">Maps mode</span>
+                        <span class="badge ms-2" id="mapsApiVersionBadge" style="background:#7c3aed;color:#fff;font-size:0.7rem;">v2</span>
                     </div>
+
+                    <!-- API Version Toggle (v0 vs v2) -->
+                    <div class="mb-3 p-2 rounded" style="background:#f3f4f6;">
+                        <label class="form-label small fw-semibold mb-2 d-block">
+                            <i class="bi bi-arrow-left-right me-1"></i> API Version
+                        </label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="mapsApiVersion" id="mapsApiV0" value="v0" onchange="switchMapsApiVersion('v0')">
+                            <label class="btn btn-sm btn-outline-secondary" for="mapsApiV0">
+                                <i class="bi bi-clock-history me-1"></i> v0 (Legacy)
+                            </label>
+                            <input type="radio" class="btn-check" name="mapsApiVersion" id="mapsApiV2" value="v2" checked onchange="switchMapsApiVersion('v2')">
+                            <label class="btn btn-sm btn-outline-primary" for="mapsApiV2">
+                                <i class="bi bi-stars me-1"></i> v2 (New)
+                            </label>
+                        </div>
+                        <small class="text-muted d-block mt-1" style="font-size:0.7rem;">
+                            v0 = pakai map resource (<code>explore.map.Grab</code>) • v2 = standalone, langsung pilih Style
+                        </small>
+                    </div>
+
                     <div class="maps-submode-toggle mb-3">
                         <button class="maps-submode-btn active" onclick="switchMapsSubMode('style')" id="mapsSub-style">
                             <i class="bi bi-palette-fill d-block mb-1"></i> Style
@@ -1096,10 +1267,11 @@
                     <div class="section-title">
                         <i class="bi bi-bounding-box me-1" style="color:#ea580c;"></i> Geofencing API
                         <span class="mode-info-chip chip-geofence ms-2">Geofence mode</span>
+                        <span class="badge ms-2" style="background:#6b7280;color:#fff;font-size:0.7rem;">v0 only</span>
                     </div>
                     <div class="p-2 rounded-3 mb-3 small" style="background:#fef3c7;border:1px solid #fde68a;">
                         <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
-                        <b>Note:</b> Geofencing APIs mungkin butuh IAM/Cognito auth. API Key akan menampilkan error response.
+                        <b>Note:</b> Geofencing belum punya v2 di AWS Location Service — masih pakai legacy resource-based API. Mungkin butuh IAM/Cognito auth.
                     </div>
                     <div class="geo-submode-toggle mb-3">
                         <button class="geo-submode-btn active" onclick="switchGeoSubMode('put')" id="geoSub-put">
@@ -1207,10 +1379,11 @@
                     <div class="section-title">
                         <i class="bi bi-broadcast-pin me-1" style="color:#db2777;"></i> Tracking API
                         <span class="mode-info-chip chip-tracking ms-2">Tracking mode</span>
+                        <span class="badge ms-2" style="background:#6b7280;color:#fff;font-size:0.7rem;">v0 only</span>
                     </div>
                     <div class="p-2 rounded-3 mb-3 small" style="background:#fce7f3;border:1px solid #fbcfe8;">
                         <i class="bi bi-exclamation-triangle-fill me-1" style="color:#db2777;"></i>
-                        <b>Note:</b> Tracking APIs mungkin butuh IAM/Cognito auth. API Key akan menampilkan error response.
+                        <b>Note:</b> Tracking belum punya v2 di AWS Location Service — masih pakai legacy resource-based API. Mungkin butuh IAM/Cognito auth.
                     </div>
                     <div class="trk-submode-toggle mb-3">
                         <button class="trk-submode-btn active" onclick="switchTrkSubMode('update')" id="trkSub-update">
@@ -1442,32 +1615,133 @@
                     <!-- Places -->
                     <div class="ref-card">
                         <div class="ref-card-title">
-                            <i class="bi bi-geo-alt-fill" style="color:#7c3aed;"></i> Places API
+                            <i class="bi bi-geo-alt-fill" style="color:#7c3aed;"></i> Places API <span class="badge bg-success ms-1" style="font-size:0.6rem;">v2</span>
                         </div>
-                        <div class="mb-2 small text-muted">Search, autocomplete, reverse geocode & get place details</div>
+                        <div class="mb-2 small text-muted">Search, autocomplete, reverse geocode & get place details (Standalone v2)</div>
                         <div class="ref-endpoint">
                             <span class="ref-method ref-method-post">POST</span>
-                            <code>/places/v0/indexes/{index}/search/suggestions</code>
+                            <code>/v2/suggest</code>
                             <span class="ref-badge ref-badge-yes ms-auto">Supported</span>
                         </div>
                         <div class="ref-endpoint">
                             <span class="ref-method ref-method-post">POST</span>
-                            <code>/places/v0/indexes/{index}/search/text</code>
+                            <code>/v2/search-text</code>
                             <span class="ref-badge ref-badge-yes ms-auto">Supported</span>
                         </div>
                         <div class="ref-endpoint">
                             <span class="ref-method ref-method-post">POST</span>
-                            <code>/places/v0/indexes/{index}/search/position</code>
+                            <code>/v2/reverse-geocode</code>
                             <span class="ref-badge ref-badge-yes ms-auto">Supported</span>
                         </div>
                         <div class="ref-endpoint">
                             <span class="ref-method ref-method-get">GET</span>
-                            <code>/places/v0/indexes/{index}/places/{placeId}</code>
-                            <span class="ref-badge ref-badge-limited ms-auto">Partial</span>
+                            <code>/v2/place/{placeId}</code>
+                            <span class="ref-badge ref-badge-yes ms-auto">Supported</span>
                         </div>
-                        <div class="mt-2 p-2 rounded" style="background:#fef3c7;font-size:0.75rem;">
-                            <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
-                            <b>Limitasi:</b> Categories filtering tidak tersedia di SearchText. GetPlace tidak support <code>UnitType</code> & <code>SubMunicipality</code>.
+                        <div class="mt-2 p-2 rounded" style="background:#dcfce7;font-size:0.75rem;">
+                            <i class="bi bi-check-circle-fill text-success me-1"></i>
+                            <b>v2 Improvement:</b> POI <code>Title</code> dipisah dari <code>Address.Label</code>, resource-less (tidak perlu place index), response lebih kaya.
+                        </div>
+                    </div>
+
+                    <!-- v0 vs v2 Comparison -->
+                    <div class="ref-card" style="border:2px solid #7c3aed;">
+                        <div class="ref-card-title">
+                            <i class="bi bi-arrow-left-right" style="color:#7c3aed;"></i> Places v0 vs v2
+                        </div>
+                        <div class="mb-2 small text-muted">Perbandingan utama antara legacy v0 dan v2 standalone API</div>
+                        <div class="table-responsive">
+                            <table class="table table-sm small mb-0" style="font-size:0.72rem;">
+                                <thead style="background:#f3f4f6;">
+                                    <tr>
+                                        <th>Aspek</th>
+                                        <th class="text-muted">v0 (Legacy)</th>
+                                        <th class="text-success">v2 (Baru)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><b>Hostname</b></td>
+                                        <td><code>places.geo.{region}.<br>amazonaws.com</code></td>
+                                        <td><code>places.geo.{region}.<br>amazonaws.com/v2</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>Resource setup</b></td>
+                                        <td>Wajib bikin Place Index</td>
+                                        <td>Resource-less</td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>Path search</b></td>
+                                        <td><code>/places/v0/indexes/{idx}/search/text</code></td>
+                                        <td><code>/v2/search-text</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>Path suggest</b></td>
+                                        <td><code>/.../search/suggestions</code></td>
+                                        <td><code>/v2/suggest</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>Path reverse</b></td>
+                                        <td><code>/.../search/position</code></td>
+                                        <td><code>/v2/reverse-geocode</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>Path get place</b></td>
+                                        <td><code>/.../places/{id}</code></td>
+                                        <td><code>/v2/place/{id}</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>Field query (text)</b></td>
+                                        <td><code>Text</code></td>
+                                        <td><code>QueryText</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>Field query (pos)</b></td>
+                                        <td><code>Position</code></td>
+                                        <td><code>QueryPosition</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>Wrapper hasil</b></td>
+                                        <td><code>data.Results[]</code></td>
+                                        <td><code>data.ResultItems[]</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>POI Name</b></td>
+                                        <td>❌ Tidak ada (cuma <code>Label</code>)</td>
+                                        <td>✅ <code>Title</code> terpisah</td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>Full Address</b></td>
+                                        <td><code>Place.Label</code></td>
+                                        <td><code>Address.Label</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>Koordinat</b></td>
+                                        <td><code>Place.Geometry.Point</code></td>
+                                        <td><code>Position</code> (root)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>Suggest PlaceId</b></td>
+                                        <td><code>item.PlaceId</code></td>
+                                        <td><code>item.Place.PlaceId</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>Suggest label</b></td>
+                                        <td><code>item.Text</code></td>
+                                        <td><code>item.Title</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>Auth</b></td>
+                                        <td><code>?key=...</code></td>
+                                        <td><code>?key=...</code> (sama)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><b>IAM service</b></td>
+                                        <td><code>geo:*</code></td>
+                                        <td><code>geo-places:*</code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -1701,6 +1975,48 @@
         let requestHistory = [];
         let currentApiMode = 'route';
         let currentLocSubMode = 'suggestions';
+        let currentLocApiVersion = 'v2';
+        let currentRouteApiVersion = 'v2';
+        let currentMapsApiVersion = 'v2';
+
+        function switchMapsApiVersion(ver) {
+            currentMapsApiVersion = ver;
+            const badge = document.getElementById('mapsApiVersionBadge');
+            if (badge) {
+                badge.textContent = ver;
+                badge.style.background = ver === 'v2' ? '#7c3aed' : '#6b7280';
+            }
+        }
+
+        function switchLocApiVersion(ver) {
+            currentLocApiVersion = ver;
+            const badge = document.getElementById('locApiVersionBadge');
+            if (badge) {
+                badge.textContent = ver;
+                badge.style.background = ver === 'v2' ? '#7c3aed' : '#6b7280';
+            }
+        }
+
+        function switchRouteApiVersion(ver) {
+            currentRouteApiVersion = ver;
+            const badge = document.getElementById('routeApiVersionBadge');
+            if (badge) {
+                badge.textContent = ver;
+                badge.style.background = ver === 'v2' ? '#7c3aed' : '#6b7280';
+            }
+        }
+
+        // Map UI travel mode to AWS API value per version
+        function mapTravelMode(uiMode, ver) {
+            if (ver === 'v0') {
+                // v0 supports: Car, Truck, Walking (no Scooter/Pedestrian)
+                if (uiMode === 'Scooter') return 'Car'; // fallback
+                if (uiMode === 'Pedestrian') return 'Walking';
+                return uiMode;
+            }
+            // v2 uses: Car, Truck, Pedestrian, Scooter
+            return uiMode;
+        }
         let currentMapsSubMode = 'style';
         let currentGeoSubMode = 'put';
         let currentTrkSubMode = 'update';
@@ -1773,6 +2089,9 @@
             if (!isLocation) document.getElementById('cardLocResults').style.display = 'none';
             if (!isGeofence) document.getElementById('cardGeoResults').style.display = 'none';
             if (!isTracking) document.getElementById('cardTrkResults').style.display = 'none';
+
+            // Places v0 vs v2 comparison card (only in Location mode)
+            document.getElementById('cardLocComparison').style.display = isLocation ? 'block' : 'none';
 
             // Button label
             const labels = {
@@ -2757,7 +3076,7 @@
             const region = document.getElementById('awsRegion').value;
             const apiKey = document.getElementById('awsApiKey').value;
             const routeCalc = document.getElementById('routeCalc').value;
-            const travelMode = document.querySelector('input[name="travelMode"]:checked').value;
+            const uiTravelMode = document.querySelector('input[name="travelMode"]:checked').value;
             const distUnit = document.getElementById('distUnit').value;
             const departNow = document.getElementById('optDepartNow').checked;
             const includeGeometry = document.getElementById('optIncludeGeometry').checked;
@@ -2768,16 +3087,32 @@
             const destLat = parseFloat(document.getElementById('destLat').value);
             const waypoints = getWaypoints();
 
-            const url = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${routeCalc}/calculate/route?key=${apiKey}`;
-            const requestBody = {
-                DeparturePosition: [depLng, depLat],
-                DestinationPosition: [destLng, destLat],
-                TravelMode: travelMode,
-                DistanceUnit: distUnit,
-                IncludeLegGeometry: includeGeometry
-            };
-            if (departNow) requestBody.DepartNow = true;
-            if (waypoints.length > 0) requestBody.WaypointPositions = waypoints;
+            const apiVer = currentRouteApiVersion;
+            const travelMode = mapTravelMode(uiTravelMode, apiVer);
+            let url, requestBody;
+
+            if (apiVer === 'v0') {
+                url = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${routeCalc}/calculate/route?key=${apiKey}`;
+                requestBody = {
+                    DeparturePosition: [depLng, depLat],
+                    DestinationPosition: [destLng, destLat],
+                    TravelMode: travelMode,
+                    DistanceUnit: distUnit,
+                    IncludeLegGeometry: includeGeometry
+                };
+                if (departNow) requestBody.DepartNow = true;
+                if (waypoints.length > 0) requestBody.WaypointPositions = waypoints;
+            } else {
+                url = `https://routes.geo.${region}.amazonaws.com/v2/routes?key=${apiKey}`;
+                requestBody = {
+                    Origin: [depLng, depLat],
+                    Destination: [destLng, destLat],
+                    TravelMode: travelMode,
+                    LegGeometryFormat: includeGeometry ? 'Simple' : 'FlexiblePolyline'
+                };
+                if (departNow) requestBody.DepartureTime = new Date().toISOString();
+                if (waypoints.length > 0) requestBody.Waypoints = waypoints.map(w => ({ Position: w }));
+            }
 
             const startTime = performance.now();
             const timeStr = new Date().toISOString();
@@ -2798,22 +3133,49 @@
                 setStatusChip('route');
                 document.getElementById('statusCard').style.display = 'block';
 
-                if (response.ok && data.Summary) {
-                    const dist = data.Summary.Distance.toFixed(2);
-                    const dur = Math.round(data.Summary.DurationSeconds / 60);
-                    setStatus('Route Found', `Distance: ${dist} km | Duration: ${dur} min | Legs: ${data.Legs?.length || 0} | ${elapsed}ms`, response.status, true);
-                    if (includeGeometry && data.Legs) {
-                        const allCoords = [];
-                        data.Legs.forEach(leg => {
-                            if (leg.Geometry?.LineString) allCoords.push(...leg.Geometry.LineString);
-                        });
-                        if (allCoords.length > 0) {
-                            drawRealRouteOnMap(allCoords);
-                            setMapRouteStatus('success', `Route drawn: ${dist} km, ~${dur} min (${travelMode})`);
+                let parsed = null;
+                if (response.ok) {
+                    if (apiVer === 'v0' && data.Summary) {
+                        parsed = {
+                            distance: data.Summary.Distance.toFixed(2),
+                            distUnit: distUnit === 'Miles' ? 'mi' : 'km',
+                            durationMin: Math.round(data.Summary.DurationSeconds / 60),
+                            legsCount: data.Legs?.length || 0,
+                            coords: []
+                        };
+                        if (includeGeometry && data.Legs) {
+                            data.Legs.forEach(leg => {
+                                if (leg.Geometry?.LineString) parsed.coords.push(...leg.Geometry.LineString);
+                            });
+                        }
+                    } else if (apiVer === 'v2' && data.Routes && data.Routes.length > 0) {
+                        const route = data.Routes[0];
+                        const distMeters = route.Summary?.Distance || 0;
+                        const distKm = distMeters / 1000;
+                        const distConverted = distUnit === 'Miles' ? (distKm * 0.621371) : distKm;
+                        parsed = {
+                            distance: distConverted.toFixed(2),
+                            distUnit: distUnit === 'Miles' ? 'mi' : 'km',
+                            durationMin: Math.round((route.Summary?.Duration || 0) / 60),
+                            legsCount: route.Legs?.length || 0,
+                            coords: []
+                        };
+                        if (includeGeometry && route.Legs) {
+                            route.Legs.forEach(leg => {
+                                if (leg.Geometry?.LineString) parsed.coords.push(...leg.Geometry.LineString);
+                            });
                         }
                     }
+                }
+
+                if (parsed) {
+                    setStatus('Route Found', `Distance: ${parsed.distance} ${parsed.distUnit} | Duration: ${parsed.durationMin} min | Legs: ${parsed.legsCount} | ${apiVer} | ${elapsed}ms`, response.status, true);
+                    if (parsed.coords.length > 0) {
+                        drawRealRouteOnMap(parsed.coords);
+                        setMapRouteStatus('success', `Route drawn: ${parsed.distance} ${parsed.distUnit}, ~${parsed.durationMin} min (${travelMode}, ${apiVer})`);
+                    }
                 } else {
-                    setStatus('Error', `${data.message || data.Message || 'Request failed'} | ${elapsed}ms`, response.status, false);
+                    setStatus('Error', `${data.message || data.Message || 'Request failed'} | ${apiVer} | ${elapsed}ms`, response.status, false);
                     drawDashedLineOnMap([depLng, depLat], [destLng, destLat]);
                     setMapRouteStatus('error', 'Route failed. Showing straight line.');
                 }
@@ -2821,13 +3183,13 @@
                 addHistory({
                     time: timeStr,
                     apiMode: 'route',
-                    travelMode,
+                    travelMode: uiTravelMode,
                     depLng,
                     depLat,
                     destLng,
                     destLat,
                     status: response.status,
-                    hasError: !response.ok || !data.Summary,
+                    hasError: !response.ok || !parsed,
                     errorCode: (!response.ok) ? (data.message || 'Error') : null,
                     elapsed
                 });
@@ -2842,7 +3204,7 @@
             const region = document.getElementById('awsRegion').value;
             const apiKey = document.getElementById('awsApiKey').value;
             const routeCalc = document.getElementById('routeCalc').value;
-            const travelMode = document.querySelector('input[name="travelMode"]:checked').value;
+            const uiTravelMode = document.querySelector('input[name="travelMode"]:checked').value;
             const distUnit = document.getElementById('distUnit').value;
 
             const depLng = parseFloat(document.getElementById('depLng').value);
@@ -2855,15 +3217,29 @@
                 return;
             }
 
-            const url = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${routeCalc}/calculate/route-matrix?key=${apiKey}`;
-            const requestBody = {
-                DeparturePositions: [
-                    [depLng, depLat]
-                ],
-                DestinationPositions: destinations,
-                TravelMode: travelMode,
-                DistanceUnit: distUnit
-            };
+            const apiVer = currentRouteApiVersion;
+            const travelMode = mapTravelMode(uiTravelMode, apiVer);
+            let url, requestBody;
+
+            if (apiVer === 'v0') {
+                url = `https://routes.geo.${region}.amazonaws.com/routes/v0/calculators/${routeCalc}/calculate/route-matrix?key=${apiKey}`;
+                requestBody = {
+                    DeparturePositions: [
+                        [depLng, depLat]
+                    ],
+                    DestinationPositions: destinations,
+                    TravelMode: travelMode,
+                    DistanceUnit: distUnit
+                };
+            } else {
+                url = `https://routes.geo.${region}.amazonaws.com/v2/route-matrix?key=${apiKey}`;
+                requestBody = {
+                    Origins: [{ Position: [depLng, depLat] }],
+                    Destinations: destinations.map(d => ({ Position: d })),
+                    TravelMode: travelMode,
+                    RoutingBoundary: { Unbounded: true }
+                };
+            }
 
             const startTime = performance.now();
             const timeStr = new Date().toISOString();
@@ -2883,16 +3259,27 @@
                 setStatusChip('matrix');
                 document.getElementById('statusCard').style.display = 'block';
 
-                const hasError = data.Summary?.ErrorCount > 0;
+                const hasError = (apiVer === 'v0' ? data.Summary?.ErrorCount : data.ErrorCount) > 0;
                 const results = data.RouteMatrix?.[0] || [];
+                const distLabel = distUnit === 'Miles' ? 'mi' : 'km';
 
                 if (response.ok) {
-                    // Build summary for all destinations
+                    // Build summary for all destinations (handle v0 km vs v2 meters)
                     const summaryParts = results.map((r, i) => {
                         if (r.Error) return `Dest ${i + 1}: ${r.Error.Code}`;
-                        return `Dest ${i + 1}: ${r.Distance?.toFixed(2)} km / ${Math.round((r.DurationSeconds || 0) / 60)} min`;
+                        let distVal, durSec;
+                        if (apiVer === 'v0') {
+                            distVal = r.Distance;
+                            durSec = r.DurationSeconds || 0;
+                        } else {
+                            // v2: Distance in meters, Duration in seconds
+                            const km = (r.Distance || 0) / 1000;
+                            distVal = distUnit === 'Miles' ? (km * 0.621371) : km;
+                            durSec = r.Duration || 0;
+                        }
+                        return `Dest ${i + 1}: ${distVal?.toFixed(2)} ${distLabel} / ${Math.round(durSec / 60)} min`;
                     });
-                    setStatus(`Matrix: ${destinations.length} Destination${destinations.length !== 1 ? 's' : ''}`, `${summaryParts.join(' | ')} | ${elapsed}ms`, response.status, !hasError);
+                    setStatus(`Matrix: ${destinations.length} Destination${destinations.length !== 1 ? 's' : ''}`, `${summaryParts.join(' | ')} | ${apiVer} | ${elapsed}ms`, response.status, !hasError);
 
                     // Draw dashed lines from departure to each destination
                     clearMatrixResultLayers();
@@ -2972,34 +3359,70 @@
 
             let url, requestBody, method = 'POST';
 
-            if (sub === 'suggestions') {
-                url = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIdx}/search/suggestions?key=${apiKey}`;
-                requestBody = {
-                    Text: document.getElementById('locSuggestText').value,
-                    MaxResults: parseInt(document.getElementById('locSuggestMax').value) || 5,
-                    Language: document.getElementById('locSuggestLang').value
-                };
-            } else if (sub === 'search') {
-                url = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIdx}/search/text?key=${apiKey}`;
-                requestBody = {
-                    Text: document.getElementById('locSearchText').value,
-                    MaxResults: parseInt(document.getElementById('locSearchMax').value) || 5,
-                    Language: document.getElementById('locSearchLang').value
-                };
-            } else if (sub === 'reverse') {
-                url = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIdx}/search/position?key=${apiKey}`;
-                const lng = parseFloat(document.getElementById('locRevLng').value);
-                const lat = parseFloat(document.getElementById('locRevLat').value);
-                requestBody = {
-                    Position: [lng, lat],
-                    MaxResults: parseInt(document.getElementById('locRevMax').value) || 1,
-                    Language: document.getElementById('locRevLang').value
-                };
-            } else if (sub === 'getplace') {
-                const placeId = document.getElementById('locPlaceId').value;
-                url = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIdx}/places/${encodeURIComponent(placeId)}?key=${apiKey}`;
-                method = 'GET';
-                requestBody = null;
+            const apiVer = currentLocApiVersion;
+
+            if (apiVer === 'v0') {
+                // ===== v0 (Legacy) endpoints =====
+                if (sub === 'suggestions') {
+                    url = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIdx}/search/suggestions?key=${apiKey}`;
+                    requestBody = {
+                        Text: document.getElementById('locSuggestText').value,
+                        MaxResults: parseInt(document.getElementById('locSuggestMax').value) || 5,
+                        Language: document.getElementById('locSuggestLang').value
+                    };
+                } else if (sub === 'search') {
+                    url = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIdx}/search/text?key=${apiKey}`;
+                    requestBody = {
+                        Text: document.getElementById('locSearchText').value,
+                        MaxResults: parseInt(document.getElementById('locSearchMax').value) || 5,
+                        Language: document.getElementById('locSearchLang').value
+                    };
+                } else if (sub === 'reverse') {
+                    url = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIdx}/search/position?key=${apiKey}`;
+                    const lng = parseFloat(document.getElementById('locRevLng').value);
+                    const lat = parseFloat(document.getElementById('locRevLat').value);
+                    requestBody = {
+                        Position: [lng, lat],
+                        MaxResults: parseInt(document.getElementById('locRevMax').value) || 1,
+                        Language: document.getElementById('locRevLang').value
+                    };
+                } else if (sub === 'getplace') {
+                    const placeId = document.getElementById('locPlaceId').value;
+                    url = `https://places.geo.${region}.amazonaws.com/places/v0/indexes/${placeIdx}/places/${encodeURIComponent(placeId)}?key=${apiKey}`;
+                    method = 'GET';
+                    requestBody = null;
+                }
+            } else {
+                // ===== v2 (New) endpoints =====
+                if (sub === 'suggestions') {
+                    url = `https://places.geo.${region}.amazonaws.com/v2/suggest?key=${apiKey}`;
+                    requestBody = {
+                        QueryText: document.getElementById('locSuggestText').value,
+                        MaxResults: parseInt(document.getElementById('locSuggestMax').value) || 5,
+                        Language: document.getElementById('locSuggestLang').value
+                    };
+                } else if (sub === 'search') {
+                    url = `https://places.geo.${region}.amazonaws.com/v2/search-text?key=${apiKey}`;
+                    requestBody = {
+                        QueryText: document.getElementById('locSearchText').value,
+                        MaxResults: parseInt(document.getElementById('locSearchMax').value) || 5,
+                        Language: document.getElementById('locSearchLang').value
+                    };
+                } else if (sub === 'reverse') {
+                    url = `https://places.geo.${region}.amazonaws.com/v2/reverse-geocode?key=${apiKey}`;
+                    const lng = parseFloat(document.getElementById('locRevLng').value);
+                    const lat = parseFloat(document.getElementById('locRevLat').value);
+                    requestBody = {
+                        QueryPosition: [lng, lat],
+                        MaxResults: parseInt(document.getElementById('locRevMax').value) || 1,
+                        Language: document.getElementById('locRevLang').value
+                    };
+                } else if (sub === 'getplace') {
+                    const placeId = document.getElementById('locPlaceId').value;
+                    url = `https://places.geo.${region}.amazonaws.com/v2/place/${encodeURIComponent(placeId)}?key=${apiKey}`;
+                    method = 'GET';
+                    requestBody = null;
+                }
             }
 
             const startTime = performance.now();
@@ -3024,9 +3447,9 @@
 
                 if (response.ok) {
                     // Parse results for display
-                    const places = parseLocationResults(sub, data);
+                    const places = parseLocationResults(sub, data, apiVer);
                     const count = places.length;
-                    setStatus(`${count} Result${count !== 1 ? 's' : ''} Found`, `Endpoint: ${sub} | ${elapsed}ms`, response.status, true);
+                    setStatus(`${count} Result${count !== 1 ? 's' : ''} Found`, `Endpoint: ${sub} (${apiVer}) | ${elapsed}ms`, response.status, true);
                     renderLocResults(places, sub);
                     plotLocationMarkers(places);
                     setMapRouteStatus('success', `${count} location${count !== 1 ? 's' : ''} plotted on map`);
@@ -3040,7 +3463,7 @@
                     time: timeStr,
                     apiMode: 'location',
                     subMode: sub,
-                    label: sub === 'getplace' ? document.getElementById('locPlaceId').value : (requestBody?.Text || `[${requestBody?.Position?.[0]?.toFixed(4)}, ${requestBody?.Position?.[1]?.toFixed(4)}]`),
+                    label: sub === 'getplace' ? document.getElementById('locPlaceId').value : (requestBody?.QueryText || requestBody?.Text || `[${(requestBody?.QueryPosition || requestBody?.Position)?.[0]?.toFixed(4)}, ${(requestBody?.QueryPosition || requestBody?.Position)?.[1]?.toFixed(4)}]`),
                     status: response.status,
                     hasError: !response.ok,
                     errorCode: !response.ok ? 'Error' : null,
@@ -3051,41 +3474,73 @@
             }
         }
 
-        function parseLocationResults(sub, data) {
+        function parseLocationResults(sub, data, apiVer) {
             const places = [];
-            if (sub === 'suggestions') {
-                (data.Results || []).forEach(r => {
-                    places.push({
-                        label: r.Text,
-                        placeId: r.PlaceId || null,
-                        coords: null
+            if (apiVer === 'v0') {
+                // ===== v0 (Legacy) parsing =====
+                if (sub === 'suggestions') {
+                    (data.Results || []).forEach(r => {
+                        places.push({
+                            label: r.Text || 'Unknown',
+                            subLabel: null,
+                            placeId: r.PlaceId || null,
+                            coords: null
+                        });
                     });
-                });
-            } else if (sub === 'search') {
-                (data.Results || []).forEach(r => {
-                    const p = r.Place;
-                    places.push({
-                        label: p?.Label || 'Unknown',
-                        placeId: r.PlaceId || null,
-                        coords: p?.Geometry?.Point || null
+                } else if (sub === 'search' || sub === 'reverse') {
+                    (data.Results || []).forEach(r => {
+                        const p = r.Place || {};
+                        places.push({
+                            label: p.Label || 'Unknown',
+                            subLabel: null,
+                            placeId: r.PlaceId || null,
+                            coords: p.Geometry?.Point || null
+                        });
                     });
-                });
-            } else if (sub === 'reverse') {
-                (data.Results || []).forEach(r => {
-                    const p = r.Place;
-                    places.push({
-                        label: p?.Label || 'Unknown',
+                } else if (sub === 'getplace') {
+                    const p = data.Place;
+                    if (p) places.push({
+                        label: p.Label || 'Unknown',
+                        subLabel: null,
                         placeId: null,
-                        coords: p?.Geometry?.Point || null
+                        coords: p.Geometry?.Point || null
                     });
-                });
-            } else if (sub === 'getplace') {
-                const p = data.Place;
-                if (p) places.push({
-                    label: p.Label || 'Unknown',
-                    placeId: null,
-                    coords: p.Geometry?.Point || null
-                });
+                }
+            } else {
+                // ===== v2 (New) parsing =====
+                if (sub === 'suggestions') {
+                    (data.ResultItems || []).forEach(r => {
+                        const p = r.Place || {};
+                        const title = r.Title || '';
+                        const addr = (p.Address && p.Address.Label) || '';
+                        places.push({
+                            label: title || addr || 'Unknown',
+                            subLabel: title && addr ? addr : null,
+                            placeId: p.PlaceId || null,
+                            coords: p.Position || null
+                        });
+                    });
+                } else if (sub === 'search' || sub === 'reverse') {
+                    (data.ResultItems || []).forEach(r => {
+                        const title = r.Title || '';
+                        const addr = (r.Address && r.Address.Label) || '';
+                        places.push({
+                            label: title || addr || 'Unknown',
+                            subLabel: title && addr ? addr : null,
+                            placeId: r.PlaceId || null,
+                            coords: r.Position || null
+                        });
+                    });
+                } else if (sub === 'getplace') {
+                    const title = data.Title || '';
+                    const addr = (data.Address && data.Address.Label) || '';
+                    places.push({
+                        label: title || addr || 'Unknown',
+                        subLabel: title && addr ? addr : null,
+                        placeId: data.PlaceId || null,
+                        coords: data.Position || null
+                    });
+                }
             }
             return places;
         }
@@ -3112,11 +3567,14 @@
                     `<button class="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2 ms-auto" style="font-size:0.65rem;" onclick="event.stopPropagation(); useAsPlaceId(${JSON.stringify(p.placeId)})" title="Use as PlaceId"><i class="bi bi-arrow-right-short"></i> GetPlace</button>` :
                     '';
 
+                const subLabelHtml = p.subLabel ? `<div style="font-size:0.72rem;color:#666;">${p.subLabel}</div>` : '';
+
                 div.innerHTML = `
                     <div class="d-flex align-items-center gap-2">
                         <span class="badge rounded-pill" style="background:#ede9fe;color:#6d28d9;">${i + 1}</span>
                         <div class="flex-grow-1">
                             <div class="fw-semibold" style="font-size:0.82rem;">${p.label}</div>
+                            ${subLabelHtml}
                             ${coordStr}
                         </div>
                         ${placeIdBtn}
@@ -3155,22 +3613,45 @@
             const apiKey = document.getElementById('awsApiKey').value;
             const mapName = document.getElementById('mapNameInput').value;
             const sub = currentMapsSubMode;
+            const apiVer = currentMapsApiVersion;
             let url;
 
-            if (sub === 'style') {
-                url = `https://maps.geo.${region}.amazonaws.com/maps/v0/maps/${mapName}/style-descriptor?key=${apiKey}`;
-            } else if (sub === 'tile') {
-                const z = document.getElementById('mapsZ').value,
-                    x = document.getElementById('mapsX').value,
-                    y = document.getElementById('mapsY').value;
-                url = `https://maps.geo.${region}.amazonaws.com/maps/v0/maps/${mapName}/tiles/${z}/${x}/${y}?key=${apiKey}`;
-            } else if (sub === 'glyphs') {
-                const fontStack = encodeURIComponent(document.getElementById('mapsFontStack').value);
-                const range = document.getElementById('mapsGlyphRange').value;
-                url = `https://maps.geo.${region}.amazonaws.com/maps/v0/maps/${mapName}/glyphs/${fontStack}/${range}.pbf?key=${apiKey}`;
-            } else if (sub === 'sprites') {
-                const spriteFile = document.getElementById('mapsSpriteFile').value;
-                url = `https://maps.geo.${region}.amazonaws.com/maps/v0/maps/${mapName}/sprites/${spriteFile}?key=${apiKey}`;
+            if (apiVer === 'v0') {
+                // ===== v0 (Legacy) — uses map resource =====
+                if (sub === 'style') {
+                    url = `https://maps.geo.${region}.amazonaws.com/maps/v0/maps/${mapName}/style-descriptor?key=${apiKey}`;
+                } else if (sub === 'tile') {
+                    const z = document.getElementById('mapsZ').value,
+                        x = document.getElementById('mapsX').value,
+                        y = document.getElementById('mapsY').value;
+                    url = `https://maps.geo.${region}.amazonaws.com/maps/v0/maps/${mapName}/tiles/${z}/${x}/${y}?key=${apiKey}`;
+                } else if (sub === 'glyphs') {
+                    const fontStack = encodeURIComponent(document.getElementById('mapsFontStack').value);
+                    const range = document.getElementById('mapsGlyphRange').value;
+                    url = `https://maps.geo.${region}.amazonaws.com/maps/v0/maps/${mapName}/glyphs/${fontStack}/${range}.pbf?key=${apiKey}`;
+                } else if (sub === 'sprites') {
+                    const spriteFile = document.getElementById('mapsSpriteFile').value;
+                    url = `https://maps.geo.${region}.amazonaws.com/maps/v0/maps/${mapName}/sprites/${spriteFile}?key=${apiKey}`;
+                }
+            } else {
+                // ===== v2 (New) — resource-less, langsung pilih Style =====
+                // Default style: 'Standard' (vector). Bisa diganti ke Hybrid/Satellite kalau GrabMaps support.
+                const styleName = 'Standard';
+                if (sub === 'style') {
+                    url = `https://maps.geo.${region}.amazonaws.com/v2/styles/${styleName}/descriptor?key=${apiKey}`;
+                } else if (sub === 'tile') {
+                    const z = document.getElementById('mapsZ').value,
+                        x = document.getElementById('mapsX').value,
+                        y = document.getElementById('mapsY').value;
+                    url = `https://maps.geo.${region}.amazonaws.com/v2/tiles/raster/${styleName}/${z}/${x}/${y}?key=${apiKey}`;
+                } else if (sub === 'glyphs') {
+                    const fontStack = encodeURIComponent(document.getElementById('mapsFontStack').value);
+                    const range = document.getElementById('mapsGlyphRange').value;
+                    url = `https://maps.geo.${region}.amazonaws.com/v2/glyphs/${styleName}/${fontStack}/${range}?key=${apiKey}`;
+                } else if (sub === 'sprites') {
+                    const spriteFile = document.getElementById('mapsSpriteFile').value;
+                    url = `https://maps.geo.${region}.amazonaws.com/v2/sprites/${styleName}/Default/Default/${spriteFile}?key=${apiKey}`;
+                }
             }
 
             const startTime = performance.now();
