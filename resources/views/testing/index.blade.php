@@ -540,6 +540,10 @@
                         <h4 class="mb-0 fw-bold">AWS Location Service API Tester</h4>
                         <small class="text-muted">Debug & test AWS Location Service APIs — Routes, Places, Maps, Geofencing & Tracking (Grab)</small>
                     </div>
+                    <button class="btn rounded-pill px-3" type="button" id="btnChangeApiKey" onclick="showApiKeyGate(document.getElementById('awsApiKey').value)" style="background:#7c3aed;color:#fff;font-weight:600;border:none;">
+                        <i class="bi bi-key-fill me-1"></i> API Key
+                        <span class="badge bg-light text-dark ms-1" id="apiKeyStatusBadge" style="font-size:0.6rem;font-weight:600;">●</span>
+                    </button>
                     <button class="btn btn-outline-success rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#refModal">
                         <i class="bi bi-book me-1"></i> API Reference
                     </button>
@@ -4349,6 +4353,15 @@
             });
         }
 
+        function updateApiKeyStatusBadge() {
+            const badge = document.getElementById('apiKeyStatusBadge');
+            if (!badge) return;
+            const apiKeyInput = document.getElementById('awsApiKey');
+            const hasKey = apiKeyInput && apiKeyInput.value.trim().length > 0;
+            badge.style.color = hasKey ? '#16a34a' : '#dc2626';
+            badge.title = hasKey ? 'API Key configured' : 'API Key not set';
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             setupApiKeyGate();
 
@@ -4362,6 +4375,7 @@
                 // No saved key — show gate modal, block until entered
                 showApiKeyGate();
             }
+            updateApiKeyStatusBadge();
 
             // Sync changes from main input → localStorage
             if (apiKeyInput) {
@@ -4373,6 +4387,7 @@
                     } else {
                         localStorage.removeItem('tester_aws_api_key');
                     }
+                    updateApiKeyStatusBadge();
                 });
             }
             ['depLng', 'depLat', 'destLng', 'destLat'].forEach(id => {

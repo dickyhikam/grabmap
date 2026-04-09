@@ -91,6 +91,28 @@ Route::get('/tester-api', function () {
     return view('testing.index');
 })->name('pageRouteTester');
 
+// === Auth Routes ===
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [\App\Http\Controllers\Auth\AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [\App\Http\Controllers\Auth\AuthController::class, 'login']);
+    Route::get('/register', [\App\Http\Controllers\Auth\AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [\App\Http\Controllers\Auth\AuthController::class, 'register']);
+});
+Route::post('/logout', [\App\Http\Controllers\Auth\AuthController::class, 'logout'])
+    ->middleware('auth')->name('logout');
+
+// === Email Verification Routes ===
+Route::middleware('auth')->group(function () {
+    Route::get('/email/verify', [\App\Http\Controllers\Auth\AuthController::class, 'showVerifyNotice'])
+        ->name('verification.notice');
+    Route::get('/email/verify/{id}/{hash}', [\App\Http\Controllers\Auth\AuthController::class, 'verifyEmail'])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+    Route::post('/email/verification-notification', [\App\Http\Controllers\Auth\AuthController::class, 'resendVerification'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+});
+
 // Admin Language Switcher (no middleware needed — just sets session)
 Route::get('/admin/language/{lang}', function (string $lang) {
     if (in_array($lang, ['en', 'id'])) {
@@ -99,8 +121,8 @@ Route::get('/admin/language/{lang}', function (string $lang) {
     return back();
 })->name('admin.language');
 
-// All admin routes with locale middleware
-Route::middleware('admin.locale')->group(function () {
+// All admin routes — auth + verified email + locale middleware
+Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
     // Dashboard
     Route::get('/admin', [DashboardController::class, 'index'])->name('admin.dashboard');
 
