@@ -619,6 +619,12 @@
                     class="nav-tab-item {{ request()->routeIs('admin.api-keys.*') ? 'active' : '' }}">
                     <i class="bi bi-key"></i> {{ __('admin.api_keys') }}
                 </a>
+                @if(auth()->user()?->isAdmin())
+                <a href="{{ route('admin.users.index') }}"
+                    class="nav-tab-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
+                    <i class="bi bi-people"></i> Users
+                </a>
+                @endif
             </div>
 
             <div class="nav-right">

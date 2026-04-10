@@ -26,11 +26,20 @@ class User extends Authenticatable implements MustVerifyEmail
      *
      * @var list<string>
      */
+    const ROLE_ADMIN = 'admin';
+    const ROLE_USER  = 'user';
+
     protected $fillable = [
         'name',
         'email',
         'password',
+        'role',
     ];
+
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
 
     /**
      * The attributes that should be hidden for serialization.

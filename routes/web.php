@@ -136,6 +136,15 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
         Route::get('/{keyName}/usage', [ApiKeyController::class, 'usage'])->name('admin.api-keys.usage');
     });
 
+    // User Management (admin only)
+    Route::middleware('admin.only')->prefix('admin/users')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('admin.users.index');
+        Route::get('/{user}/edit', [\App\Http\Controllers\Admin\UserController::class, 'edit'])->name('admin.users.edit');
+        Route::put('/{user}', [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('admin.users.update');
+        Route::patch('/{user}/toggle-verification', [\App\Http\Controllers\Admin\UserController::class, 'toggleVerification'])->name('admin.users.toggle-verification');
+        Route::delete('/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('admin.users.destroy');
+    });
+
     // Company Management
     Route::prefix('admin/companies')->group(function () {
         Route::get('/', [CompanyController::class, 'index'])->name('admin.companies.index');
