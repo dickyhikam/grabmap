@@ -131,6 +131,8 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
         Route::get('/', [ApiKeyController::class, 'index'])->name('admin.api-keys.index');
         Route::post('/assign', [ApiKeyController::class, 'assign'])->name('admin.api-keys.assign');
         Route::post('/unassign', [ApiKeyController::class, 'unassign'])->name('admin.api-keys.unassign');
+        Route::get('/{keyName}/edit', [ApiKeyController::class, 'edit'])->name('admin.api-keys.edit');
+        Route::put('/{keyName}', [ApiKeyController::class, 'update'])->name('admin.api-keys.update');
         Route::get('/{keyName}/usage', [ApiKeyController::class, 'usage'])->name('admin.api-keys.usage');
     });
 

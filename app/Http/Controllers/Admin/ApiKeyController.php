@@ -86,6 +86,62 @@ class ApiKeyController extends Controller
         return back()->with('success', "API Key berhasil di-lepas dari {$company->name}.");
     }
 
+    public function edit(string $keyName)
+    {
+        if (!AwsLocationService::hasCredentials()) {
+            return redirect()->route('admin.api-keys.index')->with('error', 'AWS credentials belum dikonfigurasi.');
+        }
+
+        $service = new AwsLocationService();
+        $result = $service->describeKey($keyName);
+
+        if ($result['error']) {
+            return redirect()->route('admin.api-keys.index')->with('error', 'Gagal mengambil detail key: ' . $result['error']);
+        }
+
+        $key = $result['key'];
+        return view('admin.api-keys.edit', compact('key', 'keyName'));
+    }
+
+    public function update(Request $request, string $keyName)
+    {
+        if (!AwsLocationService::hasCredentials()) {
+            return redirect()->route('admin.api-keys.index')->with('error', 'AWS credentials belum dikonfigurasi.');
+        }
+
+        $validated = $request->validate([
+            'description' => 'nullable|string|max:1000',
+            'expiry_mode' => 'required|in:never,date,preset',
+            'expire_date' => 'nullable|date_format:Y-m-d H:i|after:now',
+            'preset_days' => 'nullable|integer|in:30,90,180,365',
+        ]);
+
+        $params = [
+            'description'  => $validated['description'] ?? '',
+            'force_update' => true,
+        ];
+
+        if ($validated['expiry_mode'] === 'never') {
+            $params['no_expiry'] = true;
+        } elseif ($validated['expiry_mode'] === 'date' && !empty($validated['expire_date'])) {
+            $params['expire_time'] = \Carbon\Carbon::parse($validated['expire_date']);
+        } elseif ($validated['expiry_mode'] === 'preset' && !empty($validated['preset_days'])) {
+            $params['expire_time'] = now()->addDays((int) $validated['preset_days']);
+        }
+
+        $service = new AwsLocationService();
+        $result = $service->updateKey($keyName, $params);
+
+        if ($result['error']) {
+            return back()->with('error', 'Gagal update API Key: ' . $result['error'])->withInput();
+        }
+
+        // Bust cache so usage page reloads fresh
+        Cache::forget("aws_key_info:{$keyName}");
+
+        return redirect()->route('admin.api-keys.index')->with('success', "API Key \"{$keyName}\" berhasil diperbarui.");
+    }
+
     public function usage(Request $request, string $keyName)
     {
         if (!AwsLocationService::hasCredentials()) {

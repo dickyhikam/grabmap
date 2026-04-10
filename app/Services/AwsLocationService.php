@@ -93,6 +93,53 @@ class AwsLocationService
     }
 
     /**
+     * Update an existing API key (description, expiry, restrictions).
+     *
+     * @param  string  $keyName
+     * @param  array   $params  Supported keys: description, expire_time (ISO 8601 or DateTimeInterface or null),
+     *                          no_expiry (bool), force_update (bool), restrictions (array)
+     * @return array{key: array|null, error: string|null}
+     */
+    public function updateKey(string $keyName, array $params): array
+    {
+        try {
+            $args = ['KeyName' => $keyName];
+
+            if (array_key_exists('description', $params)) {
+                $args['Description'] = (string) $params['description'];
+            }
+
+            // Expiry handling: explicit datetime, never-expiry, or remove if not provided
+            if (!empty($params['no_expiry'])) {
+                $args['NoExpiry'] = true;
+            } elseif (!empty($params['expire_time'])) {
+                $args['ExpireTime'] = $params['expire_time'] instanceof \DateTimeInterface
+                    ? $params['expire_time']->format(\DateTime::ATOM)
+                    : (string) $params['expire_time'];
+            }
+
+            if (!empty($params['force_update'])) {
+                $args['ForceUpdate'] = true;
+            }
+
+            if (!empty($params['restrictions']) && is_array($params['restrictions'])) {
+                $args['Restrictions'] = $params['restrictions'];
+            }
+
+            $this->client->updateKey($args);
+
+            // Return refreshed key info
+            return $this->describeKey($keyName);
+        } catch (AwsException $e) {
+            Log::error("AWS UpdateKey error for '{$keyName}': " . $e->getAwsErrorMessage());
+            return ['key' => null, 'error' => $e->getAwsErrorMessage() ?: $e->getMessage()];
+        } catch (\Exception $e) {
+            Log::error("AWS UpdateKey exception for '{$keyName}': " . $e->getMessage());
+            return ['key' => null, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Get usage metrics for a specific API key from CloudWatch.
      *
      * @return array{total: int, daily: array, error: string|null}

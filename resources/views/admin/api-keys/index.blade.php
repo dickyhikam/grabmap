@@ -201,6 +201,7 @@
 
                 <div class="key-actions">
                     <a href="{{ route('admin.api-keys.usage', $key['key_name']) }}" class="btn-key"><i class="bi bi-bar-chart"></i> {{ __('admin.usage') }}</a>
+                    <a href="{{ route('admin.api-keys.edit', $key['key_name']) }}" class="btn-key"><i class="bi bi-pencil-square"></i> Edit</a>
                     @if(!$isExpired)
                     <button type="button" class="btn-key btn-key-primary" data-bs-toggle="modal" data-bs-target="#assignModal" data-key-name="{{ $key['key_name'] }}">
                         <i class="bi bi-link-45deg"></i> {{ __('admin.assign') }}
