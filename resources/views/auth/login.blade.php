@@ -479,6 +479,111 @@
         .toast-alert .toast-close:hover {
             color: #1f2937;
         }
+
+        /* Lockout banner */
+        .lockout-banner {
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            border: 1.5px solid #fecaca;
+            border-radius: 14px;
+            padding: 16px 18px;
+            font-size: 0.82rem;
+            color: #991b1b;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            animation: slideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .lockout-banner .lockout-icon {
+            width: 42px;
+            height: 42px;
+            background: #fee2e2;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            color: #dc2626;
+        }
+
+        .lockout-banner .lockout-timer {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #dc2626;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.5px;
+            margin-left: auto;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        .lockout-banner .lockout-text {
+            flex: 1;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+
+        .lockout-banner .lockout-text b {
+            color: #dc2626;
+        }
+
+        /* Attempts warning */
+        .attempts-warning {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border: 1.5px solid #fde68a;
+            border-radius: 14px;
+            padding: 14px 16px;
+            font-size: 0.8rem;
+            color: #92400e;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            animation: slideDown 0.3s ease;
+        }
+
+        .attempts-warning .aw-icon {
+            width: 36px;
+            height: 36px;
+            background: #fef3c7;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            color: #d97706;
+        }
+
+        .attempts-dots {
+            display: flex;
+            gap: 5px;
+            margin-top: 6px;
+        }
+
+        .attempts-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fde68a;
+            transition: background 0.2s;
+        }
+
+        .attempts-dot.used {
+            background: #dc2626;
+        }
+
+        .attempts-dot.remaining {
+            background: #16a34a;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 
@@ -490,7 +595,7 @@
                 <i class="bi bi-x-circle-fill"></i>
             </div>
             <div class="toast-content">
-                <div class="toast-title">Login Failed</div>
+                <div class="toast-title">{{ session('lockoutSeconds') ? 'Account Locked' : 'Login Failed' }}</div>
                 <div class="toast-msg">{{ $errors->first() }}</div>
             </div>
             <button class="toast-close" onclick="document.getElementById('errorToast').classList.remove('show')">
@@ -512,6 +617,35 @@
                 </div>
                 <span>Only <b>@grabtaxi.com</b> accounts are allowed to sign in</span>
             </div>
+
+            {{-- Lockout countdown --}}
+            @if (session('lockoutSeconds'))
+                <div class="lockout-banner" id="lockoutBanner">
+                    <div class="lockout-icon">
+                        <i class="bi bi-shield-lock-fill"></i>
+                    </div>
+                    <div class="lockout-text">
+                        <b>Account locked</b><br>
+                        Too many failed attempts. Try again in:
+                    </div>
+                    <div class="lockout-timer" id="lockoutTimer">--:--</div>
+                </div>
+            @elseif (session('remainingAttempts') !== null && session('remainingAttempts') < 5 && session('remainingAttempts') > 0)
+                @php $rem = session('remainingAttempts'); $used = 5 - $rem; @endphp
+                <div class="attempts-warning">
+                    <div class="aw-icon">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                    <div>
+                        <div><b>{{ $rem }}</b> attempt{{ $rem !== 1 ? 's' : '' }} remaining before lockout</div>
+                        <div class="attempts-dots">
+                            @for ($i = 0; $i < 5; $i++)
+                                <div class="attempts-dot {{ $i < $used ? 'used' : 'remaining' }}"></div>
+                            @endfor
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <form method="POST" action="{{ route('login') }}" id="loginForm" novalidate>
                 @csrf
@@ -642,6 +776,36 @@
                 }
             });
         });
+
+        // === Lockout countdown timer ===
+        const lockoutBanner = document.getElementById('lockoutBanner');
+        if (lockoutBanner) {
+            let secs = {{ session('lockoutSeconds', 0) }};
+            const timerEl = document.getElementById('lockoutTimer');
+            const submitBtn = document.getElementById('submitBtn');
+            const formInputs = document.querySelectorAll('#loginForm input:not([type="hidden"])');
+
+            // Disable everything during lockout
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> <span>Locked</span>';
+            formInputs.forEach(i => i.disabled = true);
+
+            function tick() {
+                if (secs <= 0) {
+                    lockoutBanner.remove();
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-box-arrow-in-right"></i> <span>Sign In</span>';
+                    formInputs.forEach(i => i.disabled = false);
+                    return;
+                }
+                const m = Math.floor(secs / 60);
+                const s = secs % 60;
+                timerEl.textContent = m + ':' + String(s).padStart(2, '0');
+                secs--;
+                setTimeout(tick, 1000);
+            }
+            tick();
+        }
 
         // Pre-validate on load if old value exists
         if (emailInput.value) validateEmail(true);
