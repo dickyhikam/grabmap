@@ -84,6 +84,20 @@ class AuthController extends Controller
         $remember = $request->boolean('remember');
 
         if (Auth::attempt($credentials, $remember)) {
+            // Check if account is active
+            if (!Auth::user()->isActive()) {
+                $userId = Auth::id();
+                Auth::logout();
+                $request->session()->invalidate();
+
+                $this->logAuth($request, AuthLog::ACTION_LOGIN, AuthLog::STATUS_FAIL,
+                    $userId, $credentials['email'], 'account_deactivated');
+
+                return back()
+                    ->withInput($request->only('email', 'remember'))
+                    ->withErrors(['email' => 'Your account has been deactivated. Please contact an administrator.']);
+            }
+
             RateLimiter::clear($throttleKey);
             $request->session()->regenerate();
 

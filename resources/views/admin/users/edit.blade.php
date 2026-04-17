@@ -185,6 +185,44 @@
                 @endif
             </div>
         </div>
+
+        <!-- Credential Send History -->
+        @if($credentialLogs->count())
+        <div class="card mt-3">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3" style="font-size:0.9rem;">
+                    <i class="bi bi-send-fill me-1" style="color:#2563eb;"></i> Credential Send History
+                </h6>
+                <div class="activity-timeline">
+                    @foreach($credentialLogs as $clog)
+                    <div class="activity-item">
+                        <div class="activity-dot" style="background:{{ $clog->status === 'success' ? '#dbeafe' : '#fee2e2' }};color:{{ $clog->status === 'success' ? '#2563eb' : '#dc2626' }};">
+                            <i class="bi {{ $clog->status === 'success' ? 'bi-send-check-fill' : 'bi-send-x-fill' }}"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-action">
+                                Sent to <b>{{ $clog->sent_to_email }}</b>
+                                @if($clog->include_password)
+                                    <span class="badge" style="background:#fef3c7;color:#92400e;font-size:0.58rem;padding:2px 5px;border-radius:4px;">+ password</span>
+                                @endif
+                                @if($clog->status === 'fail')
+                                    <span class="badge" style="background:#fee2e2;color:#dc2626;font-size:0.58rem;padding:2px 5px;border-radius:4px;">Failed</span>
+                                @endif
+                            </div>
+                            <div class="activity-meta">
+                                {{ $clog->created_at?->diffForHumans() }}
+                                · by {{ $clog->sender?->name ?? 'System' }}
+                            </div>
+                            @if($clog->failed_reason)
+                                <div class="activity-detail">{{ Str::limit($clog->failed_reason, 60) }}</div>
+                            @endif
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 </div>
 

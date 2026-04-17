@@ -139,9 +139,13 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
     // User Management (admin only)
     Route::middleware('admin.only')->prefix('admin/users')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('admin.users.index');
+        Route::post('/', [\App\Http\Controllers\Admin\UserController::class, 'store'])->name('admin.users.store');
         Route::get('/{user}/edit', [\App\Http\Controllers\Admin\UserController::class, 'edit'])->name('admin.users.edit');
         Route::put('/{user}', [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('admin.users.update');
-        Route::patch('/{user}/toggle-verification', [\App\Http\Controllers\Admin\UserController::class, 'toggleVerification'])->name('admin.users.toggle-verification');
+        Route::patch('/{user}/toggle-status', [\App\Http\Controllers\Admin\UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
+        Route::post('/{user}/resend-verification', [\App\Http\Controllers\Admin\UserController::class, 'resendVerification'])->name('admin.users.resend-verification');
+        Route::post('/{user}/reset-send', [\App\Http\Controllers\Admin\UserController::class, 'resetAndSend'])->name('admin.users.reset-send');
+        Route::post('/{user}/send-credentials', [\App\Http\Controllers\Admin\UserController::class, 'sendCredentials'])->name('admin.users.send-credentials');
         Route::delete('/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('admin.users.destroy');
     });
 

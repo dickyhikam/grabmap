@@ -34,9 +34,8 @@
             padding: 20px;
             position: relative;
             overflow-x: hidden;
-            background:
-                linear-gradient(135deg, rgba(0, 60, 25, 0.78) 0%, rgba(0, 139, 61, 0.55) 50%, rgba(0, 30, 15, 0.85) 100%),
-                url('{{ asset('images/auth-bg.jpg') }}') center/cover no-repeat;
+            background: linear-gradient(135deg, rgba(0, 60, 25, 0.78) 0%, rgba(0, 139, 61, 0.55) 50%, rgba(0, 30, 15, 0.85) 100%),
+            url('{{ asset(' images/auth-bg.jpg') }}') center/cover no-repeat;
             background-attachment: fixed;
         }
 
@@ -225,7 +224,7 @@
             box-shadow: 0 0 0 4px rgba(0, 177, 79, 0.1);
         }
 
-        .form-control-modern:focus + .input-icon,
+        .form-control-modern:focus+.input-icon,
         .input-wrap:focus-within .input-icon {
             color: var(--grab-green);
         }
@@ -290,7 +289,7 @@
             transition: all 0.25s;
         }
 
-        .input-wrap.invalid + .field-error {
+        .input-wrap.invalid+.field-error {
             opacity: 1;
             max-height: 80px;
             margin-top: 6px;
@@ -581,8 +580,15 @@
         }
 
         @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
@@ -590,18 +596,18 @@
 <body>
     <!-- Toast Alert -->
     @if ($errors->any())
-        <div class="toast-alert" id="errorToast">
-            <div class="toast-icon">
-                <i class="bi bi-x-circle-fill"></i>
-            </div>
-            <div class="toast-content">
-                <div class="toast-title">{{ session('lockoutSeconds') ? 'Account Locked' : 'Login Failed' }}</div>
-                <div class="toast-msg">{{ $errors->first() }}</div>
-            </div>
-            <button class="toast-close" onclick="document.getElementById('errorToast').classList.remove('show')">
-                <i class="bi bi-x-lg"></i>
-            </button>
+    <div class="toast-alert" id="errorToast">
+        <div class="toast-icon">
+            <i class="bi bi-x-circle-fill"></i>
         </div>
+        <div class="toast-content">
+            <div class="toast-title">{{ session('lockoutSeconds') ? 'Account Locked' : 'Login Failed' }}</div>
+            <div class="toast-msg">{{ $errors->first() }}</div>
+        </div>
+        <button class="toast-close" onclick="document.getElementById('errorToast').classList.remove('show')">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
     @endif
 
     <div class="auth-card">
@@ -620,17 +626,17 @@
 
             {{-- Lockout countdown --}}
             @if (session('lockoutSeconds'))
-                <div class="lockout-banner" id="lockoutBanner">
-                    <div class="lockout-icon">
-                        <i class="bi bi-shield-lock-fill"></i>
-                    </div>
-                    <div class="lockout-text">
-                        <b>Account locked</b><br>
-                        Too many failed attempts. Try again in:
-                    </div>
-                    <div class="lockout-timer" id="lockoutTimer">--:--</div>
+            <div class="lockout-banner" id="lockoutBanner">
+                <div class="lockout-icon">
+                    <i class="bi bi-shield-lock-fill"></i>
                 </div>
-            @elseif (session('remainingAttempts') !== null && session('remainingAttempts') < 5 && session('remainingAttempts') > 0)
+                <div class="lockout-text">
+                    <b>Account locked</b><br>
+                    Too many failed attempts. Try again in:
+                </div>
+                <div class="lockout-timer" id="lockoutTimer">--:--</div>
+            </div>
+            @elseif (session('remainingAttempts') !== null && session('remainingAttempts') < 5 && session('remainingAttempts')> 0)
                 @php $rem = session('remainingAttempts'); $used = 5 - $rem; @endphp
                 <div class="attempts-warning">
                     <div class="aw-icon">
@@ -640,63 +646,64 @@
                         <div><b>{{ $rem }}</b> attempt{{ $rem !== 1 ? 's' : '' }} remaining before lockout</div>
                         <div class="attempts-dots">
                             @for ($i = 0; $i < 5; $i++)
-                                <div class="attempts-dot {{ $i < $used ? 'used' : 'remaining' }}"></div>
-                            @endfor
+                                <div class="attempts-dot {{ $i < $used ? 'used' : 'remaining' }}">
                         </div>
+                        @endfor
                     </div>
                 </div>
-            @endif
-
-            <form method="POST" action="{{ route('login') }}" id="loginForm" novalidate>
-                @csrf
-
-                <div class="form-group">
-                    <label class="form-label">Email <span class="required">*</span></label>
-                    <div class="input-wrap" id="emailWrap">
-                        <i class="bi bi-envelope-fill input-icon"></i>
-                        <input type="email" name="email" class="form-control-modern" id="emailInput"
-                            placeholder="you@grabtaxi.com" value="{{ old('email') }}" required>
-                        <i class="bi bi-check-circle-fill input-validator"></i>
-                    </div>
-                    <div class="field-error" id="emailError">
-                        <i class="bi bi-info-circle-fill"></i>
-                        <span>Email must use @grabtaxi.com domain</span>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Password <span class="required">*</span></label>
-                    <div class="input-wrap has-toggle" id="passwordWrap">
-                        <i class="bi bi-lock-fill input-icon"></i>
-                        <input type="password" name="password" class="form-control-modern" id="passwordInput"
-                            placeholder="••••••••" required>
-                        <button type="button" class="password-toggle" data-target="passwordInput" tabindex="-1" aria-label="Toggle password visibility">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                    </div>
-                    <div class="field-error" id="passwordError">
-                        <i class="bi bi-info-circle-fill"></i>
-                        <span>Password is required</span>
-                    </div>
-                </div>
-
-                <div class="form-check-modern">
-                    <label>
-                        <input type="checkbox" name="remember">
-                        <span>Remember me</span>
-                    </label>
-                </div>
-
-                <button type="submit" class="btn-grab-modern" id="submitBtn">
-                    <i class="bi bi-box-arrow-in-right"></i>
-                    <span>Sign In</span>
-                </button>
-            </form>
-
-            <div class="auth-footer">
-                Don't have an account? <a href="{{ route('register') }}">Create one</a>
-            </div>
         </div>
+        @endif
+
+        <form method="POST" action="{{ route('login') }}" id="loginForm" novalidate>
+            @csrf
+
+            <div class="form-group">
+                <label class="form-label">Email <span class="required">*</span></label>
+                <div class="input-wrap" id="emailWrap">
+                    <i class="bi bi-envelope-fill input-icon"></i>
+                    <input type="email" name="email" class="form-control-modern" id="emailInput"
+                        placeholder="you@grabtaxi.com" value="{{ old('email') }}" required>
+                    <i class="bi bi-check-circle-fill input-validator"></i>
+                </div>
+                <div class="field-error" id="emailError">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <span>Email must use @grabtaxi.com domain</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Password <span class="required">*</span></label>
+                <div class="input-wrap has-toggle" id="passwordWrap">
+                    <i class="bi bi-lock-fill input-icon"></i>
+                    <input type="password" name="password" class="form-control-modern" id="passwordInput"
+                        placeholder="••••••••" required>
+                    <button type="button" class="password-toggle" data-target="passwordInput" tabindex="-1" aria-label="Toggle password visibility">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <div class="field-error" id="passwordError">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <span>Password is required</span>
+                </div>
+            </div>
+
+            <div class="form-check-modern">
+                <label>
+                    <input type="checkbox" name="remember">
+                    <span>Remember me</span>
+                </label>
+            </div>
+
+            <button type="submit" class="btn-grab-modern" id="submitBtn">
+                <i class="bi bi-box-arrow-in-right"></i>
+                <span>Sign In</span>
+            </button>
+        </form>
+
+        <div class="auth-footer" hidden>
+            Don't have an account? <a href="{{ route('register') }}">Create one</a>
+        </div>
+    </div>
     </div>
 
     <script>
@@ -780,7 +787,11 @@
         // === Lockout countdown timer ===
         const lockoutBanner = document.getElementById('lockoutBanner');
         if (lockoutBanner) {
-            let secs = {{ session('lockoutSeconds', 0) }};
+            let secs = {
+                {
+                    session('lockoutSeconds', 0)
+                }
+            };
             const timerEl = document.getElementById('lockoutTimer');
             const submitBtn = document.getElementById('submitBtn');
             const formInputs = document.querySelectorAll('#loginForm input:not([type="hidden"])');

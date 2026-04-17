@@ -34,11 +34,17 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'role',
+        'is_active',
     ];
 
     public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function isActive(): bool
+    {
+        return (bool) $this->is_active;
     }
 
     /**
