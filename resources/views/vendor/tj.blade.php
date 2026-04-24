@@ -378,6 +378,7 @@
         let selectedMarkerId = null;
         let highlightMarkers = [];
         let markerIdCounter = 0;
+        let currentRoutedHalteId = null; // halte yg lagi di-route (untuk recalc saat ganti mode)
 
 
         /* =========================================
@@ -519,6 +520,7 @@
                 markersData.forEach(m => m.marker.remove());
                 markersData = [];
                 selectedMarkerId = null;
+                currentRoutedHalteId = null;
                 removeRouteLayer();
                 document.getElementById('routeResultCard').style.display = 'none';
                 document.getElementById('segmentListContainer').style.display = 'none';
@@ -597,6 +599,10 @@
             const item = markersData.find(m => m.id === id);
             if (item) item.marker.remove();
             markersData = markersData.filter(m => m.id !== id);
+            if (currentRoutedHalteId === id) {
+                currentRoutedHalteId = null;
+                removeRouteLayer();
+            }
             renderLocationList();
         }
 
@@ -604,6 +610,7 @@
             markersData.forEach(m => m.marker.remove());
             markersData = [];
             selectedMarkerId = null;
+            currentRoutedHalteId = null;
 
             removeRouteLayer();
             renderLocationList();
@@ -851,10 +858,8 @@
                     TravelStepType: 'TurnByTurn',
                     Locale: 'id'
                 };
-                // Traffic only relevant for vehicle modes
-                if (travelMode !== 'Pedestrian') {
-                    body.Traffic = { Usage: 'UseTrafficData' };
-                }
+                // Note: `Traffic` parameter is not supported in ap-southeast-1,
+                // so we don't send it — AWS will use free-flow duration.
 
                 const response = await proxyPost('/api/v2/routes/calculate', body);
                 const data = await response.json().catch(() => ({}));
@@ -1151,6 +1156,54 @@
             });
         }
 
+        // Re-run matrix for all existing stops with the current travel mode.
+        // Updates distance/duration, re-sorts, and re-renders.
+        async function recalculateHalteDistances() {
+            const origin = markersData.find(m => m.type !== 'halte');
+            if (!origin) return;
+            const haltes = markersData.filter(m => m.type === 'halte');
+            if (haltes.length === 0) return;
+
+            const travelMode = document.querySelector('input[name="travelMode"]:checked').value;
+
+            try {
+                const matrixRes = await proxyPost('/api/routes/matrix', {
+                    DeparturePositions: [origin.coords],
+                    DestinationPositions: haltes.map(h => h.coords),
+                    TravelMode: travelMode,
+                    DistanceUnit: 'Kilometers'
+                });
+                if (!matrixRes.ok) throw new Error('Matrix failed');
+                const matrixData = await matrixRes.json();
+                const matrixRow = matrixData.RouteMatrix && matrixData.RouteMatrix[0];
+
+                // Update distance/duration + popup for each stop
+                haltes.forEach((halte, idx) => {
+                    const cell = matrixRow && matrixRow[idx];
+                    const hasRoute = cell && typeof cell.Distance === 'number' && typeof cell.DurationSeconds === 'number';
+                    halte.distance = hasRoute ? cell.Distance : null;
+                    halte.duration = hasRoute ? cell.DurationSeconds : null;
+
+                    const popupHtml = `<div style="font-family:Inter,sans-serif;font-size:0.82rem;"><i class="bi bi-bus-front-fill" style="color:#ff8c00;"></i> <strong>${halte.name}</strong>${halte.distance !== null ? `<div style="font-size:0.72rem;color:#6b7280;margin-top:2px;">${halte.distance.toFixed(2)} km • ${Math.round(halte.duration / 60)} min</div>` : ''}</div>`;
+                    halte.marker.setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(popupHtml));
+                });
+
+                // Re-sort: user markers tetap di depan, haltes sorted ascending
+                const userMarkers = markersData.filter(m => m.type !== 'halte');
+                const sortedHaltes = [...haltes].sort((a, b) => {
+                    if (a.distance === null && b.distance === null) return 0;
+                    if (a.distance === null) return 1;
+                    if (b.distance === null) return -1;
+                    return a.distance - b.distance;
+                });
+                markersData = [...userMarkers, ...sortedHaltes];
+
+                renderLocationList();
+            } catch (err) {
+                console.error('Recalc stop distances failed:', err);
+            }
+        }
+
         // Route from the user's starting point to the clicked stop
         function routeFromOriginToHalte(halteId) {
             const origin = markersData.find(m => m.type !== 'halte');
@@ -1162,6 +1215,7 @@
             if (!halte) return;
 
             selectedMarkerId = halteId;
+            currentRoutedHalteId = halteId;
             renderLocationList();
             calculateRoute(origin.coords, halte.coords, {
                 originName: origin.name,
@@ -1909,6 +1963,17 @@
                     event.preventDefault();
                     handleManualSearch();
                 }
+            });
+
+            // 3. Travel mode change → refresh stop distances + recalc current route
+            document.querySelectorAll('input[name="travelMode"]').forEach(radio => {
+                radio.addEventListener('change', async () => {
+                    await recalculateHalteDistances();
+                    if (currentRoutedHalteId !== null &&
+                        markersData.find(m => m.id === currentRoutedHalteId)) {
+                        routeFromOriginToHalte(currentRoutedHalteId);
+                    }
+                });
             });
         }
 
