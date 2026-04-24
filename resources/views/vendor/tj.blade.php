@@ -531,7 +531,7 @@
             const id = ++markerIdCounter;
             const newMarker = new maplibregl.Marker({
                     color: isHalte ? '#ff8c00' : '#00B14F',
-                    draggable: !isHalte
+                    draggable: false
                 })
                 .setLngLat(coords)
                 .setPopup(new maplibregl.Popup({
@@ -542,32 +542,6 @@
                 .addTo(map);
 
             if (!isHalte) newMarker.togglePopup();
-
-            // Drag handler (user markers only)
-            if (!isHalte) {
-                newMarker.on('dragend', async () => {
-                    const lngLat = newMarker.getLngLat();
-                    const updatedCoords = [lngLat.lng, lngLat.lat];
-                    const item = markersData.find(m => m.id === id);
-
-                    if (item) {
-                        item.coords = updatedCoords;
-                        showToast('Loading...', 'Finding new address...', 'info');
-
-                        const newName = await getPlaceNameByCoords(updatedCoords);
-                        if (newName) {
-                            item.name = newName;
-                            newMarker.setPopup(new maplibregl.Popup({
-                                offset: 25
-                            }).setHTML(`<div style="font-family:Inter,sans-serif;font-size:0.82rem;">${newName}</div>`));
-                            renderLocationList();
-                            showToast('Location Updated', newName, 'success');
-                        } else {
-                            showToast('Info', 'Location name not found.', 'warning');
-                        }
-                    }
-                });
-            }
 
             // Only update selection & flyTo for user markers (stops are added in batch)
             if (!isHalte) {
