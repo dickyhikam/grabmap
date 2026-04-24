@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\Route;
 Route::get('/waresix', function () {
     return view('welcome');
 });
-// Route::get('/transjakarta', function () {
-//     return view('vendor.tj');
-// });
+Route::get('/transjakarta', function () {
+    return view('vendor.tj');
+});
 Route::get('/otto', function () {
     return view('otto');
 });
@@ -50,6 +50,7 @@ Route::get('/api/places/{placeId}', [MapController::class, 'getPlace']);
 Route::post('/api/places/reverse', [MapController::class, 'reverseGeocode']);
 Route::post('/api/routes/calculate', [MapController::class, 'calculateRoute']);
 Route::post('/api/routes/matrix', [MapController::class, 'calculateRouteMatrix']);
+Route::post('/api/v2/routes/calculate', [MapController::class, 'calculateRouteV2']);
 
 //route API
 Route::get('/map-style', function () {
