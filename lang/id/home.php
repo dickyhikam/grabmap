@@ -9,6 +9,8 @@ return [
     'menu_pricing_desc' => 'Bandingkan harga rute',
     'menu_tester' => 'Tester API',
     'menu_tester_desc' => 'Uji endpoint API',
+    'menu_docs' => 'Referensi API',
+    'menu_docs_desc' => 'Dokumentasi AWS Location v0 & v2',
     'menu_address' => 'Verifikasi Alamat',
     'menu_address_desc' => 'Verifikasi & geocode alamat',
     'menu_admin' => 'Admin Perusahaan',

@@ -15,6 +15,9 @@ Route::get('/waresix', function () {
 Route::get('/transjakarta', function () {
     return view('vendor.tj');
 });
+Route::get('/transjakarta-test', function () {
+    return view('vendor.tj-test');
+});
 Route::get('/otto', function () {
     return view('otto');
 });
@@ -22,6 +25,12 @@ Route::get('/otto', function () {
 Route::get('/doc-web', function () {
     return view('documents.web');
 });
+Route::get('/docs/aws-api', function () {
+    return view('documents.aws-api');
+})->name('docs.aws-api');
+Route::get('/maps/google', function () {
+    return view('documents.google-maps');
+})->name('maps.google');
 
 Route::get('/address', function () {
     return view('old.address');

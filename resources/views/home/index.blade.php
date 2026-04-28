@@ -77,6 +77,10 @@
                         <div class="menu-icon icon-tester"><i class="bi bi-code-slash"></i></div>
                         <div class="menu-label" data-i18n="menu_tester">Tester API<small data-i18n="menu_tester_desc">Test API endpoints</small></div>
                     </a>
+                    <a href="{{ route('docs.aws-api') }}" class="more-menu-item">
+                        <div class="menu-icon" style="background:#eff6ff;color:#3b82f6;"><i class="bi bi-book-half"></i></div>
+                        <div class="menu-label" data-i18n="menu_docs">API Reference<small data-i18n="menu_docs_desc">AWS Location v0 &amp; v2 docs</small></div>
+                    </a>
                     <a href="{{ route('pageAddress') }}" class="more-menu-item">
                         <div class="menu-icon icon-address"><i class="bi bi-patch-check-fill"></i></div>
                         <div class="menu-label" data-i18n="menu_address">Address Verification<small data-i18n="menu_address_desc">Verify & geocode addresses</small></div>
