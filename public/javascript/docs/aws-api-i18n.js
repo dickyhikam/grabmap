@@ -1,0 +1,716 @@
+/**
+ * AWS API Reference — i18n module
+ * Dipisah dari aws-api.blade.php biar gak panjang.
+ * Pakai: <script src="{{ asset('javascript/docs/aws-api-i18n.js') }}"></script>
+ *
+ * Cara nambah translation key:
+ *   1. Tambah key di EN dan ID di window.AWSAPI_I18N
+ *   2. Di HTML, pasang attribute data-i18n="key" / data-i18n-html="key" / data-i18n-placeholder="key" / data-i18n-title="key"
+ *   3. Toggle EN/ID di topbar otomatis applyI18n()
+ */
+(function (window) {
+    'use strict';
+
+    /* ============================================================
+       I18N — multi-bahasa toggle EN/ID (default English)
+       ============================================================ */
+const I18N = {
+    en: {
+        /* Topbar & sidebar */
+        topbar_title: 'AWS Location Service Reference',
+        topbar_subtitle: 'v0 (legacy) & v2 (standalone)',
+        search_placeholder: '🔍 Search operation...',
+        svc_routes: 'Routes',
+        svc_maps: 'Maps',
+        svc_places: 'Places',
+        svc_general: 'General Topics',
+        meta_overview: 'Overview v0 vs v2',
+        meta_auth: 'Authentication',
+        meta_quotas: 'Quotas & Limits',
+        meta_migration: 'Migration Guide',
+
+        /* Welcome & Coming Soon */
+        welcome_title: 'AWS Location Service Reference',
+        welcome_desc: 'Pick an operation in the left sidebar to see endpoint detail, request body, response shape, and v0 ↔ v2 comparison.',
+        welcome_note: 'Default provider in ap-southeast-1 = GrabMaps. This documentation focuses on API integration.',
+        soon_pill: '⏳ Coming Soon',
+        soon_main: 'This operation is not yet available for your API key in region ap-southeast-1.',
+        soon_note: 'Detailed docs will be added once AWS releases this action in your region. Meanwhile, check available alternatives in the sidebar (green dot).',
+
+        /* Section headers */
+        sec_request_syntax: 'Request Syntax',
+        sec_request_params: 'Request Parameters',
+        sec_response_syntax: 'Response Syntax',
+        sec_response_fields: 'Response Fields',
+        sec_try_live: 'Try it Live',
+        sec_field_rules: 'Field Rules — what can & cannot be combined',
+        sec_common_errors: 'Common Errors & Validation',
+
+        /* Buttons & status */
+        btn_send: 'Send Request',
+        btn_format: '✨ Format',
+        btn_copy: '📋 Copy',
+        btn_copy_response: '📋 Copy Response',
+        resp_idle: 'Click Send Request above to see the live AWS response.',
+
+        /* Field rules cards */
+        rule_required: 'Required (one-of)',
+        rule_required_note: 'One of these must be in the body. Both can be sent but AWS picks based on internal priority.',
+        rule_exclusive: 'Mutually exclusive (exactly one)',
+        rule_exclusive_note: 'Sending 2 or more = 400 error <em>"Exactly one of..."</em>. Sending none → no spatial bias (global results).<br>💡 <strong>Trade-off:</strong><br>· <code>BiasPosition</code> → ranking-bias + <code>Distance</code> field in response<br>· <code>Filter.Circle</code> / <code>BoundingBox</code> → hard geographic cut-off but <strong>no Distance</strong> (empirical in <code>ap-southeast-1</code>)',
+        rule_combo: 'Can be combined',
+        rule_combo_note: 'IncludeCountries is an additive filter (AND), not exclusive — can be combined with any spatial filter.',
+        rule_independent: 'Independent (use freely)',
+        rule_independent_note: 'These fields have no conflict constraints with each other. Use any combination or none at all.',
+
+        /* Error table */
+        err_status: 'Status',
+        err_trigger: 'Trigger',
+        err_message: 'AWS Message',
+        err_t1: '2+ of <code>BiasPosition</code> / <code>Filter.BoundingBox</code> / <code>Filter.Circle</code> sent together',
+        err_t2: 'No <code>QueryText</code> and no <code>QueryId</code>',
+        err_t3: '<code>MaxResults</code> &gt; 20',
+        err_t4: '<code>Filter.Circle.Radius</code> &gt; 50000',
+        err_t5: 'Wrong coordinate format (e.g. <code>[lat, lng]</code> instead of <code>[lng, lat]</code>)',
+        err_m5: '<em>Weird / empty result</em> — AWS doesn\'t validate ranges, coords are accepted as-is',
+        err_t6: '<code>Filter.IncludeCountries</code> not ISO-3 (e.g. "Indonesia" or "ID")',
+        err_t7: 'API Key lacks action <code>geo-places:SearchText</code>',
+        err_t8: 'API Key wrong or missing <code>?key=</code>',
+        err_t9: 'Rate limit exceeded (default 50 TPS)',
+        err_m9: '<em>"Rate exceeded"</em> — implement retry with backoff',
+
+        /* Presets */
+        presets: 'Presets',
+        preset_simple: 'simple',
+        preset_radius: 'radius 2km',
+        preset_minimal: 'Minimal',
+        preset_all: 'All Features',
+        preset_error: 'Error case',
+        preset_error_desc: '2 spatial filters',
+
+        /* op-desc translations */
+        st_desc: 'Search Place (POI / address / area) by free-form text. Suitable for search bar with a "Search" button. Supports bias position, geographic filter (BoundingBox/Circle/Country), and category filter.',
+        st_v0_diff: '<strong>Differences from v2:</strong><ul style="margin:6px 0 0 18px;"><li>Field <code>Text</code> → <code>QueryText</code></li><li><code>FilterCountries</code> → <code>Filter.IncludeCountries</code></li><li>Response: <code>Results[].Place.Geometry.Point</code> → <code>ResultItems[].Position</code></li><li><code>MaxResults</code> max 10 (v2: 20)</li><li>Must create <code>PlaceIndex</code> resource first in AWS Console</li></ul>',
+        cr_desc: 'Calculate route from Origin to Destination, with options for waypoints, travel mode, avoid toll/ferry, and turn-by-turn instructions.',
+        crm_desc: 'Calculate distance & time for all origin × destination combinations — efficient for "find nearest" use case.',
+        iso_desc: 'Polygon area "reachable within X minutes" or "within Y km" from a single point. Suitable for visualizing service coverage.',
+        opt_desc: 'TSP solver — give AWS a list of waypoints, it returns the optimal order (saves distance/time).',
+        snap_desc: 'Snap noisy GPS trace to nearest road. Useful for cleaning vehicle GPS trip logs.',
+        gsd_desc: 'Returns MapLibre style spec JSON. This URL goes directly into the <code>style</code> property when initializing a MapLibre map.',
+        gt_desc: 'Vector / raster tile per z/x/y coordinate. This URL pattern is in the <code>tiles</code> field of the style descriptor — usually doesn\'t need manual call.',
+        gg_desc: 'Font glyphs (PBF) for text rendering in vector tiles. Auto-fetched by MapLibre, no manual call needed.',
+        gsp_desc: 'Sprite sheet (PNG + JSON) for point-of-interest icons on the map. Auto-fetched by MapLibre.',
+        gsm_desc: 'Render a map as a single PNG/JPEG image. Suitable for thumbnail, card preview, email, or social sharing.',
+        sg_desc: 'Type-ahead autocomplete — returns Place hits + Query refinement. Use for live dropdown in search bar.',
+        rg_desc: 'Coordinate → nearest address. Use when user clicks on the map and you want to know "where is this".',
+        gp_desc: 'Full detail of a Place by <code>PlaceId</code> (obtained from previous Search/Suggest).',
+        ac_desc: 'Type-ahead specifically for <strong>address</strong> (street, address number, postal code) — not for POI.',
+        gc_desc: 'Structured address (street, city, postal) → coordinates. More accurate than SearchText for address lookup because the input is already parsed.',
+        sn_desc: 'Find POI within a radius from a point, optional category filter. No QueryText needed — just "show what\'s nearby of type X".',
+        ov_desc: 'Two API generations running in parallel. v2 = standalone mode (recommended), v0 = legacy resource-based.',
+        auth_desc: 'Both support API Key (recommended for frontend) or AWS SigV4 (backend).',
+        qu_desc: 'Per-request limits for the AWS Location v2 API.',
+        mig_desc: 'Checklist 3-step to migrate code from v0 (resource-based) to v2 (standalone).',
+
+        /* Common reusable */
+        loading: 'Loading',
+        proxy_safe: 'Safe — routed via <code>/api/places/suggestions</code> (Laravel proxy). API key stays on server.',
+        rule_required_qt: 'Required',
+
+        /* Suggest */
+        sg_required_note: 'QueryText is required (min 1 char). Suggest does not accept QueryId like SearchText does.',
+        sg_response_filter: 'Response filter (client-side)',
+        sg_response_filter_note: 'Filter SuggestResultItemType === "Place" for actual places; "Query" = refinement keywords only.',
+        sg_err_qt: 'Empty <code>QueryText</code>',
+        sg_err_perm: 'Action <code>geo-places:Suggest</code> not granted',
+        sg_v0_diff: '<strong>Differences from v2:</strong><ul style="margin:6px 0 0 18px;"><li><code>Text</code> → <code>QueryText</code></li><li><code>FilterCountries</code> → <code>Filter.IncludeCountries</code></li><li><code>Results[].Text</code> → <code>ResultItems[].Title</code></li><li>v0 does not return Position in Suggest — must call GetPlace</li></ul>',
+
+        /* ReverseGeocode */
+        proxy_safe_rg: 'Safe — routed via <code>/api/places/reverse</code> (Laravel proxy).',
+        rg_required_note: 'Valid [lng, lat] coordinates required (lng ±180, lat ±90).',
+        rg_filter_label: 'PlaceType filter',
+        rg_filter_note: 'Limit result types — e.g. only <code>Street</code> or <code>PointAddress</code>, no <code>Locality</code>/<code>District</code>.',
+        rg_err_pos: 'Missing <code>QueryPosition</code>',
+        rg_err_format: '<code>[lat, lng]</code> format (reversed)',
+        rg_err_format_msg: 'Weird result — AWS treats it as [lng, lat]',
+        rg_preset_basic: 'Jakarta',
+        rg_preset_filter: '+ Filter Street only',
+        rg_v0_diff: '<strong>Differences from v2:</strong><ul style="margin:6px 0 0 18px;"><li><code>Position</code> → <code>QueryPosition</code></li><li>No <code>Filter.IncludePlaceTypes</code> in v0</li><li>Must create <code>PlaceIndex</code> resource first</li></ul>',
+
+        /* GetPlace */
+        gp_required_note: 'Required in URL path. PlaceId is time-bounded ~1 hour from when issued by Search/Suggest.',
+        gp_addfeat: 'Additional Features',
+        gp_addfeat_note: 'Optional, comma-separated. Adds cost per feature. Some regions only support TimeZone.',
+        gp_err_notfound: 'PlaceId not found / expired',
+        gp_err_unsupported: '<code>additional-features</code> contains value not supported in region',
+        gp_err_perm: 'API Key lacks <code>geo-places:GetPlace</code>',
+        gp_hint: 'Get a <code>PlaceId</code> first from SearchText/Suggest Try it Live, copy <code>ResultItems[0].PlaceId</code>, paste here.',
+        gp_query_params: 'Query Parameters',
+        gp_resp_idle: 'Enter PlaceId then click Send Request.',
+        gp_v0_diff: '<strong>Differences from v2:</strong><ul style="margin:6px 0 0 18px;"><li>Different path: <code>/places/v0/indexes/{Idx}/places/{PlaceId}</code></li><li>No <code>additional-features</code> param in v0</li><li>Simpler response shape, without <code>OpeningHours</code>, <code>Contacts</code>, <code>TimeZone</code></li></ul>',
+
+        /* CalculateRoutes */
+        proxy_safe_cr: 'Safe — routed via <code>/api/v2/routes/calculate</code> (Laravel proxy).',
+        cr_required_note: 'Both required. Valid [lng, lat] format.',
+        cr_time_note: 'Pick one — when to depart OR when to arrive. Default = now.',
+        cr_avoid_label: 'Avoid options',
+        cr_avoid_note: 'Can be combined freely. ⚠️ TollRoads=true not allowed for TravelMode Pedestrian (400 error).',
+        cr_err_origin: 'Missing <code>Origin</code> or <code>Destination</code>',
+        cr_err_pedestrian: '<code>Avoid.TollRoads</code> with <code>TravelMode: Pedestrian</code>',
+        cr_err_waypoints: 'Waypoints &gt; 23',
+        cr_err_time: 'Sending <code>DepartureTime</code> + <code>ArrivalTime</code> together',
+        cr_err_unreach: 'Origin/Destination unreachable (e.g. middle of sea)',
+        cr_preset_wp: '+ Waypoints',
+        cr_v0_diff: '<strong>Differences from v2:</strong><ul style="margin:6px 0 0 18px;"><li><code>DeparturePosition</code> → <code>Origin</code>, <code>DestinationPosition</code> → <code>Destination</code></li><li><code>WaypointPositions: [[lng,lat]]</code> → <code>Waypoints: [{ Position: [lng,lat] }]</code></li><li><code>AvoidTolls: bool</code> → <code>Avoid: { TollRoads: bool }</code> (nested)</li><li>TravelMode: <code>Motorcycle</code> → <code>Scooter</code>, <code>Walking</code> → <code>Pedestrian</code></li><li>Distance: v0 in <strong>kilometers</strong>, v2 in <strong>meters</strong></li><li><code>DurationSeconds</code> → <code>Duration</code></li><li>Response wrapper: v0 direct Summary/Legs, v2 has <code>Routes[0]</code> array</li></ul>',
+
+        /* CalculateRouteMatrix */
+        proxy_safe_crm: 'Safe — routed via <code>/api/routes/matrix</code> (Laravel proxy).',
+        crm_required_note: 'All three required. Different from v0 which doesn\'t need RoutingBoundary.',
+        crm_limit_label: 'Cell limit',
+        crm_limit_note: 'Max 700 cells per request. E.g. 7×100 or 35×20. Split into multiple requests if more.',
+        crm_err_boundary: 'Missing <code>RoutingBoundary</code>',
+        crm_err_cells: 'Origins × Destinations &gt; 700',
+        crm_err_pos: 'Empty Position in Origins/Destinations',
+        crm_proxy_note: 'Note: the <code>/api/routes/matrix</code> proxy in this project still calls the <strong>v0</strong> endpoint backend (for backward compat). Request body must use v0 shape (see v0 tab). For native v2 demo, call AWS directly with API Key.',
+        crm_preset_v0: 'v0 Body (proxy)',
+        crm_v0_diff: '<strong>Differences from v2:</strong><ul style="margin:6px 0 0 18px;"><li><code>DeparturePositions: [[lng,lat]]</code> → <code>Origins: [{ Position: [lng,lat] }]</code></li><li><code>DestinationPositions: [[lng,lat]]</code> → <code>Destinations: [{ Position: [lng,lat] }]</code></li><li>v2 requires <code>RoutingBoundary</code> (v0 does not)</li><li>Distance: v0 km → v2 meter</li><li><code>DurationSeconds</code> → <code>Duration</code></li></ul>',
+
+        /* Maps v0 diffs */
+        gsd_v0_diff: '<strong>Differences from v2:</strong><ul style="margin:6px 0 0 18px;"><li>Uses <code>{MapName}</code> custom resource (must create in Console first)</li><li>No <code>color-scheme</code> / <code>political-view</code> param</li><li>Provider locked per resource — can\'t switch style at runtime</li></ul>',
+        gt_v0_diff: '<strong>Differences from v2:</strong><ul style="margin:6px 0 0 18px;"><li>Simpler path: <code>{MapName}/tiles/{z}/{x}/{y}</code></li><li>No Style/ColorScheme/Variant — provider locked at resource</li></ul>',
+        gg_v0_diff: '<strong>Differences from v2:</strong><ul style="margin:6px 0 0 18px;"><li>Path: <code>{MapName}/glyphs/{fontstack}/{range}</code> (no Style)</li><li>Font set depends on MapName resource</li></ul>',
+        gsp_v0_diff: '<strong>Differences from v2:</strong><ul style="margin:6px 0 0 18px;"><li>Path: <code>{MapName}/sprites</code> (no Style/Color/Variant/file split)</li><li>v0 has separate JSON vs PNG endpoint (e.g. <code>/sprites?json=true</code>)</li><li>Sprite set locked per provider</li></ul>',
+
+        /* === Common reusable param notes === */
+        note_iso3_arr: 'ISO-3 country codes, e.g. <code>["IDN"]</code>',
+        note_iso3_single: 'ISO-3 country code (e.g. <code>IDN</code>)',
+        note_iso3_codes: 'ISO-3 codes',
+        note_bcp47: 'BCP 47 (e.g. <code>id</code>, <code>en</code>)',
+        note_bcp47_id: 'BCP 47 (e.g. <code>id</code>)',
+        note_bcp47_short: 'BCP 47',
+        note_pagination: 'Pagination cursor',
+        note_max_20: '1–20, default 20',
+        note_max_10: '1–10, default 5',
+        note_max_4: '1–4, default 1',
+        note_default_car: 'Default: Car',
+        note_travel_mode_v2: 'Default: Car. v0→v2 mapping: Motorcycle→Scooter, Walking→Pedestrian',
+        note_no_pedestrian: 'Not supported for Pedestrian',
+        note_excl_arrival: 'Mutually exclusive with ArrivalTime',
+        note_default_fastest: 'Default: FastestRoute',
+        note_placeid_path: 'Path segment (URL-encoded). From SearchText/Suggest.',
+        note_api_key: 'API key',
+        note_circle: '<code>Center: [lng,lat]</code>, <code>Radius: meter</code> (max 50000)',
+        note_intended_use: '<code>SingleUse</code> (default) | <code>Storage</code>',
+        note_addfeat_full: '<code>Contact</code> | <code>TimeZone</code> | <code>Phonemes</code> | <code>Access</code>',
+        note_addfeat_rg: '<code>TimeZone</code> | <code>Access</code>',
+        note_excl_short: '<strong>Exactly 1</strong> of Bias / Filter.Circle / Filter.BoundingBox.',
+        note_perm_missing: 'Permission missing',
+        note_default_only: 'Default (for now)',
+        note_default: 'Default',
+        note_wsen: 'west, south, east, north',
+        note_bbox: 'Limit results within a box (west, south, east, north)',
+
+        /* === Param-specific notes === */
+        st_p_querytext: 'Free-form keyword (1-200 char). *Required: one of <code>QueryText</code> or <code>QueryId</code>.',
+        st_p_queryid: 'Alternative: ID from a previous Suggest result',
+        st_p_bias: 'Bias ranking + reference for the <code>Distance</code> field. <strong>Exactly 1</strong> of BiasPosition / Filter.BoundingBox / Filter.Circle.<br><strong>📌 Use this if you need Distance</strong> — Filter.Circle/BoundingBox don\'t trigger Distance in <code>ap-southeast-1</code>.',
+        st_p_bbox: 'Limit results to a box (west, south, east, north)',
+        sg_p_qt: '1-200 char. Partial keyword OK (autocomplete).',
+        sg_p_refine: 'Max items with SuggestResultItemType=Query',
+        rg_p_qpos: 'Coordinate point to reverse-geocode',
+        rg_p_radius: 'Search radius (meters), default 0 (exact point)',
+        rg_p_types: '<code>Locality</code> | <code>Street</code> | <code>PointAddress</code> | <code>Block</code> | etc.',
+        gp_p_addfeat: 'Comma-separated: <code>TimeZone,Contact,Hours,Phonemes,Access</code>',
+        cr_p_origin: 'Starting point',
+        cr_p_dest: 'End point',
+        cr_p_wp: 'Max 23 (excluding Origin & Destination)',
+        cr_p_geom: '<code>Simple</code> = LineString array, <code>FlexiblePolyline</code> = encoded',
+        crm_p_orig: 'Array of <code>{ Position: [lng,lat] }</code>',
+        crm_p_boundary: 'REQUIRED in v2! <code>{ Unbounded: true }</code> for v0-like behavior.',
+        gt_p_zxy: 'Tile coordinate (z 0-22, x/y per zoom level)',
+        gt_r_vector: 'Vector tile (PBF) — rendered by MapLibre client-side',
+        gt_r_raster: 'Raster tile, rendered as-is',
+        gsp_r_json: 'Manifest: coordinates & size of each icon in the sheet',
+        gsp_r_png: 'Sheet image — all icons in one PNG',
+        gsp_r_2x: '@2x version for retina display',
+
+        /* === Response Fields === */
+        r_placeid: 'Unique AWS ID — use with GetPlace to fetch full detail',
+        r_title: 'Main display name',
+        r_position: 'Center coordinate of the place',
+        r_mapview: 'Bounding box for fitting the map',
+        r_address: 'Structured address (label + components)',
+        r_pos_place_only: 'Only for SuggestResultItemType=Place',
+        r_distance_bias_only: 'Meters (only when using BiasPosition)',
+        r_highlights: 'Range index for highlighting matched keywords',
+        r_queryid: 'Pass to SearchText as QueryId for full search',
+        r_short_name: 'Short location name',
+        r_full_address: 'Full formatted address',
+        r_distance_qpos: 'Meters from QueryPosition',
+        r_legtype: 'Vehicle / Pedestrian / Ferry',
+        r_steps: 'Turn-by-turn instructions (when TravelStepType=TurnByTurn)',
+        r_linestring: 'Array of [lng, lat] for MapLibre LineString',
+        r_meter_not_km: '<strong>Meters</strong> (not km like v0)',
+        r_seconds_renamed: 'Seconds (previously <code>DurationSeconds</code>)',
+
+        /* === Errors per panel === */
+        note_only_std_mono: 'Only for Standard / Monochrome',
+        gt_e_404_short: 'Tile not available in this area',
+        gt_e_404_note: 'E.g. coordinate outside provider coverage',
+        gt_e_400_short: 'z/x/y out of valid range',
+        gt_e_400_note: 'E.g. y &gt; 2^z - 1',
+        gt_e_perm: 'API Key lacks <code>geo-maps:GetTile</code>',
+        gg_e_404_short: 'Fontstack not available',
+        gg_e_404_note: 'See available fonts in the style descriptor',
+        gg_e_400_short: 'Invalid range',
+        gg_e_400_note: 'Max range usually up to 65279 (basic Unicode)',
+        gsd_e_style: 'Style not available in region (e.g. Satellite in ap-southeast-1)',
+        gsd_e_color: '<code>color-scheme</code> used on Hybrid/Satellite',
+        gsd_e_perm: 'API Key lacks <code>geo-maps:GetStyleDescriptor</code>',
+
+        /* === Meta panel cells === */
+        meta_setup_v0: 'Must create Map / PlaceIndex / RouteCalculator first',
+        meta_setup_v2: 'Not needed — works immediately',
+        meta_host_v0: '<code>maps.geo.{region}.amazonaws.com</code> (shared)',
+        meta_host_v2: 'Per service: <code>maps.geo</code>, <code>places.geo</code>, <code>routes.geo</code>',
+        meta_path_v0: '<code>/{service}/v0/...</code>',
+        meta_path_v2: '<code>/v2/...</code>',
+        meta_provider_v0: 'Lock per resource',
+        meta_provider_v2: 'Auto-picked per region',
+        meta_status_v0: '⚠️ Maintenance only',
+        meta_status_v2: '✅ Active development',
+
+        /* === Misc remaining === */
+        r_cell_error: 'Per-cell error (e.g. unreachable). <code>null</code> if OK.',
+        note_light_dark: 'Light | Dark | Default',
+        note_iso3_label: 'ISO-3 country code',
+        gsm_p_pins: 'Optional marker overlay',
+        note_iso3_examples: 'IDN, MYS, ARG, MAR, etc.',
+        note_styles_all: 'Standard | Monochrome | Hybrid | Satellite',
+        note_styles_v2: 'Standard | Monochrome',
+        gsm_p_center: 'Map center',
+        note_pixel: 'Pixels',
+        note_zoom_range: '0-22',
+        note_png_jpeg: 'png | jpeg',
+        r_placetype_examples: 'PointOfInterest | Address | Street | District | Region | etc.',
+        qu_tps: '50 TPS / account (Places)',
+        qu_rate_label: 'Rate limit (default)',
+        qu_all_search: 'All Search',
+        gsd_p_style_note: 'In <code>ap-southeast-1</code>: only Standard & Monochrome (GrabMaps provider)',
+        r_distance_long: '<strong>Meters</strong> from reference point.<br>⚠️ <strong>Empirical in <code>ap-southeast-1</code>:</strong> this field only appears when the request uses <code>BiasPosition</code>. When using <code>Filter.Circle</code> or <code>Filter.BoundingBox</code>, the <code>Distance</code> field is <strong>absent</strong> from the response.<br>Workaround: compute Haversine in JS from <code>Position</code> to the origin.',
+        ac_inc_types: 'IncludePlaceTypes valid values',
+        ac_no_poi: '<code>PointOfInterest</code> is <strong>not valid</strong> in Autocomplete — use SearchText / SearchNearby.',
+
+        /* === Try it Live hints (Maps panels) === */
+        gsd_try_hint: '💡 Pick style + color + political-view → the MapLibre map below auto re-renders with the new style descriptor.',
+        gt_try_hint: '💡 Use the z/x/y picker to view a specific tile. Vector tile (PBF) cannot be previewed directly — use MapLibre to render it.',
+        gg_try_hint: '💡 Glyphs PBF cannot be previewed directly. Shown here: URL builder + open button to download the file.',
+        gsp_try_hint: '💡 PNG sprites can be previewed directly. JSON manifest can be fetched to inspect structure.',
+
+        /* === Use case banners === */
+        iso_use_case: '💡 Use case: visualize <strong>"stops reachable within 10 minutes on foot"</strong> with polygon overlay on MapLibre.',
+        snap_use_case: '💡 Pair with ride-hailing trip recording to get clean trip lines (without GPS-noise zigzags).',
+        gc_use_case: '💡 Use this when you already have field-by-field address (e.g. from a form input). For free-text search, use SearchText.',
+        mig_tip: '💡 Test on a separate endpoint first (e.g. <a href="/transjakarta-test">/transjakarta-test</a>) before migrating production code.',
+
+        /* === Coming Soon banners (per operation) === */
+        soon_iso: '<span class="soon-pill">⏳ Coming Soon</span> <strong>Not available in region <code>ap-southeast-1</code></strong>. Action not listed in AWS Console permissions. Wait for AWS rollout or use the workaround below.',
+        soon_opt: '<span class="soon-pill">⏳ Coming Soon</span> <strong>Not available in region <code>ap-southeast-1</code></strong>. For this feature, implement nearest-neighbor TSP yourself in JS or use a library.',
+        soon_snap: '<span class="soon-pill">⏳ Coming Soon</span> <strong>Not available in region <code>ap-southeast-1</code></strong>. Not yet rolled out for GrabMaps provider.',
+        soon_static: '<span class="soon-pill">⏳ Coming Soon</span> <strong>Not available in region <code>ap-southeast-1</code></strong>. Maps Actions in Console only has <code>GetTile</code>. Workaround: screenshot from MapLibre canvas.',
+        soon_geocode: '<span class="soon-pill">⏳ Coming Soon</span> <strong>Not available in region <code>ap-southeast-1</code></strong>. Workaround: use <code>SearchText</code> with structured QueryText.',
+        soon_nearby: '<span class="soon-pill">⏳ Coming Soon</span> <strong>Not available in region <code>ap-southeast-1</code></strong>. Workaround: use <code>SearchText</code> with <code>Filter.Circle</code> + category keyword in QueryText.',
+        soon_autocomplete: '<span class="soon-pill">⏳ Coming Soon</span> <strong>Not available in region <code>ap-southeast-1</code></strong> at the moment. Check AWS Console for available actions.',
+        ac_no_position: '⚠️ <strong>Does not return <code>Position</code></strong> — must call GetPlace per item if you need coordinates. For finding POIs, <strong>Suggest</strong> is more efficient (returns Position directly).',
+
+        /* === Common UI labels === */
+        ver_v0: 'v0 Legacy',
+        ver_v2: 'v2 Standalone',
+        th_param: 'Param',
+        th_values: 'Values',
+        th_note: 'Note',
+        label_url: 'URL',
+        sec_response_json: 'Response (JSON)',
+
+        /* === GetStyleDescriptor specific === */
+        gsd_rule_header: 'Style + Color compatibility',
+        gsd_rule_fields: '<code>Standard</code> + <code>Light/Dark</code> ✓<br><code>Monochrome</code> + <code>Light/Dark</code> ✓<br><code>Hybrid</code>/<code>Satellite</code> + <code>color-scheme</code> ❌',
+        gsd_rule_note: 'Raster styles (Hybrid/Satellite) don\'t accept color-scheme — sending it returns error 400.',
+        gsd_response_note: 'Style descriptor is a complete MapLibre recipe — it contains URLs for GetTile / GetGlyphs / GetSprites. MapLibre auto-fetches all three.'
+    },
+    id: {
+        /* Topbar & sidebar */
+        topbar_title: 'AWS Location Service Reference',
+        topbar_subtitle: 'v0 (legacy) & v2 (standalone)',
+        search_placeholder: '🔍 Cari operation...',
+        svc_routes: 'Routes',
+        svc_maps: 'Maps',
+        svc_places: 'Places',
+        svc_general: 'Topik Umum',
+        meta_overview: 'Ringkasan v0 vs v2',
+        meta_auth: 'Autentikasi',
+        meta_quotas: 'Quota & Batasan',
+        meta_migration: 'Panduan Migrasi',
+
+        /* Welcome & Coming Soon */
+        welcome_title: 'AWS Location Service Reference',
+        welcome_desc: 'Pilih operation di sidebar kiri untuk lihat detail endpoint, request body, response shape, dan perbandingan v0 ↔ v2.',
+        welcome_note: 'Default provider di ap-southeast-1 = GrabMaps. Dokumentasi ini fokus untuk integrasi API.',
+        soon_pill: '⏳ Segera Hadir',
+        soon_main: 'Operation ini belum tersedia di API key kamu untuk region ap-southeast-1.',
+        soon_note: 'Dokumentasi detail akan ditambahkan setelah AWS rilis action ini di region kamu. Sementara, cek alternatif yang sudah tersedia di sidebar (titik hijau).',
+
+        /* Section headers */
+        sec_request_syntax: 'Sintaks Request',
+        sec_request_params: 'Parameter Request',
+        sec_response_syntax: 'Sintaks Response',
+        sec_response_fields: 'Field Response',
+        sec_try_live: 'Coba Live',
+        sec_field_rules: 'Aturan Field — yang bisa & tidak bisa di-combo',
+        sec_common_errors: 'Error Umum & Validasi',
+
+        /* Buttons & status */
+        btn_send: 'Kirim Request',
+        btn_format: '✨ Format',
+        btn_copy: '📋 Salin',
+        btn_copy_response: '📋 Salin Response',
+        resp_idle: 'Klik Kirim Request di atas untuk lihat live response dari AWS.',
+
+        /* Field rules cards */
+        rule_required: 'Wajib (salah satu)',
+        rule_required_note: 'Salah satu wajib ada di body. Boleh dua-duanya disebut tapi yang dipakai sesuai prioritas AWS internal.',
+        rule_exclusive: 'Saling eksklusif (tepat satu)',
+        rule_exclusive_note: 'Pakai 2 atau lebih = error 400 <em>"Exactly one of..."</em>. Pakai semua kosong → tidak ada spatial bias (hasil global).<br>💡 <strong>Trade-off:</strong><br>· <code>BiasPosition</code> → ranking-bias + ada field <code>Distance</code> di response<br>· <code>Filter.Circle</code> / <code>BoundingBox</code> → cut-off geografis tapi <strong>tanpa Distance</strong> (empiris di <code>ap-southeast-1</code>)',
+        rule_combo: 'Boleh dikombinasi',
+        rule_combo_note: 'IncludeCountries adalah filter aditif (AND), bukan exclusive — bisa dipakai bareng spatial filter mana pun.',
+        rule_independent: 'Independen (bebas pakai)',
+        rule_independent_note: 'Field-field ini tidak punya conflict constraint satu sama lain. Boleh dipakai semua atau tidak sama sekali.',
+
+        /* Error table */
+        err_status: 'Status',
+        err_trigger: 'Pemicu',
+        err_message: 'Pesan AWS',
+        err_t1: '2+ dari <code>BiasPosition</code> / <code>Filter.BoundingBox</code> / <code>Filter.Circle</code> dikirim bareng',
+        err_t2: 'Tidak ada <code>QueryText</code> dan tidak ada <code>QueryId</code>',
+        err_t3: '<code>MaxResults</code> &gt; 20',
+        err_t4: '<code>Filter.Circle.Radius</code> &gt; 50000',
+        err_t5: 'Format koordinat salah (mis. <code>[lat, lng]</code> bukan <code>[lng, lat]</code>)',
+        err_m5: '<em>Hasil aneh / kosong</em> — AWS tidak memvalidasi range, koordinat ditelan apa adanya',
+        err_t6: '<code>Filter.IncludeCountries</code> bukan ISO-3 (mis. "Indonesia" atau "ID")',
+        err_t7: 'API Key tidak punya action <code>geo-places:SearchText</code>',
+        err_t8: 'API Key salah atau tanpa <code>?key=</code>',
+        err_t9: 'Rate limit terlampaui (default 50 TPS)',
+        err_m9: '<em>"Rate exceeded"</em> — implementasi retry dengan backoff',
+
+        /* Presets */
+        presets: 'Preset',
+        preset_simple: 'sederhana',
+        preset_radius: 'radius 2km',
+        preset_minimal: 'Minimal',
+        preset_all: 'Semua Fitur',
+        preset_error: 'Kasus Error',
+        preset_error_desc: '2 spatial filter',
+
+        /* op-desc translations */
+        st_desc: 'Pencarian Place (POI / alamat / area) berbasis free-form text. Cocok untuk search bar dengan tombol "Cari". Mendukung bias position, filter geografis (BoundingBox/Circle/Country), dan filter kategori.',
+        st_v0_diff: '<strong>Beda dari v2:</strong><ul style="margin:6px 0 0 18px;"><li>Field <code>Text</code> → <code>QueryText</code></li><li><code>FilterCountries</code> → <code>Filter.IncludeCountries</code></li><li>Response: <code>Results[].Place.Geometry.Point</code> → <code>ResultItems[].Position</code></li><li><code>MaxResults</code> max 10 (v2: 20)</li><li>Wajib bikin <code>PlaceIndex</code> resource dulu di AWS Console</li></ul>',
+        cr_desc: 'Hitung rute dari Origin ke Destination, dengan opsi waypoints, mode kendaraan, hindari toll/ferry, dan turn-by-turn instructions.',
+        crm_desc: 'Hitung jarak & waktu untuk semua kombinasi origin × destination — efisien untuk use case "find nearest".',
+        iso_desc: 'Polygon area "reachable within X minutes" atau "within Y km" dari satu titik. Cocok untuk visualisasi service coverage.',
+        opt_desc: 'TSP solver — kasih AWS daftar waypoints, dia kembalikan urutan optimal (hemat jarak/waktu).',
+        snap_desc: 'Snap GPS trace yang noisy ke jalan terdekat. Berguna untuk membersihkan trip log GPS dari kendaraan.',
+        gsd_desc: 'Mengembalikan JSON spec MapLibre style. URL ini langsung ditaroh di property <code>style</code> waktu inisialisasi MapLibre map.',
+        gt_desc: 'Vector / raster tile per koordinat z/x/y. URL pattern ini ada di field <code>tiles</code> dalam style descriptor — biasanya tidak perlu di-call manual.',
+        gg_desc: 'Font glyphs (PBF) untuk text rendering di vector tiles. Auto-fetched oleh MapLibre, tidak perlu di-call manual.',
+        gsp_desc: 'Sprite sheet (PNG + JSON) untuk icon point-of-interest di peta. Auto-fetched oleh MapLibre.',
+        gsm_desc: 'Render peta jadi gambar PNG/JPEG single. Cocok untuk thumbnail, preview di card, email, atau social sharing.',
+        sg_desc: 'Type-ahead autocomplete — kembalikan Place hits + Query refinement. Pakai untuk dropdown live di search bar.',
+        rg_desc: 'Koordinat → alamat terdekat. Pakai saat user click di peta dan kamu mau tahu "ini di mana".',
+        gp_desc: 'Detail lengkap suatu Place by <code>PlaceId</code> (yang didapat dari Search/Suggest sebelumnya).',
+        ac_desc: 'Type-ahead khusus untuk <strong>alamat</strong> (street, address number, postal code) — bukan untuk POI.',
+        gc_desc: 'Alamat terstruktur (street, city, postal) → koordinat. Lebih akurat dari SearchText untuk address lookup karena input-nya sudah parsed.',
+        sn_desc: 'Cari POI dalam radius dari satu titik, opsional filter kategori. Tidak perlu QueryText — cukup "tunjukkan yang dekat tipe X".',
+        ov_desc: 'Dua generasi API yang masih jalan paralel. v2 = standalone mode (rekomendasi), v0 = legacy resource-based.',
+        auth_desc: 'Dua-duanya support API Key (rekomendasi untuk frontend) atau AWS SigV4 (backend).',
+        qu_desc: 'Limit per request untuk API AWS Location v2.',
+        mig_desc: 'Checklist 3-step untuk migrasi code dari v0 (resource-based) ke v2 (standalone).',
+
+        /* Common reusable */
+        loading: 'Memuat',
+        proxy_safe: 'Aman — routing lewat <code>/api/places/suggestions</code> (Laravel proxy). API key di server.',
+        rule_required_qt: 'Wajib',
+
+        /* Suggest */
+        sg_required_note: 'QueryText wajib (min 1 karakter). Suggest tidak menerima QueryId seperti SearchText.',
+        sg_response_filter: 'Filter response (client-side)',
+        sg_response_filter_note: 'Filter SuggestResultItemType === "Place" untuk actual place; "Query" = refinement keyword saja.',
+        sg_err_qt: '<code>QueryText</code> kosong',
+        sg_err_perm: 'Action <code>geo-places:Suggest</code> tidak di-grant',
+        sg_v0_diff: '<strong>Beda dari v2:</strong><ul style="margin:6px 0 0 18px;"><li><code>Text</code> → <code>QueryText</code></li><li><code>FilterCountries</code> → <code>Filter.IncludeCountries</code></li><li><code>Results[].Text</code> → <code>ResultItems[].Title</code></li><li>v0 tidak return Position di Suggest — harus call GetPlace</li></ul>',
+
+        /* ReverseGeocode */
+        proxy_safe_rg: 'Aman — routing lewat <code>/api/places/reverse</code> (Laravel proxy).',
+        rg_required_note: 'Wajib koordinat [lng, lat] valid (lng ±180, lat ±90).',
+        rg_filter_label: 'Filter PlaceType',
+        rg_filter_note: 'Batasi tipe hasil — mis. cuma <code>Street</code> atau <code>PointAddress</code> aja, tanpa <code>Locality</code>/<code>District</code>.',
+        rg_err_pos: 'Tanpa <code>QueryPosition</code>',
+        rg_err_format: 'Format <code>[lat, lng]</code> (terbalik)',
+        rg_err_format_msg: 'Hasil aneh — AWS treat sebagai [lng, lat]',
+        rg_preset_basic: 'Jakarta',
+        rg_preset_filter: '+ Filter Street saja',
+        rg_v0_diff: '<strong>Beda dari v2:</strong><ul style="margin:6px 0 0 18px;"><li><code>Position</code> → <code>QueryPosition</code></li><li>Tidak ada <code>Filter.IncludePlaceTypes</code> di v0</li><li>Wajib bikin <code>PlaceIndex</code> resource dulu</li></ul>',
+
+        /* GetPlace */
+        gp_required_note: 'Wajib di URL path. PlaceId valid time-bounded ~1 jam dari saat di-issue Search/Suggest.',
+        gp_addfeat: 'Additional Features',
+        gp_addfeat_note: 'Opsional, comma-separated. Tambah cost per feature. Beberapa region cuma support TimeZone.',
+        gp_err_notfound: 'PlaceId tidak ditemukan / expired',
+        gp_err_unsupported: '<code>additional-features</code> berisi value yang gak disupport region',
+        gp_err_perm: 'API Key tidak punya <code>geo-places:GetPlace</code>',
+        gp_hint: 'Dapat <code>PlaceId</code> dulu dari Try it Live SearchText/Suggest, copy hasil <code>ResultItems[0].PlaceId</code>, paste ke sini.',
+        gp_query_params: 'Query Parameters',
+        gp_resp_idle: 'Masukkan PlaceId lalu klik Send Request.',
+        gp_v0_diff: '<strong>Beda dari v2:</strong><ul style="margin:6px 0 0 18px;"><li>Path beda: <code>/places/v0/indexes/{Idx}/places/{PlaceId}</code></li><li>Tidak ada <code>additional-features</code> param di v0</li><li>Response shape lebih simple, tanpa <code>OpeningHours</code>, <code>Contacts</code>, <code>TimeZone</code></li></ul>',
+
+        /* CalculateRoutes */
+        proxy_safe_cr: 'Aman — routing lewat <code>/api/v2/routes/calculate</code> (Laravel proxy).',
+        cr_required_note: 'Dua-duanya wajib. Format [lng, lat] valid.',
+        cr_time_note: 'Pilih salah satu — kapan mau berangkat ATAU kapan harus tiba. Default = sekarang.',
+        cr_avoid_label: 'Opsi Avoid',
+        cr_avoid_note: 'Boleh dikombinasi semua. ⚠️ TollRoads=true tidak boleh untuk TravelMode Pedestrian (error 400).',
+        cr_err_origin: 'Tanpa <code>Origin</code> atau <code>Destination</code>',
+        cr_err_pedestrian: '<code>Avoid.TollRoads</code> dengan <code>TravelMode: Pedestrian</code>',
+        cr_err_waypoints: 'Waypoints &gt; 23',
+        cr_err_time: 'Kirim <code>DepartureTime</code> + <code>ArrivalTime</code> bareng',
+        cr_err_unreach: 'Origin/Destination tidak bisa di-reach (mis. tengah laut)',
+        cr_preset_wp: '+ Waypoints',
+        cr_v0_diff: '<strong>Beda dari v2:</strong><ul style="margin:6px 0 0 18px;"><li><code>DeparturePosition</code> → <code>Origin</code>, <code>DestinationPosition</code> → <code>Destination</code></li><li><code>WaypointPositions: [[lng,lat]]</code> → <code>Waypoints: [{ Position: [lng,lat] }]</code></li><li><code>AvoidTolls: bool</code> → <code>Avoid: { TollRoads: bool }</code> (nested)</li><li>TravelMode: <code>Motorcycle</code> → <code>Scooter</code>, <code>Walking</code> → <code>Pedestrian</code></li><li>Distance: v0 dalam <strong>kilometer</strong>, v2 <strong>meter</strong></li><li><code>DurationSeconds</code> → <code>Duration</code></li><li>Response wrapper: v0 langsung Summary/Legs, v2 ada <code>Routes[0]</code> array</li></ul>',
+
+        /* CalculateRouteMatrix */
+        proxy_safe_crm: 'Aman — routing lewat <code>/api/routes/matrix</code> (Laravel proxy).',
+        crm_required_note: 'Tiga-tiganya wajib. Beda dari v0 yang gak butuh RoutingBoundary.',
+        crm_limit_label: 'Limit cell',
+        crm_limit_note: 'Max 700 sel per request. Mis. 7×100 atau 35×20. Pisah jadi multiple request kalau lebih.',
+        crm_err_boundary: 'Tanpa <code>RoutingBoundary</code>',
+        crm_err_cells: 'Origins × Destinations &gt; 700',
+        crm_err_pos: 'Position kosong di salah satu Origins/Destinations',
+        crm_proxy_note: 'Catatan: proxy <code>/api/routes/matrix</code> di project ini masih panggil endpoint <strong>v0</strong> di backend (untuk backward compat). Body request harus pakai shape v0 (lihat tab v0). Untuk demo native v2, panggil AWS langsung dengan API Key.',
+        crm_preset_v0: 'v0 Body (proxy)',
+        crm_v0_diff: '<strong>Beda dari v2:</strong><ul style="margin:6px 0 0 18px;"><li><code>DeparturePositions: [[lng,lat]]</code> → <code>Origins: [{ Position: [lng,lat] }]</code></li><li><code>DestinationPositions: [[lng,lat]]</code> → <code>Destinations: [{ Position: [lng,lat] }]</code></li><li>v2 wajib <code>RoutingBoundary</code> (v0 tidak)</li><li>Distance: v0 km → v2 meter</li><li><code>DurationSeconds</code> → <code>Duration</code></li></ul>',
+
+        /* Maps v0 diffs */
+        gsd_v0_diff: '<strong>Beda dari v2:</strong><ul style="margin:6px 0 0 18px;"><li>Pakai <code>{MapName}</code> custom resource (harus dibuat dulu di Console)</li><li>Tidak ada <code>color-scheme</code> / <code>political-view</code> param</li><li>Provider lock per resource — gak bisa switch style runtime</li></ul>',
+        gt_v0_diff: '<strong>Beda dari v2:</strong><ul style="margin:6px 0 0 18px;"><li>Path lebih sederhana: <code>{MapName}/tiles/{z}/{x}/{y}</code></li><li>Tidak ada Style/ColorScheme/Variant — provider locked di resource</li></ul>',
+        gg_v0_diff: '<strong>Beda dari v2:</strong><ul style="margin:6px 0 0 18px;"><li>Path: <code>{MapName}/glyphs/{fontstack}/{range}</code> (tanpa Style)</li><li>Font set tergantung MapName resource</li></ul>',
+        gsp_v0_diff: '<strong>Beda dari v2:</strong><ul style="margin:6px 0 0 18px;"><li>Path: <code>{MapName}/sprites</code> (tanpa Style/Color/Variant/file split)</li><li>v0 punya endpoint terpisah untuk JSON vs PNG (mis. <code>/sprites?json=true</code>)</li><li>Sprite set lock per provider</li></ul>',
+
+        /* === Common reusable param notes === */
+        note_iso3_arr: 'Kode negara ISO-3, mis. <code>["IDN"]</code>',
+        note_iso3_single: 'Kode negara ISO-3 (mis. <code>IDN</code>)',
+        note_iso3_codes: 'Kode ISO-3',
+        note_bcp47: 'BCP 47 (mis. <code>id</code>, <code>en</code>)',
+        note_bcp47_id: 'BCP 47 (mis. <code>id</code>)',
+        note_bcp47_short: 'BCP 47',
+        note_pagination: 'Cursor pagination',
+        note_max_20: '1–20, default 20',
+        note_max_10: '1–10, default 5',
+        note_max_4: '1–4, default 1',
+        note_default_car: 'Default: Car',
+        note_travel_mode_v2: 'Default: Car. Mapping v0→v2: Motorcycle→Scooter, Walking→Pedestrian',
+        note_no_pedestrian: 'Tidak support untuk Pedestrian',
+        note_excl_arrival: 'Mutually exclusive dengan ArrivalTime',
+        note_default_fastest: 'Default: FastestRoute',
+        note_placeid_path: 'Path segment (URL-encoded). Dapat dari SearchText/Suggest.',
+        note_api_key: 'API key',
+        note_circle: '<code>Center: [lng,lat]</code>, <code>Radius: meter</code> (max 50000)',
+        note_intended_use: '<code>SingleUse</code> (default) | <code>Storage</code>',
+        note_addfeat_full: '<code>Contact</code> | <code>TimeZone</code> | <code>Phonemes</code> | <code>Access</code>',
+        note_addfeat_rg: '<code>TimeZone</code> | <code>Access</code>',
+        note_excl_short: '<strong>Exactly 1</strong> dari Bias / Filter.Circle / Filter.BoundingBox.',
+        note_perm_missing: 'Permission missing',
+        note_default_only: 'Default (saat ini)',
+        note_default: 'Default',
+        note_wsen: 'west, south, east, north',
+        note_bbox: 'Batasi hasil dalam kotak (west, south, east, north)',
+
+        /* === Param-specific notes === */
+        st_p_querytext: 'Free-form keyword (1-200 char). *Wajib salah satu antara <code>QueryText</code> atau <code>QueryId</code>.',
+        st_p_queryid: 'Alternatif: ID dari hasil Suggest sebelumnya',
+        st_p_bias: 'Bias ranking + reference untuk field <code>Distance</code> di response. <strong>Exactly 1</strong> dari BiasPosition / Filter.BoundingBox / Filter.Circle.<br><strong>📌 Pakai ini kalau butuh Distance</strong> — Filter.Circle/BoundingBox tidak men-trigger Distance di <code>ap-southeast-1</code>.',
+        st_p_bbox: 'Batasi hasil dalam kotak (west, south, east, north)',
+        sg_p_qt: '1-200 char. Partial keyword OK (autocomplete).',
+        sg_p_refine: 'Max items dengan SuggestResultItemType=Query',
+        rg_p_qpos: 'Titik koordinat yang mau di-reverse',
+        rg_p_radius: 'Radius pencarian (meter), default 0 (point exact)',
+        rg_p_types: '<code>Locality</code> | <code>Street</code> | <code>PointAddress</code> | <code>Block</code> | dst.',
+        gp_p_addfeat: 'Comma-separated: <code>TimeZone,Contact,Hours,Phonemes,Access</code>',
+        cr_p_origin: 'Titik awal',
+        cr_p_dest: 'Titik akhir',
+        cr_p_wp: 'Max 23 (di luar Origin & Destination)',
+        cr_p_geom: '<code>Simple</code> = LineString array, <code>FlexiblePolyline</code> = encoded',
+        crm_p_orig: 'Array of <code>{ Position: [lng,lat] }</code>',
+        crm_p_boundary: 'WAJIB di v2! <code>{ Unbounded: true }</code> untuk perilaku v0.',
+        gt_p_zxy: 'Tile coordinate (z 0-22, x/y per zoom level)',
+        gt_r_vector: 'Vector tile (PBF) — di-render sama MapLibre client-side',
+        gt_r_raster: 'Raster tile, tinggal di-render apa adanya',
+        gsp_r_json: 'Manifest: koordinat & size tiap icon di sheet',
+        gsp_r_png: 'Sheet image — semua icon dalam 1 PNG',
+        gsp_r_2x: 'Versi @2x untuk display retina',
+
+        /* === Response Fields === */
+        r_placeid: 'ID unik AWS — pakai untuk GetPlace lihat detail penuh',
+        r_title: 'Nama display utama',
+        r_position: 'Koordinat tengah place',
+        r_mapview: 'Bounding box untuk fit map',
+        r_address: 'Alamat terstruktur (label + komponen)',
+        r_pos_place_only: 'Hanya untuk SuggestResultItemType=Place',
+        r_distance_bias_only: 'Meter (cuma kalau pakai BiasPosition)',
+        r_highlights: 'Range index untuk highlight match keyword',
+        r_queryid: 'Pass ke SearchText sebagai QueryId untuk full search',
+        r_short_name: 'Nama pendek lokasi',
+        r_full_address: 'Alamat lengkap formatted',
+        r_distance_qpos: 'Meter dari QueryPosition',
+        r_legtype: 'Vehicle / Pedestrian / Ferry',
+        r_steps: 'Turn-by-turn instructions (kalau TravelStepType=TurnByTurn)',
+        r_linestring: 'Array of [lng, lat] untuk MapLibre LineString',
+        r_meter_not_km: '<strong>Meter</strong> (bukan km seperti v0)',
+        r_seconds_renamed: 'Detik (sebelumnya <code>DurationSeconds</code>)',
+
+        /* === Errors per panel === */
+        note_only_std_mono: 'Hanya untuk Standard / Monochrome',
+        gt_e_404_short: 'Tile tidak tersedia di area',
+        gt_e_404_note: 'Misal koordinat di luar coverage provider',
+        gt_e_400_short: 'z/x/y diluar valid range',
+        gt_e_400_note: 'Mis. y &gt; 2^z - 1',
+        gt_e_perm: 'API Key gak punya <code>geo-maps:GetTile</code>',
+        gg_e_404_short: 'Fontstack tidak tersedia',
+        gg_e_404_note: 'Lihat list font yang tersedia di style descriptor',
+        gg_e_400_short: 'Range invalid',
+        gg_e_400_note: 'Range max biasanya sampai 65279 (basic Unicode)',
+        gsd_e_style: 'Style tidak tersedia di region (mis. Satellite di ap-southeast-1)',
+        gsd_e_color: '<code>color-scheme</code> dipakai pada Hybrid/Satellite',
+        gsd_e_perm: 'API Key gak punya <code>geo-maps:GetStyleDescriptor</code>',
+
+        /* === Meta panel cells === */
+        meta_setup_v0: 'Wajib bikin Map / PlaceIndex / RouteCalculator',
+        meta_setup_v2: 'Tidak perlu — langsung pakai',
+        meta_host_v0: '<code>maps.geo.{region}.amazonaws.com</code> (shared)',
+        meta_host_v2: 'Per service: <code>maps.geo</code>, <code>places.geo</code>, <code>routes.geo</code>',
+        meta_path_v0: '<code>/{service}/v0/...</code>',
+        meta_path_v2: '<code>/v2/...</code>',
+        meta_provider_v0: 'Lock per resource',
+        meta_provider_v2: 'Auto pilih per region',
+        meta_status_v0: '⚠️ Maintenance only',
+        meta_status_v2: '✅ Active development',
+
+        /* === Misc remaining === */
+        r_cell_error: 'Per-cell error (mis. unreachable). <code>null</code> kalau OK.',
+        note_light_dark: 'Light | Dark | Default',
+        note_iso3_label: 'Kode negara ISO-3',
+        gsm_p_pins: 'Marker overlay opsional',
+        note_iso3_examples: 'IDN, MYS, ARG, MAR, dst.',
+        note_styles_all: 'Standard | Monochrome | Hybrid | Satellite',
+        note_styles_v2: 'Standard | Monochrome',
+        gsm_p_center: 'Pusat peta',
+        note_pixel: 'Pixel',
+        note_zoom_range: '0-22',
+        note_png_jpeg: 'png | jpeg',
+        r_placetype_examples: 'PointOfInterest | Address | Street | District | Region | dst.',
+        qu_tps: '50 TPS / akun (Places)',
+        qu_rate_label: 'Rate limit (default)',
+        qu_all_search: 'Semua Search',
+        gsd_p_style_note: 'Di <code>ap-southeast-1</code>: hanya Standard & Monochrome (provider GrabMaps)',
+        r_distance_long: '<strong>Meter</strong> dari titik referensi.<br>⚠️ <strong>Empiris di <code>ap-southeast-1</code>:</strong> field ini cuma muncul saat request pakai <code>BiasPosition</code>. Saat pakai <code>Filter.Circle</code> atau <code>Filter.BoundingBox</code>, field <code>Distance</code> <strong>tidak ada</strong> di response.<br>Workaround: hitung Haversine di JS dari <code>Position</code> ke origin.',
+        ac_inc_types: 'IncludePlaceTypes valid values',
+        ac_no_poi: '<code>PointOfInterest</code> <strong>tidak valid</strong> di Autocomplete — pakai SearchText / SearchNearby.',
+
+        /* === Try it Live hints (Maps panels) === */
+        gsd_try_hint: '💡 Pilih style + color + political-view → MapLibre map di bawah otomatis re-render dengan style descriptor yang baru.',
+        gt_try_hint: '💡 Pakai z/x/y picker untuk lihat tile spesifik. Vector tile (PBF) gak bisa di-preview langsung — pakai MapLibre untuk render.',
+        gg_try_hint: '💡 Glyphs PBF gak bisa di-preview langsung. Yang ditampilkan: URL builder + tombol open untuk download file.',
+        gsp_try_hint: '💡 PNG sprites bisa di-preview langsung. JSON manifest bisa di-fetch & lihat structure.',
+
+        /* === Use case banners === */
+        iso_use_case: '💡 Use case: visualisasi <strong>"halte yang bisa dicapai dalam 10 menit jalan kaki"</strong> dengan polygon overlay di MapLibre.',
+        snap_use_case: '💡 Pasangkan dengan trip recording dari aplikasi ojol untuk dapatkan trip line yang bersih (tanpa zigzag karena sinyal GPS).',
+        gc_use_case: '💡 Pakai ini kalau kamu sudah punya field-by-field alamat (mis. dari form input). Untuk free-text search, pakai SearchText.',
+        mig_tip: '💡 Test di endpoint terpisah dulu (mis. <a href="/transjakarta-test">/transjakarta-test</a>) sebelum migrasi production code.',
+
+        /* === Coming Soon banners (per operation) === */
+        soon_iso: '<span class="soon-pill">⏳ Segera Hadir</span> <strong>Belum tersedia di region <code>ap-southeast-1</code></strong>. Action belum ke-list di AWS Console permissions. Tunggu rilis AWS atau pakai workaround di bawah.',
+        soon_opt: '<span class="soon-pill">⏳ Segera Hadir</span> <strong>Belum tersedia di region <code>ap-southeast-1</code></strong>. Untuk fitur ini, implement nearest-neighbor TSP sendiri di JS atau pakai library.',
+        soon_snap: '<span class="soon-pill">⏳ Segera Hadir</span> <strong>Belum tersedia di region <code>ap-southeast-1</code></strong>. Belum di-roll out untuk provider GrabMaps.',
+        soon_static: '<span class="soon-pill">⏳ Segera Hadir</span> <strong>Belum tersedia di region <code>ap-southeast-1</code></strong>. Maps Action di Console cuma punya <code>GetTile</code>. Sementara, fallback pakai screenshot MapLibre canvas.',
+        soon_geocode: '<span class="soon-pill">⏳ Segera Hadir</span> <strong>Belum tersedia di region <code>ap-southeast-1</code></strong>. Workaround: pakai <code>SearchText</code> dengan QueryText terstruktur.',
+        soon_nearby: '<span class="soon-pill">⏳ Segera Hadir</span> <strong>Belum tersedia di region <code>ap-southeast-1</code></strong>. Workaround: pakai <code>SearchText</code> dengan <code>Filter.Circle</code> + QueryText keyword kategori.',
+        soon_autocomplete: '<span class="soon-pill">⏳ Segera Hadir</span> <strong>Belum tersedia di region <code>ap-southeast-1</code></strong> per saat ini. Cek AWS Console untuk available actions.',
+        ac_no_position: '⚠️ <strong>Tidak return <code>Position</code></strong> — harus call GetPlace per item kalau butuh koordinat. Untuk find POI, lebih efisien pakai <strong>Suggest</strong> (return Position langsung).',
+
+        /* === Common UI labels === */
+        ver_v0: 'v0 Legacy',
+        ver_v2: 'v2 Standalone',
+        th_param: 'Param',
+        th_values: 'Values',
+        th_note: 'Catatan',
+        label_url: 'URL',
+        sec_response_json: 'Response (JSON)',
+
+        /* === GetStyleDescriptor specific === */
+        gsd_rule_header: 'Kompatibilitas Style + Color',
+        gsd_rule_fields: '<code>Standard</code> + <code>Light/Dark</code> ✓<br><code>Monochrome</code> + <code>Light/Dark</code> ✓<br><code>Hybrid</code>/<code>Satellite</code> + <code>color-scheme</code> ❌',
+        gsd_rule_note: 'Raster styles (Hybrid/Satellite) tidak menerima color-scheme — kalau dikirim akan error 400.',
+        gsd_response_note: 'Style descriptor adalah resep MapLibre lengkap — di dalamnya ada URL untuk GetTile / GetGlyphs / GetSprites. MapLibre auto-fetch ketiganya.'
+    }
+};
+
+    function applyI18n(lang) {
+        const dict = I18N[lang] || I18N.en;
+        // Plain text
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (dict[key]) el.textContent = dict[key];
+        });
+        // HTML content
+        document.querySelectorAll('[data-i18n-html]').forEach(el => {
+            const key = el.getAttribute('data-i18n-html');
+            if (dict[key]) el.innerHTML = dict[key];
+        });
+        // Placeholder
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-i18n-placeholder');
+            if (dict[key]) el.placeholder = dict[key];
+        });
+        // Title (tooltip)
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const key = el.getAttribute('data-i18n-title');
+            if (dict[key]) el.title = dict[key];
+        });
+        // Toggle active state
+        document.querySelectorAll('.lang-toggle button').forEach(b => {
+            b.classList.toggle('active', b.dataset.lang === lang);
+        });
+        // Persist
+        try { localStorage.setItem('docs_lang', lang); } catch (e) {}
+        document.documentElement.lang = lang;
+    }
+
+    function init() {
+        document.querySelectorAll('.lang-toggle button').forEach(btn => {
+            btn.addEventListener('click', () => applyI18n(btn.dataset.lang));
+        });
+        let savedLang = 'en';
+        try { savedLang = localStorage.getItem('docs_lang') || 'en'; } catch (e) {}
+        applyI18n(savedLang);
+    }
+
+    // Auto-init kalau DOM udah ready, atau tunggu
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+    // Expose ke global supaya bisa di-access dari blade (mis. tambah keys runtime)
+    window.AWSAPI_I18N = I18N;
+    window.AWSAPI_applyI18n = applyI18n;
+})(window);
