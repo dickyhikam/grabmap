@@ -330,6 +330,52 @@
             margin: 2px 0;
         }
         .style-btn i { font-size: 0.9rem; }
+
+        /* ================ MOBILE ================ */
+        @media (max-width: 640px) {
+            .lab-header {
+                top: 8px;
+                left: 8px;
+                padding: 6px 10px;
+                gap: 6px;
+            }
+            .lab-header h1 { font-size: 0.85rem; }
+            .lab-header .badge-v2 { font-size: 0.55rem; padding: 2px 6px; }
+
+            .feature-panel {
+                top: 8px;
+                right: 8px;
+                width: calc(100vw - 16px);
+                max-width: 340px;
+                max-height: calc(100vh - 16px);
+            }
+            .feature-panel.collapsed {
+                width: 40px;
+                max-height: 40px;
+            }
+            .feature-panel.collapsed .feature-panel-header { padding: 8px; }
+            .feature-card { padding: 10px; }
+            .feature-card-title { font-size: 0.82rem; }
+            .feature-card-desc { font-size: 0.72rem; }
+            .feature-btn { font-size: 0.75rem; padding: 7px 10px; }
+
+            .style-switcher {
+                bottom: 40px;
+                left: 8px;
+                padding: 6px;
+                gap: 4px;
+            }
+            .style-btn { font-size: 0.65rem; padding: 5px 8px; }
+            .style-btn i { font-size: 0.8rem; }
+
+            .lab-toast { bottom: 16px; font-size: 0.78rem; padding: 10px 16px; }
+        }
+
+        @media (max-width: 380px) {
+            .style-switcher .style-btn span,
+            .style-switcher .style-btn { padding: 5px 6px; }
+            /* Stack switcher rows vertically becomes too tall — keep 2x2 grid */
+        }
     </style>
 </head>
 
@@ -449,10 +495,26 @@
         const featurePanel = document.getElementById('featurePanel');
         const panelToggle = document.getElementById('panelToggle');
         const panelToggleIcon = document.getElementById('panelToggleIcon');
-        panelToggle.addEventListener('click', () => {
-            const collapsed = featurePanel.classList.toggle('collapsed');
+        const isMobile = () => window.matchMedia('(max-width: 640px)').matches;
+
+        function setPanelCollapsed(collapsed) {
+            featurePanel.classList.toggle('collapsed', collapsed);
             panelToggleIcon.className = collapsed ? 'bi bi-list' : 'bi bi-chevron-right';
             panelToggle.title = collapsed ? 'Expand panel' : 'Collapse panel';
+        }
+
+        // Default collapsed on mobile so map is visible on first view
+        if (isMobile()) setPanelCollapsed(true);
+
+        panelToggle.addEventListener('click', () => {
+            setPanelCollapsed(!featurePanel.classList.contains('collapsed'));
+        });
+
+        // On mobile, tap on map auto-collapses the panel
+        map.on('click', () => {
+            if (isMobile() && !featurePanel.classList.contains('collapsed')) {
+                setPanelCollapsed(true);
+            }
         });
 
         /* =========================================
