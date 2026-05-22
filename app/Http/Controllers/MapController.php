@@ -70,6 +70,137 @@ class MapController extends Controller
     }
 
     /**
+     * Maps v2 — AWS Location Service Standalone Maps API.
+     * Endpoint: https://maps.geo.{region}.amazonaws.com/v2/styles/{Style}/descriptor
+     * Style options: Standard | Monochrome | Hybrid | Satellite
+     * Color scheme: Light | Dark
+     */
+    public function getMapStyleV2(Request $request)
+    {
+        $region = config('services.aws.region');
+        $apiKey = config('services.aws.api_key');
+
+        // Per-company key override (same pattern as v0)
+        $companySlug = $request->query('company');
+        if ($companySlug) {
+            $company = Company::where('slug', $companySlug)->where('is_active', true)->first();
+            if ($company) {
+                $companyKey = $company->getActiveApiKey();
+                if ($companyKey) {
+                    $apiKey = $companyKey;
+                }
+            }
+        }
+
+        $style = $request->query('style', 'Standard');
+        $colorScheme = $request->query('color', 'Light');
+        // Note: ap-southeast-1 / GrabMaps only supports Standard + Monochrome.
+        // Hybrid/Satellite are not valid for GetStyleDescriptor in this region.
+        $allowedStyles = ['Standard', 'Monochrome'];
+        $allowedColors = ['Light', 'Dark'];
+        if (!in_array($style, $allowedStyles, true)) $style = 'Standard';
+        if (!in_array($colorScheme, $allowedColors, true)) $colorScheme = 'Light';
+
+        Log::info('Map style v2 request', [
+            'region' => $region,
+            'style' => $style,
+            'color' => $colorScheme,
+        ]);
+
+        try {
+            $url = "https://maps.geo.{$region}.amazonaws.com/v2/styles/{$style}/descriptor";
+
+            $response = Http::timeout(30)->get($url, [
+                'key' => $apiKey,
+                'color-scheme' => $colorScheme,
+            ]);
+
+            Log::info('AWS v2 Response Status: ' . $response->status());
+
+            if (!$response->successful()) {
+                Log::error('AWS v2 API Error: ' . $response->body());
+                return response()->json([
+                    'error' => 'Failed to fetch v2 map style',
+                    'status' => $response->status(),
+                    'message' => $response->body(),
+                ], 500);
+            }
+
+            $styleData = $response->json();
+            return $this->fixV2MapStyle($styleData, $region, $apiKey, $style);
+        } catch (\Exception $e) {
+            Log::error('Map style v2 exception: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'Exception occurred',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Inject API key into v2 style URLs (sources, glyphs, sprite)
+     * and normalize layers for MapLibre.
+     */
+    private function fixV2MapStyle(array $styleData, string $region, string $apiKey, string $style)
+    {
+        if (!isset($styleData['version'])) {
+            $styleData['version'] = 8;
+        }
+
+        if (isset($styleData['layers']) && is_array($styleData['layers'])) {
+            $styleData['layers'] = $this->fixLayersStructure($styleData['layers']);
+        }
+
+        // Inject API key into tile URLs inside sources (works for both vector & raster sources)
+        if (isset($styleData['sources']) && is_array($styleData['sources'])) {
+            foreach ($styleData['sources'] as &$source) {
+                if (isset($source['tiles']) && is_array($source['tiles'])) {
+                    $source['tiles'] = array_map(
+                        fn($u) => $this->appendKey($u, $apiKey),
+                        $source['tiles']
+                    );
+                }
+                // Some styles return a `url` (TileJSON endpoint) instead of `tiles`
+                if (isset($source['url']) && is_string($source['url'])) {
+                    $source['url'] = $this->appendKey($source['url'], $apiKey);
+                }
+            }
+            unset($source);
+        }
+
+        // Only inject key if AWS actually returned glyphs/sprite. Satellite has neither.
+        if (isset($styleData['glyphs']) && is_string($styleData['glyphs'])) {
+            $styleData['glyphs'] = $this->appendKey($styleData['glyphs'], $apiKey);
+        }
+
+        if (isset($styleData['sprite'])) {
+            if (is_array($styleData['sprite'])) {
+                foreach ($styleData['sprite'] as &$entry) {
+                    if (isset($entry['url'])) $entry['url'] = $this->appendKey($entry['url'], $apiKey);
+                }
+                unset($entry);
+            } elseif (is_string($styleData['sprite'])) {
+                $styleData['sprite'] = $this->appendKey($styleData['sprite'], $apiKey);
+            }
+        }
+
+        Log::info('V2 style processed', [
+            'style' => $style,
+            'sources_count' => count($styleData['sources']),
+            'layers_count' => isset($styleData['layers']) ? count($styleData['layers']) : 0,
+        ]);
+
+        return response()->json($styleData);
+    }
+
+    private function appendKey(string $url, string $apiKey): string
+    {
+        if (str_contains($url, 'key=')) return $url;
+        $sep = str_contains($url, '?') ? '&' : '?';
+        return $url . $sep . 'key=' . $apiKey;
+    }
+
+    /**
      * Validasi dan perbaiki map style untuk MapLibre
      */
     private function validateAndFixMapStyle($styleData)

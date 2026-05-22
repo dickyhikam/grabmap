@@ -49,6 +49,7 @@ Route::get('/tests', function () {
 
 Route::get('/map', [MapController::class, 'showMap']);
 Route::get('/api/map-style', [MapController::class, 'getMapStyle']);
+Route::get('/api/v2/map-style', [MapController::class, 'getMapStyleV2']);
 Route::get('/api/map-style-simple', [MapController::class, 'getMapStyleSimple']);
 Route::get('/api/map-style-clean', [MapController::class, 'getMapStyleClean']);
 
@@ -100,6 +101,10 @@ Route::get('/', function () {
 Route::get('/tester-api', function () {
     return view('testing.index');
 })->name('pageRouteTester');
+
+Route::get('/feature-lab', function () {
+    return view('features.lab');
+})->name('pageFeatureLab');
 
 // === Auth Routes ===
 Route::middleware('guest')->group(function () {
