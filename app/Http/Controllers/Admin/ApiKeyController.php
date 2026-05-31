@@ -86,6 +86,113 @@ class ApiKeyController extends Controller
         return back()->with('success', "API Key berhasil di-lepas dari {$company->name}.");
     }
 
+    public function create()
+    {
+        if (!AwsLocationService::hasCredentials()) {
+            return redirect()->route('admin.api-keys.index')->with('error', 'AWS credentials belum dikonfigurasi.');
+        }
+        $region = config('aws.region', 'ap-southeast-1');
+        return view('admin.api-keys.create', compact('region'));
+    }
+
+    public function store(Request $request)
+    {
+        if (!AwsLocationService::hasCredentials()) {
+            return redirect()->route('admin.api-keys.index')->with('error', 'AWS credentials belum dikonfigurasi.');
+        }
+
+        // datetime-local emits Y-m-d\TH:i; normalize to Y-m-d H:i before validation
+        if ($request->filled('expire_date')) {
+            $request->merge([
+                'expire_date' => str_replace('T', ' ', (string) $request->input('expire_date')),
+            ]);
+        }
+
+        $validated = $request->validate([
+            'key_name'      => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9_.\-]+$/'],
+            'description'   => 'nullable|string|max:1000',
+            'services'      => 'required|array|min:1',
+            'services.*'    => 'in:maps,places,routes',
+            'allow_referers' => 'nullable|string|max:2000',
+            'expiry_mode'   => 'required|in:never,date,preset',
+            'expire_date'   => ['exclude_unless:expiry_mode,date', 'required_if:expiry_mode,date', 'nullable', 'date_format:Y-m-d H:i', 'after:now'],
+            'preset_days'   => ['exclude_unless:expiry_mode,preset', 'required_if:expiry_mode,preset', 'nullable', 'integer', 'in:30,90,365'],
+        ], [
+            'key_name.regex' => 'Key name boleh berisi huruf, angka, underscore, hyphen, dan titik.',
+            'expire_date.required_if' => 'Tanggal expiry wajib diisi saat memilih Custom.',
+            'preset_days.required_if' => 'Pilih durasi preset (30, 90, atau 365 hari).',
+        ]);
+
+        $region = config('aws.region', 'ap-southeast-1');
+
+        // Build AllowActions + AllowResources from selected services
+        $actions = [];
+        $resources = [];
+        foreach ($validated['services'] as $svc) {
+            switch ($svc) {
+                case 'maps':
+                    $actions[] = 'geo-maps:*';
+                    $resources[] = "arn:aws:geo-maps:{$region}::provider/default";
+                    break;
+                case 'places':
+                    $actions[] = 'geo-places:*';
+                    $resources[] = "arn:aws:geo-places:{$region}::provider/default";
+                    break;
+                case 'routes':
+                    $actions[] = 'geo-routes:*';
+                    $resources[] = "arn:aws:geo-routes:{$region}::provider/default";
+                    break;
+            }
+        }
+
+        $restrictions = [
+            'AllowActions'   => array_values(array_unique($actions)),
+            'AllowResources' => array_values(array_unique($resources)),
+        ];
+
+        if (!empty($validated['allow_referers'])) {
+            $referers = array_values(array_filter(array_map(
+                'trim',
+                preg_split('/\r\n|\r|\n/', $validated['allow_referers'])
+            )));
+            if ($referers) {
+                $restrictions['AllowReferers'] = $referers;
+            }
+        }
+
+        $params = [
+            'key_name'     => $validated['key_name'],
+            'description'  => $validated['description'] ?? '',
+            'restrictions' => $restrictions,
+        ];
+
+        // required_if + exclude_unless guarantees the right field is present for the chosen mode
+        if ($validated['expiry_mode'] === 'never') {
+            $params['no_expiry'] = true;
+        } elseif ($validated['expiry_mode'] === 'date') {
+            $params['expire_time'] = \Carbon\Carbon::parse($validated['expire_date']);
+        } else { // preset
+            $params['expire_time'] = now()->addDays((int) $validated['preset_days']);
+        }
+
+        $service = new AwsLocationService();
+        $result = $service->createKey($params);
+
+        // Hard create failure (CreateKey call itself failed)
+        if (!($result['created'] ?? false)) {
+            return back()->with('error', 'Gagal membuat API Key: ' . ($result['error'] ?? 'Unknown error'))->withInput();
+        }
+
+        // Create succeeded but DescribeKey failed afterwards — key exists, just couldn't load details
+        if ($result['error']) {
+            return redirect()->route('admin.api-keys.index')
+                ->with('warning', "API Key \"{$validated['key_name']}\" berhasil dibuat, tetapi gagal memuat detailnya: {$result['error']}. Refresh daftar untuk melihat key.");
+        }
+
+        return redirect()->route('admin.api-keys.index')
+            ->with('success', "API Key \"{$validated['key_name']}\" berhasil dibuat.");
+    }
+
     public function edit(string $keyName)
     {
         if (!AwsLocationService::hasCredentials()) {
@@ -109,11 +216,20 @@ class ApiKeyController extends Controller
             return redirect()->route('admin.api-keys.index')->with('error', 'AWS credentials belum dikonfigurasi.');
         }
 
+        if ($request->filled('expire_date')) {
+            $request->merge([
+                'expire_date' => str_replace('T', ' ', (string) $request->input('expire_date')),
+            ]);
+        }
+
         $validated = $request->validate([
             'description' => 'nullable|string|max:1000',
             'expiry_mode' => 'required|in:never,date,preset',
-            'expire_date' => 'nullable|date_format:Y-m-d H:i|after:now',
-            'preset_days' => 'nullable|integer|in:30,90,180,365',
+            'expire_date' => ['exclude_unless:expiry_mode,date', 'required_if:expiry_mode,date', 'nullable', 'date_format:Y-m-d H:i', 'after:now'],
+            'preset_days' => ['exclude_unless:expiry_mode,preset', 'required_if:expiry_mode,preset', 'nullable', 'integer', 'in:30,90,180,365'],
+        ], [
+            'expire_date.required_if' => 'Tanggal expiry wajib diisi saat memilih Custom.',
+            'preset_days.required_if' => 'Pilih durasi preset (30, 90, 180, atau 365 hari).',
         ]);
 
         $params = [
@@ -123,9 +239,9 @@ class ApiKeyController extends Controller
 
         if ($validated['expiry_mode'] === 'never') {
             $params['no_expiry'] = true;
-        } elseif ($validated['expiry_mode'] === 'date' && !empty($validated['expire_date'])) {
+        } elseif ($validated['expiry_mode'] === 'date') {
             $params['expire_time'] = \Carbon\Carbon::parse($validated['expire_date']);
-        } elseif ($validated['expiry_mode'] === 'preset' && !empty($validated['preset_days'])) {
+        } else { // preset
             $params['expire_time'] = now()->addDays((int) $validated['preset_days']);
         }
 

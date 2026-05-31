@@ -93,6 +93,56 @@ class AwsLocationService
     }
 
     /**
+     * Create a new API key in AWS Location Service.
+     *
+     * @param  array  $params  Required: key_name, restrictions (with AllowActions[], AllowResources[]).
+     *                         Optional: description, no_expiry (bool), expire_time (ISO 8601 string),
+     *                         restrictions.AllowReferers[].
+     * @return array{key: array|null, error: string|null, created: bool}
+     *                         created=true means the AWS key exists; error may still be set if DescribeKey
+     *                         failed afterwards (transient consistency, IAM gap, etc.) — caller should NOT
+     *                         retry creation in that case.
+     */
+    public function createKey(array $params): array
+    {
+        $args = [
+            'KeyName' => (string) ($params['key_name'] ?? ''),
+            'Restrictions' => $params['restrictions'] ?? [],
+        ];
+
+        if (!empty($params['description'])) {
+            $args['Description'] = (string) $params['description'];
+        }
+
+        if (!empty($params['no_expiry'])) {
+            $args['NoExpiry'] = true;
+        } elseif (!empty($params['expire_time'])) {
+            $args['ExpireTime'] = $params['expire_time'] instanceof \DateTimeInterface
+                ? $params['expire_time']->format(\DateTime::ATOM)
+                : (string) $params['expire_time'];
+        }
+
+        // Phase 1: actual CreateKey call — failures here mean key was NOT created
+        try {
+            $this->client->createKey($args);
+        } catch (AwsException $e) {
+            Log::error('AWS CreateKey error: ' . $e->getAwsErrorMessage());
+            return ['key' => null, 'error' => $e->getAwsErrorMessage() ?: $e->getMessage(), 'created' => false];
+        } catch (\Exception $e) {
+            Log::error('AWS CreateKey exception: ' . $e->getMessage());
+            return ['key' => null, 'error' => $e->getMessage(), 'created' => false];
+        }
+
+        // Phase 2: load details — failure here is non-fatal, key already exists in AWS
+        $described = $this->describeKey($args['KeyName']);
+        return [
+            'key'     => $described['key'],
+            'error'   => $described['error'],
+            'created' => true,
+        ];
+    }
+
+    /**
      * Update an existing API key (description, expiry, restrictions).
      *
      * @param  string  $keyName

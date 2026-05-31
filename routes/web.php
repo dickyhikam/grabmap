@@ -144,6 +144,8 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
     // API Key Management
     Route::prefix('admin/api-keys')->group(function () {
         Route::get('/', [ApiKeyController::class, 'index'])->name('admin.api-keys.index');
+        Route::get('/create', [ApiKeyController::class, 'create'])->name('admin.api-keys.create');
+        Route::post('/', [ApiKeyController::class, 'store'])->name('admin.api-keys.store');
         Route::post('/assign', [ApiKeyController::class, 'assign'])->name('admin.api-keys.assign');
         Route::post('/unassign', [ApiKeyController::class, 'unassign'])->name('admin.api-keys.unassign');
         Route::get('/{keyName}/edit', [ApiKeyController::class, 'edit'])->name('admin.api-keys.edit');

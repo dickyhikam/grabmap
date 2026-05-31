@@ -66,18 +66,31 @@
 @section('header')
 <div class="page-header">
     <div class="container">
-        <h4 class="fw-bold mb-1" style="font-size:1.4rem;">
-            <i class="bi bi-key-fill me-2" style="opacity:0.7;"></i>{{ __('admin.api_keys_title') }}
-        </h4>
-        <p style="color:rgba(255,255,255,0.5); font-size:0.85rem; margin-bottom:20px;">
-            {{ __('admin.api_keys_subtitle') }}
-        </p>
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+            <div>
+                <h4 class="fw-bold mb-1" style="font-size:1.4rem;">
+                    <i class="bi bi-key-fill me-2" style="opacity:0.7;"></i>{{ __('admin.api_keys_title') }}
+                </h4>
+                <p style="color:rgba(255,255,255,0.5); font-size:0.85rem; margin-bottom:0;">
+                    {{ __('admin.api_keys_subtitle') }}
+                </p>
+            </div>
+            @if($hasCredentials)
+            <a href="{{ route('admin.api-keys.create') }}" class="btn btn-light rounded-pill px-4 shadow-sm"
+                style="font-weight:600;font-size:0.85rem;">
+                <i class="bi bi-plus-lg me-1"></i> Add API Key
+            </a>
+            @endif
+        </div>
 
         @if($hasCredentials && !$error && !empty($keys))
         @php
             $totalKeys = count($keys);
             $activeKeys = collect($keys)->filter(fn($k) => !($k['expire_time'] && \Carbon\Carbon::parse($k['expire_time'])->isPast()))->count();
-            $assignedCount = $companies->whereNotNull('aws_api_key_name')->count();
+            $awsKeyNames = collect($keys)->pluck('key_name')->all();
+            $assignedCount = $companies->whereNotNull('aws_api_key_name')
+                ->whereIn('aws_api_key_name', $awsKeyNames)
+                ->count();
         @endphp
         <div class="d-flex gap-3 flex-wrap">
             <div class="stat-mini">
@@ -147,7 +160,11 @@
                 <i class="bi bi-key" style="font-size:1.5rem; color:#adb5bd;"></i>
             </div>
             <h5 class="fw-semibold mb-1">{{ __('admin.no_keys_title') }}</h5>
-            <p class="text-muted mb-0">{{ __('admin.no_keys_desc', ['region' => config('aws.region')]) }}</p>
+            <p class="text-muted mb-3">{{ __('admin.no_keys_desc', ['region' => config('aws.region')]) }}</p>
+            <a href="{{ route('admin.api-keys.create') }}" class="btn btn-grab px-4"
+                style="background:#00B14F;color:#fff;border:none;border-radius:10px;font-weight:600;">
+                <i class="bi bi-plus-circle-fill me-1"></i> Create First API Key
+            </a>
         </div>
     </div>
     @else

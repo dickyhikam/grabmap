@@ -33,6 +33,14 @@ const I18N = {
         welcome_title: 'AWS Location Service Reference',
         welcome_desc: 'Pick an operation in the left sidebar to see endpoint detail, request body, response shape, and v0 ↔ v2 comparison.',
         welcome_note: 'Default provider in ap-southeast-1 = GrabMaps. This documentation focuses on API integration.',
+        region_caveats_title: 'Region Caveats — ap-southeast-1 (GrabMaps)',
+        caveat_styles: 'Map styles: only <code>Standard</code> & <code>Monochrome</code> (Hybrid/Satellite rejected)',
+        caveat_traffic: 'Live <code>Traffic</code> parameter: rejected. <code>DepartureTime</code> still honored via historical traffic patterns by hour',
+        caveat_avoid: 'Valid Avoid options: <code>TollRoads</code>, <code>Ferries</code>, <code>ControlledAccessHighways</code> (DirtRoads/Tunnels/UTurns rejected)',
+        caveat_passthrough: 'Waypoints: <code>PassThrough</code> not supported — omit this field',
+        caveat_tolls: 'Routes return <code>Tolls</code> and <code>MajorRoadLabels</code> — but AWS rarely populates these in SEA',
+        caveat_suggest_pos: 'Suggest does not return <code>Position</code> by default — add <code>AdditionalFeatures: ["Core"]</code>',
+        caveat_places_extra: 'GetPlace: <code>Contacts</code>, <code>OpeningHours</code>, <code>Brand</code>, <code>FoodTypes</code> rarely populated in SEA',
         soon_pill: '⏳ Coming Soon',
         soon_main: 'This operation is not yet available for your API key in region ap-southeast-1.',
         soon_note: 'Detailed docs will be added once AWS releases this action in your region. Meanwhile, check available alternatives in the sidebar (green dot).',
@@ -121,6 +129,29 @@ const I18N = {
         sg_required_note: 'QueryText is required (min 1 char). Suggest does not accept QueryId like SearchText does.',
         sg_response_filter: 'Response filter (client-side)',
         sg_response_filter_note: 'Filter SuggestResultItemType === "Place" for actual places; "Query" = refinement keywords only.',
+        sg_p_addfeat: 'Valid: <code>Core</code>, <code>TimeZone</code>, <code>Phonemes</code>. <b>Tip:</b> add <code>"Core"</code> to unlock <code>Position</code> field in response — without it Suggest does not return coordinates (so distance to user marker cannot be computed client-side).',
+        sg_position_tip: '<b>Important for autocomplete with distance:</b> Suggest response <b>does not include</b> <code>Position</code> by default. Send <code>"AdditionalFeatures": ["Core"]</code> to get lat/lng per suggestion — needed to compute distance from current marker/map center client-side.',
+        sg_preset_position: '+ Position (Core)',
+
+        /* Misc standalone alerts */
+        sn_use_case: 'For the <strong>"nearest stops"</strong> use case this is the most direct: 1 API call, sorted by distance, no QueryText needed. Prerequisite: you know the category ID (e.g. <code>transit_station_bus</code>).',
+        overview_recommendation: '<strong>Recommendation:</strong> New projects use <strong>v2</strong>. Existing projects stay safe on v0 until AWS announces deprecation.',
+        auth_actions_note: 'When creating an API Key in AWS Console, tick the required <strong>actions</strong> per service. Unticked actions return <code>403 Forbidden</code> (explicit deny).',
+        static_map_result: 'Result: 600×400 PNG image centered at Sudirman, zoom 14.',
+
+        /* Generic section headers (repeated) */
+        label_request_body: 'Request body',
+        label_response: 'Response',
+        label_response_no_pos: 'Response (does NOT return Position)',
+        label_query_params: 'Query parameters',
+        label_example: 'Example',
+        label_notes: 'Notes',
+        label_api_key_url: 'API Key in URL',
+        label_resource_arn: 'Resource ARN (per service)',
+        iso_thresholds_note: 'You can also use <code>Thresholds.Distance</code> (meters), or both.',
+        ow_tsp_note: 'Previously you had to implement TSP / nearest-neighbor yourself in JS. Now AWS handles it.',
+        sidebar_search_empty: 'No operations found',
+
         sg_err_qt: 'Empty <code>QueryText</code>',
         sg_err_perm: 'Action <code>geo-places:Suggest</code> not granted',
         sg_v0_diff: '<strong>Differences from v2:</strong><ul style="margin:6px 0 0 18px;"><li><code>Text</code> → <code>QueryText</code></li><li><code>FilterCountries</code> → <code>Filter.IncludeCountries</code></li><li><code>Results[].Text</code> → <code>ResultItems[].Title</code></li><li>v0 does not return Position in Suggest — must call GetPlace</li></ul>',
@@ -150,7 +181,12 @@ const I18N = {
         gp_v0_diff: '<strong>Differences from v2:</strong><ul style="margin:6px 0 0 18px;"><li>Different path: <code>/places/v0/indexes/{Idx}/places/{PlaceId}</code></li><li>No <code>additional-features</code> param in v0</li><li>Simpler response shape, without <code>OpeningHours</code>, <code>Contacts</code>, <code>TimeZone</code></li></ul>',
 
         /* CalculateRoutes */
-        proxy_safe_cr: 'Safe — routed via <code>/api/v2/routes/calculate</code> (Laravel proxy).',
+        proxy_safe_cr: 'Proxy has 2 variants — pick by use case:<br>• <code>/api/v2/routes/calculate</code> = <b>native passthrough</b> — body uses v2 shape (Origin/Destination/Waypoints[].Position). This Try-It panel uses this endpoint.<br>• <code>/api/routes/calculate</code> = <b>v0-shape adapter</b> — accepts legacy v0 body (DeparturePosition/DestinationPosition/WaypointPositions) and translates to v2 internally. Used by the home page for backward compat.',
+        cr_p_maxalt: 'Request alternative routes. Response <code>Routes[]</code> = primary + alternatives. Actual count depends on geography (AWS may return fewer than requested).',
+        cr_p_tst: 'Set to <code>TurnByTurn</code> to get full turn-by-turn instructions (<code>VehicleLegDetails.TravelSteps[]</code> with Type/SteeringDirection/CurrentRoad/NextRoad).',
+        cr_region_caveats: '<b>Region caveats (ap-southeast-1):</b> <code>Avoid.DirtRoads</code>, <code>Avoid.Tunnels</code>, <code>Avoid.UTurns</code> rejected with FieldValidationFailed. Only <code>TollRoads</code>, <code>Ferries</code>, <code>ControlledAccessHighways</code> are valid. Live <code>Traffic</code> parameter also rejected — <code>DepartureTime</code> is honored via historical traffic patterns per hour.',
+        cr_preset_alt: '+ Alternatives',
+        cr_preset_tbt: '+ TurnByTurn',
         cr_required_note: 'Both required. Valid [lng, lat] format.',
         cr_time_note: 'Pick one — when to depart OR when to arrive. Default = now.',
         cr_avoid_label: 'Avoid options',
@@ -164,14 +200,14 @@ const I18N = {
         cr_v0_diff: '<strong>Differences from v2:</strong><ul style="margin:6px 0 0 18px;"><li><code>DeparturePosition</code> → <code>Origin</code>, <code>DestinationPosition</code> → <code>Destination</code></li><li><code>WaypointPositions: [[lng,lat]]</code> → <code>Waypoints: [{ Position: [lng,lat] }]</code></li><li><code>AvoidTolls: bool</code> → <code>Avoid: { TollRoads: bool }</code> (nested)</li><li>TravelMode: <code>Motorcycle</code> → <code>Scooter</code>, <code>Walking</code> → <code>Pedestrian</code></li><li>Distance: v0 in <strong>kilometers</strong>, v2 in <strong>meters</strong></li><li><code>DurationSeconds</code> → <code>Duration</code></li><li>Response wrapper: v0 direct Summary/Legs, v2 has <code>Routes[0]</code> array</li></ul>',
 
         /* CalculateRouteMatrix */
-        proxy_safe_crm: 'Safe — routed via <code>/api/routes/matrix</code> (Laravel proxy).',
+        proxy_safe_crm: 'Safe — proxy <code>/api/routes/matrix</code> now uses a <strong>v2 adapter</strong>: accepts v0-shape body (DeparturePositions/DestinationPositions) then translates to v2 (<code>/v2/route-matrix</code>) + adapts response back to v0-shape (Distance in km, DurationSeconds). For native v2, see v2 tab or call AWS directly with API Key.',
         crm_required_note: 'All three required. Different from v0 which doesn\'t need RoutingBoundary.',
         crm_limit_label: 'Cell limit',
         crm_limit_note: 'Max 700 cells per request. E.g. 7×100 or 35×20. Split into multiple requests if more.',
         crm_err_boundary: 'Missing <code>RoutingBoundary</code>',
         crm_err_cells: 'Origins × Destinations &gt; 700',
         crm_err_pos: 'Empty Position in Origins/Destinations',
-        crm_proxy_note: 'Note: the <code>/api/routes/matrix</code> proxy in this project still calls the <strong>v0</strong> endpoint backend (for backward compat). Request body must use v0 shape (see v0 tab). For native v2 demo, call AWS directly with API Key.',
+        crm_proxy_note: 'Safe — proxy <code>/api/routes/matrix</code> now uses a <strong>v2 adapter</strong> backend: accepts v0-shape body (DeparturePositions/DestinationPositions) then translates to v2 (<code>/v2/route-matrix</code>) + adapts response back to v0-shape (Distance in km, DurationSeconds). For native v2, see v2 tab or call AWS directly with API Key.',
         crm_preset_v0: 'v0 Body (proxy)',
         crm_v0_diff: '<strong>Differences from v2:</strong><ul style="margin:6px 0 0 18px;"><li><code>DeparturePositions: [[lng,lat]]</code> → <code>Origins: [{ Position: [lng,lat] }]</code></li><li><code>DestinationPositions: [[lng,lat]]</code> → <code>Destinations: [{ Position: [lng,lat] }]</code></li><li>v2 requires <code>RoutingBoundary</code> (v0 does not)</li><li>Distance: v0 km → v2 meter</li><li><code>DurationSeconds</code> → <code>Duration</code></li></ul>',
 
@@ -356,6 +392,14 @@ const I18N = {
         welcome_title: 'AWS Location Service Reference',
         welcome_desc: 'Pilih operation di sidebar kiri untuk lihat detail endpoint, request body, response shape, dan perbandingan v0 ↔ v2.',
         welcome_note: 'Default provider di ap-southeast-1 = GrabMaps. Dokumentasi ini fokus untuk integrasi API.',
+        region_caveats_title: 'Catatan Region — ap-southeast-1 (GrabMaps)',
+        caveat_styles: 'Map styles: hanya <code>Standard</code> & <code>Monochrome</code> (Hybrid/Satellite ditolak)',
+        caveat_traffic: 'Live <code>Traffic</code> parameter: ditolak. <code>DepartureTime</code> tetap honored via pola traffic historis per jam',
+        caveat_avoid: 'Avoid options yang valid: <code>TollRoads</code>, <code>Ferries</code>, <code>ControlledAccessHighways</code> (DirtRoads/Tunnels/UTurns ditolak)',
+        caveat_passthrough: 'Waypoints: <code>PassThrough</code> tidak didukung — omit field-nya',
+        caveat_tolls: 'Routes return <code>Tolls</code> dan <code>MajorRoadLabels</code> — tapi AWS jarang populate field ini di SEA',
+        caveat_suggest_pos: 'Suggest tidak return <code>Position</code> by default — tambah <code>AdditionalFeatures: ["Core"]</code>',
+        caveat_places_extra: 'GetPlace: <code>Contacts</code>, <code>OpeningHours</code>, <code>Brand</code>, <code>FoodTypes</code> jarang populated di SEA',
         soon_pill: '⏳ Segera Hadir',
         soon_main: 'Operation ini belum tersedia di API key kamu untuk region ap-southeast-1.',
         soon_note: 'Dokumentasi detail akan ditambahkan setelah AWS rilis action ini di region kamu. Sementara, cek alternatif yang sudah tersedia di sidebar (titik hijau).',
@@ -442,6 +486,29 @@ const I18N = {
 
         /* Suggest */
         sg_required_note: 'QueryText wajib (min 1 karakter). Suggest tidak menerima QueryId seperti SearchText.',
+        sg_p_addfeat: 'Valid: <code>Core</code>, <code>TimeZone</code>, <code>Phonemes</code>. <b>Tip:</b> tambah <code>"Core"</code> untuk unlock field <code>Position</code> di response — tanpa ini Suggest gak return koordinat (jadi distance ke marker user gak bisa dihitung client-side).',
+        sg_position_tip: '<b>Penting untuk autocomplete dengan distance:</b> response Suggest <b>tidak include</b> <code>Position</code> by default. Kirim <code>"AdditionalFeatures": ["Core"]</code> untuk dapat lat/lng tiap suggestion — supaya bisa compute distance dari current marker/map center langsung di client.',
+        sg_preset_position: '+ Position (Core)',
+
+        /* Misc standalone alerts */
+        sn_use_case: 'Untuk use case <strong>"halte terdekat"</strong> ini paling direct: 1 API call, sorted by distance, gak perlu QueryText. Prasyaratnya kamu tau ID kategori (mis. <code>transit_station_bus</code>).',
+        overview_recommendation: '<strong>Rekomendasi:</strong> Project baru pakai <strong>v2</strong>. Project existing tetap aman di v0 sampai AWS announce deprecation.',
+        auth_actions_note: 'Saat bikin API Key di AWS Console, centang <strong>actions</strong> per service yang dibutuhkan. Action yang gak dicentang akan return <code>403 Forbidden</code> (explicit deny).',
+        static_map_result: 'Hasil: gambar PNG 600×400 pusat di Sudirman zoom 14.',
+
+        /* Generic section headers (repeated) */
+        label_request_body: 'Body Request',
+        label_response: 'Response',
+        label_response_no_pos: 'Response (TIDAK return Position)',
+        label_query_params: 'Query parameters',
+        label_example: 'Contoh',
+        label_notes: 'Catatan',
+        label_api_key_url: 'API Key di URL',
+        label_resource_arn: 'Resource ARN (per service)',
+        iso_thresholds_note: 'Bisa juga pakai <code>Thresholds.Distance</code> (meter) atau kedua-duanya.',
+        ow_tsp_note: 'Sebelumnya kamu harus implement TSP / nearest-neighbor sendiri di JS. Sekarang AWS yang hitungkan.',
+        sidebar_search_empty: 'Tidak ada operation ditemukan',
+
         sg_response_filter: 'Filter response (client-side)',
         sg_response_filter_note: 'Filter SuggestResultItemType === "Place" untuk actual place; "Query" = refinement keyword saja.',
         sg_err_qt: '<code>QueryText</code> kosong',
@@ -473,7 +540,12 @@ const I18N = {
         gp_v0_diff: '<strong>Beda dari v2:</strong><ul style="margin:6px 0 0 18px;"><li>Path beda: <code>/places/v0/indexes/{Idx}/places/{PlaceId}</code></li><li>Tidak ada <code>additional-features</code> param di v0</li><li>Response shape lebih simple, tanpa <code>OpeningHours</code>, <code>Contacts</code>, <code>TimeZone</code></li></ul>',
 
         /* CalculateRoutes */
-        proxy_safe_cr: 'Aman — routing lewat <code>/api/v2/routes/calculate</code> (Laravel proxy).',
+        proxy_safe_cr: 'Proxy ada 2 varian — pilih sesuai use case:<br>• <code>/api/v2/routes/calculate</code> = <b>native passthrough</b> — body langsung shape v2 (Origin/Destination/Waypoints[].Position). Try-It panel ini pakai endpoint ini.<br>• <code>/api/routes/calculate</code> = <b>v0-shape adapter</b> — terima body shape v0 lama (DeparturePosition/DestinationPosition/WaypointPositions) lalu translate ke v2 internally. Dipakai home page untuk backward compat.',
+        cr_p_maxalt: 'Request alternative routes. Response <code>Routes[]</code> = primary + alternatives. Actual count tergantung geography (AWS kadang return lebih sedikit dari yang diminta).',
+        cr_p_tst: 'Set ke <code>TurnByTurn</code> untuk dapat full turn-by-turn instructions (<code>VehicleLegDetails.TravelSteps[]</code> dengan Type/SteeringDirection/CurrentRoad/NextRoad).',
+        cr_region_caveats: '<b>Region caveats (ap-southeast-1):</b> <code>Avoid.DirtRoads</code>, <code>Avoid.Tunnels</code>, <code>Avoid.UTurns</code> ditolak dengan FieldValidationFailed. Hanya <code>TollRoads</code>, <code>Ferries</code>, <code>ControlledAccessHighways</code> yang valid. Live <code>Traffic</code> parameter juga ditolak — <code>DepartureTime</code> akan honored lewat pola traffic historis per jam.',
+        cr_preset_alt: '+ Alternatif',
+        cr_preset_tbt: '+ TurnByTurn',
         cr_required_note: 'Dua-duanya wajib. Format [lng, lat] valid.',
         cr_time_note: 'Pilih salah satu — kapan mau berangkat ATAU kapan harus tiba. Default = sekarang.',
         cr_avoid_label: 'Opsi Avoid',
@@ -487,14 +559,14 @@ const I18N = {
         cr_v0_diff: '<strong>Beda dari v2:</strong><ul style="margin:6px 0 0 18px;"><li><code>DeparturePosition</code> → <code>Origin</code>, <code>DestinationPosition</code> → <code>Destination</code></li><li><code>WaypointPositions: [[lng,lat]]</code> → <code>Waypoints: [{ Position: [lng,lat] }]</code></li><li><code>AvoidTolls: bool</code> → <code>Avoid: { TollRoads: bool }</code> (nested)</li><li>TravelMode: <code>Motorcycle</code> → <code>Scooter</code>, <code>Walking</code> → <code>Pedestrian</code></li><li>Distance: v0 dalam <strong>kilometer</strong>, v2 <strong>meter</strong></li><li><code>DurationSeconds</code> → <code>Duration</code></li><li>Response wrapper: v0 langsung Summary/Legs, v2 ada <code>Routes[0]</code> array</li></ul>',
 
         /* CalculateRouteMatrix */
-        proxy_safe_crm: 'Aman — routing lewat <code>/api/routes/matrix</code> (Laravel proxy).',
+        proxy_safe_crm: 'Aman — proxy <code>/api/routes/matrix</code> sekarang pakai <strong>v2 adapter</strong>: terima body v0-shape (DeparturePositions/DestinationPositions) lalu translate ke v2 (<code>/v2/route-matrix</code>) + adapt response balik ke v0-shape (Distance dalam km, DurationSeconds). Untuk native v2, lihat tab v2 atau panggil AWS langsung dengan API Key.',
         crm_required_note: 'Tiga-tiganya wajib. Beda dari v0 yang gak butuh RoutingBoundary.',
         crm_limit_label: 'Limit cell',
         crm_limit_note: 'Max 700 sel per request. Mis. 7×100 atau 35×20. Pisah jadi multiple request kalau lebih.',
         crm_err_boundary: 'Tanpa <code>RoutingBoundary</code>',
         crm_err_cells: 'Origins × Destinations &gt; 700',
         crm_err_pos: 'Position kosong di salah satu Origins/Destinations',
-        crm_proxy_note: 'Catatan: proxy <code>/api/routes/matrix</code> di project ini masih panggil endpoint <strong>v0</strong> di backend (untuk backward compat). Body request harus pakai shape v0 (lihat tab v0). Untuk demo native v2, panggil AWS langsung dengan API Key.',
+        crm_proxy_note: 'Aman — proxy <code>/api/routes/matrix</code> sekarang pakai <strong>v2 adapter</strong> di backend: terima payload v0-shape (DeparturePositions/DestinationPositions) lalu translate ke v2 (<code>/v2/route-matrix</code>) + adapt response balik ke v0-shape (Distance dalam km, DurationSeconds). Untuk native v2, lihat tab v2 atau panggil AWS langsung dengan API Key.',
         crm_preset_v0: 'v0 Body (proxy)',
         crm_v0_diff: '<strong>Beda dari v2:</strong><ul style="margin:6px 0 0 18px;"><li><code>DeparturePositions: [[lng,lat]]</code> → <code>Origins: [{ Position: [lng,lat] }]</code></li><li><code>DestinationPositions: [[lng,lat]]</code> → <code>Destinations: [{ Position: [lng,lat] }]</code></li><li>v2 wajib <code>RoutingBoundary</code> (v0 tidak)</li><li>Distance: v0 km → v2 meter</li><li><code>DurationSeconds</code> → <code>Duration</code></li></ul>',
 

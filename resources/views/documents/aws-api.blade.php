@@ -141,6 +141,61 @@
             flex-shrink: 0;
         }
 
+        /* Sidebar search */
+        .sidebar-search-wrap {
+            position: relative;
+            margin: 0 12px 12px;
+        }
+        .sidebar-search-wrap input {
+            width: 100%;
+            padding: 8px 32px 8px 32px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            font-size: 0.82rem;
+            background: #f9fafb;
+            color: var(--text-primary);
+            transition: all 0.15s;
+        }
+        .sidebar-search-wrap input:focus {
+            outline: none;
+            background: #fff;
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16,185,129,0.1);
+        }
+        .sidebar-search-wrap > i.bi-search {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 0.85rem;
+            pointer-events: none;
+        }
+        .sidebar-search-wrap > button {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            font-size: 1.1rem;
+            line-height: 1;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .sidebar-search-wrap > button:hover { color: #dc2626; background: #fef2f2; }
+
+        /* Highlight matched query in op-link */
+        .op-link .match-hl {
+            background: rgba(16,185,129,0.18);
+            color: #047857;
+            font-weight: 700;
+            padding: 0 2px;
+            border-radius: 3px;
+        }
+
         .sidebar .service-group {
             margin-bottom: 4px;
         }
@@ -1268,6 +1323,7 @@
     <div class="layout">
         <!-- ========================== SIDEBAR ========================== -->
         <aside class="sidebar">
+            <div id="sidebarSearchEmpty" style="display:none;padding:14px 12px;font-size:0.78rem;color:#9ca3af;text-align:center;" data-i18n="sidebar_search_empty">No operations found</div>
 
             <!-- Maps V2 -->
             <div class="service-group" data-service="maps">
@@ -1351,6 +1407,23 @@
                     <p class="text-muted small" data-i18n="welcome_note">
                         Default provider di ap-southeast-1 = GrabMaps. Dokumentasi ini fokus untuk integrasi API.
                     </p>
+
+                    <!-- Region caveats — important things to know upfront -->
+                    <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:14px 18px;margin-top:24px;text-align:left;max-width:720px;margin-left:auto;margin-right:auto;">
+                        <div style="font-weight:700;color:#92400e;margin-bottom:8px;font-size:0.88rem;">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <span data-i18n="region_caveats_title">Region Caveats — ap-southeast-1 (GrabMaps)</span>
+                        </div>
+                        <ul style="font-size:0.78rem;color:#78350f;line-height:1.7;margin:0;padding-left:20px;">
+                            <li data-i18n-html="caveat_styles">Map styles: hanya <code>Standard</code> & <code>Monochrome</code> (Hybrid/Satellite ditolak)</li>
+                            <li data-i18n-html="caveat_traffic">Live <code>Traffic</code> parameter: ditolak. <code>DepartureTime</code> tetap honored via pola traffic historis per jam</li>
+                            <li data-i18n-html="caveat_avoid">Avoid options yang valid: <code>TollRoads</code>, <code>Ferries</code>, <code>ControlledAccessHighways</code> (DirtRoads/Tunnels/UTurns ditolak)</li>
+                            <li data-i18n-html="caveat_passthrough">Waypoints: <code>PassThrough</code> tidak didukung — omit field-nya</li>
+                            <li data-i18n-html="caveat_tolls">Routes return <code>Tolls</code> dan <code>MajorRoadLabels</code> — tapi AWS jarang populate field ini di SEA</li>
+                            <li data-i18n-html="caveat_suggest_pos">Suggest tidak return <code>Position</code> by default — tambah <code>AdditionalFeatures: ['Core']</code></li>
+                            <li data-i18n-html="caveat_places_extra">GetPlace: <code>Contacts</code>, <code>OpeningHours</code>, <code>Brand</code>, <code>FoodTypes</code> jarang populated di SEA</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
@@ -1410,7 +1483,8 @@
   },
   "DepartureTime": "string",
   "ArrivalTime": "string",
-  "OptimizeRoutingFor": "FastestRoute" | "ShortestRoute"
+  "OptimizeRoutingFor": "FastestRoute" | "ShortestRoute",
+  "MaxAlternatives": 0..6
 }</code></pre>
 
                 <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Request Parameters</span></div>
@@ -1419,14 +1493,20 @@
                     <tbody>
                         <tr><td><code>Origin</code></td><td><span class="type-tag">[lng, lat]</span></td><td><span class="req">YES</span></td><td data-i18n="cr_p_origin">Starting point</td></tr>
                         <tr><td><code>Destination</code></td><td><span class="type-tag">[lng, lat]</span></td><td><span class="req">YES</span></td><td data-i18n="cr_p_dest">End point</td></tr>
-                        <tr><td><code>Waypoints</code></td><td><span class="type-tag">array</span></td><td>—</td><td data-i18n="cr_p_wp">Max 23 (excluding Origin <td>Max 23 (di luar Origin & Destination)</td> Destination)</td></tr>
+                        <tr><td><code>Waypoints</code></td><td><span class="type-tag">array</span></td><td>—</td><td data-i18n="cr_p_wp">Max 23 (excluding Origin &amp; Destination)</td></tr>
                         <tr><td><code>TravelMode</code></td><td><span class="type-tag">enum</span></td><td>—</td><td data-i18n="note_travel_mode_v2">Default: Car. v0→v2 mapping: Motorcycle→Scooter, Walking→Pedestrian</td></tr>
                         <tr><td><code>LegGeometryFormat</code></td><td><span class="type-tag">enum</span></td><td>—</td><td><code>Simple</code> = LineString array, <code>FlexiblePolyline</code> = encoded</td></tr>
                         <tr><td><code>Avoid.TollRoads</code></td><td><span class="type-tag">boolean</span></td><td>—</td><td data-i18n="note_no_pedestrian">Not supported for Pedestrian</td></tr>
                         <tr><td><code>DepartureTime</code></td><td><span class="type-tag">ISO 8601</span></td><td>—</td><td data-i18n="note_excl_arrival">Mutually exclusive with ArrivalTime</td></tr>
                         <tr><td><code>OptimizeRoutingFor</code></td><td><span class="type-tag">enum</span></td><td>—</td><td data-i18n="note_default_fastest">Default: FastestRoute</td></tr>
+                        <tr><td><code>MaxAlternatives</code></td><td><span class="type-tag">0–6</span></td><td>—</td><td data-i18n="cr_p_maxalt">Request alternative routes. Response <code>Routes[]</code> = primary + alternatives. Actual count depends on geography (kadang AWS return lebih sedikit dari yang diminta).</td></tr>
+                        <tr><td><code>TravelStepType</code></td><td><span class="type-tag">enum</span></td><td>—</td><td data-i18n="cr_p_tst">Set ke <code>TurnByTurn</code> untuk dapat full turn-by-turn instructions (<code>VehicleLegDetails.TravelSteps[]</code> dengan Type/SteeringDirection/CurrentRoad/NextRoad).</td></tr>
                     </tbody>
                 </table>
+
+                <div class="alert-mini warn" style="margin-top:14px;">
+                    ⚠️ <span data-i18n-html="cr_region_caveats"><b>Region caveats (ap-southeast-1):</b> <code>Avoid.DirtRoads</code>, <code>Avoid.Tunnels</code>, <code>Avoid.UTurns</code> ditolak dengan FieldValidationFailed. Hanya <code>TollRoads</code>, <code>Ferries</code>, <code>ControlledAccessHighways</code> yang valid. Live <code>Traffic</code> parameter juga ditolak — <code>DepartureTime</code> akan honored lewat pola traffic historis per jam.</span>
+                </div>
 
                 <div class="doc-section-h"><span class="ic blue"><i class="bi bi-shuffle"></i></span> <span data-i18n="sec_field_rules">Field Rules</span></div>
                 <div class="rules-grid">
@@ -1502,7 +1582,9 @@
                 <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
 
                 <div class="alert-mini success" style="margin-bottom:14px;">
-                    🔒 <span data-i18n="proxy_safe_cr">Aman — routing lewat <code>/api/v2/routes/calculate</code> (Laravel proxy).</span>
+                    🔒 <span data-i18n-html="proxy_safe_cr">Proxy ada 2 varian — pilih sesuai use case:<br>
+                    • <code>/api/v2/routes/calculate</code> = <b>native passthrough</b> — body langsung shape v2 (Origin/Destination/Waypoints[].Position). Try-It panel ini pakai endpoint ini.<br>
+                    • <code>/api/routes/calculate</code> = <b>v0-shape adapter</b> — terima body shape v0 lama (DeparturePosition/DestinationPosition/WaypointPositions) lalu translate ke v2 internally. Dipakai home page untuk backward compat.</span>
                 </div>
 
                 <div class="preset-row">
@@ -1511,6 +1593,8 @@
                     <button class="preset-btn" data-preset="scooter">🛵 Scooter</button>
                     <button class="preset-btn" data-preset="pedestrian">🚶 Pedestrian</button>
                     <button class="preset-btn" data-preset="waypoints">🚦 <span data-i18n="cr_preset_wp">+ Waypoints</span></button>
+                    <button class="preset-btn" data-preset="alternatives">✨ <span data-i18n="cr_preset_alt">+ Alternatives</span></button>
+                    <button class="preset-btn" data-preset="turnbyturn">🧭 <span data-i18n="cr_preset_tbt">+ TurnByTurn</span></button>
                     <button class="preset-btn" data-preset="full">🎛️ <span data-i18n="preset_all">All Features</span></button>
                 </div>
 
@@ -1560,7 +1644,9 @@
                             scooter: { Origin: [106.8456, -6.2088], Destination: [106.8270, -6.1751], TravelMode: 'Scooter', LegGeometryFormat: 'Simple', Locale: 'id' },
                             pedestrian: { Origin: [106.8456, -6.2088], Destination: [106.8270, -6.1751], TravelMode: 'Pedestrian', LegGeometryFormat: 'Simple', Locale: 'id' },
                             waypoints: { Origin: [106.8456, -6.2088], Destination: [106.8270, -6.1751], Waypoints: [{ Position: [106.8410, -6.1900] }, { Position: [106.8350, -6.1820] }], TravelMode: 'Car', LegGeometryFormat: 'Simple', Locale: 'id' },
-                            full: { Origin: [106.8456, -6.2088], Destination: [106.8270, -6.1751], TravelMode: 'Car', LegGeometryFormat: 'Simple', InstructionsMeasurementSystem: 'Metric', Locale: 'id', Avoid: { TollRoads: true, Ferries: false }, OptimizeRoutingFor: 'FastestRoute', TravelStepType: 'TurnByTurn' }
+                            alternatives: { Origin: [106.8456, -6.2088], Destination: [106.8270, -6.1751], TravelMode: 'Car', LegGeometryFormat: 'Simple', Locale: 'id', MaxAlternatives: 2 },
+                            turnbyturn: { Origin: [106.8456, -6.2088], Destination: [106.8270, -6.1751], TravelMode: 'Car', LegGeometryFormat: 'Simple', InstructionsMeasurementSystem: 'Metric', Locale: 'id', TravelStepType: 'TurnByTurn' },
+                            full: { Origin: [106.8456, -6.2088], Destination: [106.8270, -6.1751], TravelMode: 'Car', LegGeometryFormat: 'Simple', InstructionsMeasurementSystem: 'Metric', Locale: 'id', Avoid: { TollRoads: true, Ferries: false, ControlledAccessHighways: false }, OptimizeRoutingFor: 'FastestRoute', TravelStepType: 'TurnByTurn', MaxAlternatives: 2 }
                         }
                     });
                 </script>
@@ -1699,8 +1785,8 @@
                     🔒 <span data-i18n="proxy_safe_crm">Aman — routing lewat <code>/api/routes/matrix</code> (Laravel proxy).</span>
                 </div>
 
-                <div class="alert-mini warn" style="margin-bottom:14px;">
-                    ⚠️ <span data-i18n="crm_proxy_note">Note: proxy <code>/api/routes/matrix</code> di project ini masih panggil endpoint <strong>v0</strong> di backend (untuk backward compat). Body request harus pakai shape v0 (lihat tab v0). Untuk demo native v2, panggil AWS langsung dengan API Key.</span>
+                <div class="alert-mini success" style="margin-bottom:14px;">
+                    🔒 <span data-i18n="crm_proxy_note">Aman — proxy <code>/api/routes/matrix</code> sekarang pakai <strong>v2 adapter</strong> di backend: terima payload v0-shape (DeparturePositions/DestinationPositions) lalu translate ke v2 (<code>/v2/route-matrix</code>) + adapt response balik ke v0-shape (Distance dalam km, DurationSeconds). Untuk native v2, lihat tab v2 atau panggil AWS langsung dengan API Key.</span>
                 </div>
 
                 <div class="preset-row">
@@ -1809,7 +1895,7 @@
 
                 <div class="endpoint-line"><span class="method POST">POST</span><span>/v2/isolines?key=...</span></div>
 
-                <h4>Request body</h4>
+                <h4 data-i18n="label_request_body">Request body</h4>
                 <pre><code class="language-json">{
   "Origin": [106.84, -6.20],
   "TravelMode": "Car",
@@ -1818,9 +1904,9 @@
   },
   "OptimizeIsolineFor": "FastestRoute"
 }</code></pre>
-                <p>Bisa juga pakai <code>Thresholds.Distance</code> (meter) atau kedua-duanya.</p>
+                <p data-i18n-html="iso_thresholds_note">Bisa juga pakai <code>Thresholds.Distance</code> (meter) atau kedua-duanya.</p>
 
-                <h4>Response</h4>
+                <h4 data-i18n="label_response">Response</h4>
                 <pre><code class="language-json">{
   "Isolines": [{
     "TimeThreshold": 300,
@@ -1844,7 +1930,7 @@
 
                 <div class="endpoint-line"><span class="method POST">POST</span><span>/v2/optimize-waypoints?key=...</span></div>
 
-                <h4>Request body</h4>
+                <h4 data-i18n="label_request_body">Request body</h4>
                 <pre><code class="language-json">{
   "Origin": [106.84, -6.20],
   "Destination": [106.92, -6.30],
@@ -1857,7 +1943,7 @@
   "OptimizeSequencingFor": "FastestRoute"
 }</code></pre>
 
-                <h4>Response</h4>
+                <h4 data-i18n="label_response">Response</h4>
                 <pre><code class="language-json">{
   "OptimizedWaypoints": [
     { "Id": "stop1", "Position": [106.85,-6.21] },
@@ -1868,7 +1954,7 @@
   "Duration": 1850
 }</code></pre>
                 <div class="alert-mini success">
-                    ✅ Sebelumnya kamu harus implement TSP / nearest-neighbor sendiri di JS. Sekarang AWS yang hitungkan.
+                    ✅ <span data-i18n="ow_tsp_note">Sebelumnya kamu harus implement TSP / nearest-neighbor sendiri di JS. Sekarang AWS yang hitungkan.</span>
                 </div>
             </div>
 
@@ -1882,7 +1968,7 @@
 
                 <div class="endpoint-line"><span class="method POST">POST</span><span>/v2/snap-to-roads?key=...</span></div>
 
-                <h4>Request body</h4>
+                <h4 data-i18n="label_request_body">Request body</h4>
                 <pre><code class="language-json">{
   "TracePoints": [
     { "Position": [106.840, -6.200] },
@@ -1893,7 +1979,7 @@
   "SnappedGeometryFormat": "Simple"
 }</code></pre>
 
-                <h4>Response</h4>
+                <h4 data-i18n="label_response">Response</h4>
                 <pre><code class="language-json">{
   "SnappedGeometry": {
     "LineString": [[106.840,-6.200], [106.843,-6.201], ...]
@@ -2380,7 +2466,7 @@
 
                 <div class="endpoint-line"><span class="method GET">GET</span><span>/v2/static-map?key=...&amp;...</span></div>
 
-                <h4>Query parameters</h4>
+                <h4 data-i18n="label_query_params">Query parameters</h4>
                 <table class="param-table">
                     <thead>
                         <tr>
@@ -2428,9 +2514,9 @@
                     </tbody>
                 </table>
 
-                <h4>Contoh</h4>
+                <h4 data-i18n="label_example">Example</h4>
                 <div class="endpoint-line"><span class="method GET">GET</span><span>/v2/static-map?key=...&amp;Center=106.84,-6.20&amp;Zoom=14&amp;Width=600&amp;Height=400&amp;Style=Standard</span></div>
-                <p>Hasil: gambar PNG 600×400 pusat di Sudirman zoom 14.</p>
+                <p data-i18n="static_map_result">Hasil: gambar PNG 600×400 pusat di Sudirman zoom 14.</p>
             </div>
 
             {{-- =============================================================== --}}
@@ -2953,8 +3039,13 @@
                         <tr><td><code>Filter.IncludeCountries</code></td><td><span class="type-tag">array</span></td><td>—</td><td data-i18n="note_iso3_codes">ISO-3 codes</td></tr>
                         <tr><td><code>MaxQueryRefinements</code></td><td><span class="type-tag">number</span></td><td>—</td><td data-i18n="sg_p_refine">Max items with SuggestResultItemType=Query</td></tr>
                         <tr><td><code>Language</code></td><td><span class="type-tag">string</span></td><td>—</td><td data-i18n-html="note_bcp47_id">BCP 47 (e.g. <code>id</code>)</td></tr>
+                        <tr><td><code>AdditionalFeatures</code></td><td><span class="type-tag">array</span></td><td>—</td><td data-i18n-html="sg_p_addfeat">Valid: <code>Core</code>, <code>TimeZone</code>, <code>Phonemes</code>. <b>Tip:</b> tambah <code>"Core"</code> untuk unlock field <code>Position</code> di response — tanpa ini Suggest gak return koordinat (jadi distance ke marker user gak bisa dihitung client-side).</td></tr>
                     </tbody>
                 </table>
+
+                <div class="alert-mini warn" style="margin-top:14px;">
+                    💡 <span data-i18n-html="sg_position_tip"><b>Penting untuk autocomplete dengan distance:</b> response Suggest <b>tidak include</b> <code>Position</code> by default. Kirim <code>"AdditionalFeatures": ["Core"]</code> untuk dapat lat/lng tiap suggestion — supaya bisa compute distance dari current marker/map center langsung di client.</span>
+                </div>
 
                 <div class="doc-section-h"><span class="ic blue"><i class="bi bi-shuffle"></i></span> <span data-i18n="sec_field_rules">Field Rules</span></div>
                 <div class="rules-grid">
@@ -3032,6 +3123,7 @@
                 <div class="preset-row">
                     <span class="preset-label"><i class="bi bi-bookmark-fill"></i>&nbsp;<span data-i18n="presets">Presets</span></span>
                     <button class="preset-btn" data-preset="bias">📍 BiasPosition</button>
+                    <button class="preset-btn" data-preset="with_position">📐 <span data-i18n="sg_preset_position">+ Position (Core)</span></button>
                     <button class="preset-btn" data-preset="circle">⭕ Filter.Circle</button>
                     <button class="preset-btn" data-preset="minimal">📝 <span data-i18n="preset_minimal">Minimal</span></button>
                     <button class="preset-btn" data-preset="full">🎛️ <span data-i18n="preset_all">All Features</span></button>
@@ -3073,6 +3165,7 @@
                         defaultPreset: 'bias',
                         presets: {
                             bias: { QueryText: 'halte', BiasPosition: [106.8456, -6.2088], MaxResults: 5, Language: 'id' },
+                            with_position: { QueryText: 'halte', BiasPosition: [106.8456, -6.2088], MaxResults: 5, Language: 'id', AdditionalFeatures: ['Core'] },
                             circle: { QueryText: 'halte', Filter: { Circle: { Center: [106.8456, -6.2088], Radius: 2000 }, IncludeCountries: ['IDN'] }, MaxResults: 5, Language: 'id' },
                             minimal: { QueryText: 'mon' },
                             full: { QueryText: 'halte', BiasPosition: [106.8456, -6.2088], MaxResults: 10, Language: 'id', PoliticalView: 'IDN', MaxQueryRefinements: 2, AdditionalFeatures: ['Core'], IntendedUse: 'SingleUse' }
@@ -3466,7 +3559,7 @@
 
                 <div class="endpoint-line"><span class="method POST">POST</span><span>/v2/autocomplete?key=...</span></div>
 
-                <h4>Request body</h4>
+                <h4 data-i18n="label_request_body">Request body</h4>
                 <pre><code class="language-json">{
   "QueryText": "Jl. Sudirman",
   "BiasPosition": [106.84, -6.20],
@@ -3478,7 +3571,7 @@
   "Language": "id"
 }</code></pre>
 
-                <h4>Response (TIDAK return Position)</h4>
+                <h4 data-i18n="label_response_no_pos">Response (does NOT return Position)</h4>
                 <pre><code class="language-json">{
   "ResultItems": [{
     "Title": "Jl. Jenderal Sudirman, Jakarta",
@@ -3511,7 +3604,7 @@
 
                 <div class="endpoint-line"><span class="method POST">POST</span><span>/v2/geocode?key=...</span></div>
 
-                <h4>Request body</h4>
+                <h4 data-i18n="label_request_body">Request body</h4>
                 <pre><code class="language-json">{
   "QueryComponents": {
     "Country": "IDN",
@@ -3524,7 +3617,7 @@
   "MaxResults": 1
 }</code></pre>
 
-                <h4>Response</h4>
+                <h4 data-i18n="label_response">Response</h4>
                 <pre><code class="language-json">{
   "ResultItems": [{
     "Title": "Jl. Sudirman 1, Jakarta",
@@ -3548,7 +3641,7 @@
 
                 <div class="endpoint-line"><span class="method POST">POST</span><span>/v2/search-nearby?key=...</span></div>
 
-                <h4>Request body</h4>
+                <h4 data-i18n="label_request_body">Request body</h4>
                 <pre><code class="language-json">{
   "QueryPosition": [106.84, -6.20],
   "QueryRadius": 1000,
@@ -3559,7 +3652,7 @@
   "Language": "id"
 }</code></pre>
 
-                <h4>Response</h4>
+                <h4 data-i18n="label_response">Response</h4>
                 <pre><code class="language-json">{
   "ResultItems": [{
     "Title": "Halte Transjakarta Halimun",
@@ -3571,10 +3664,10 @@
 }</code></pre>
 
                 <div class="alert-mini success">
-                    ✅ Untuk use case <strong>"halte terdekat"</strong> ini paling direct: 1 API call, sorted by distance, gak perlu QueryText. Pre-syaratnya kamu tau ID kategori (mis. <code>transit_station_bus</code>).
+                    ✅ <span data-i18n-html="sn_use_case">Untuk use case <strong>"halte terdekat"</strong> ini paling direct: 1 API call, sorted by distance, gak perlu QueryText. Prasyaratnya kamu tau ID kategori (mis. <code>transit_station_bus</code>).</span>
                 </div>
 
-                <h3>Catatan</h3>
+                <h3 data-i18n="label_notes">Notes</h3>
                 <ul>
                     <li>Max <code>QueryRadius</code> = <strong>50,000 m</strong> (50 km)</li>
                     <li>Max <code>MaxResults</code> = <strong>20</strong></li>
@@ -3588,7 +3681,7 @@
             <!-- Overview -->
             <div class="op-panel" id="op-meta-overview">
                 <div class="breadcrumb-mini">General / Overview</div>
-                <h1>Overview v0 vs v2</h1>
+                <h1 data-i18n="meta_overview">Overview v0 vs v2</h1>
                 <p class="op-desc" data-i18n="ov_desc">Dua generation API yang masih jalan paralel. v2 = standalone mode (recommended), v0 = legacy resource-based.</p>
 
                 <table class="param-table">
@@ -3629,20 +3722,20 @@
                 </table>
 
                 <div class="alert-mini success">
-                    <strong>Rekomendasi:</strong> Project baru pakai <strong>v2</strong>. Project existing tetap aman di v0 sampai AWS announce deprecation.
+                    <span data-i18n-html="overview_recommendation"><strong>Rekomendasi:</strong> Project baru pakai <strong>v2</strong>. Project existing tetap aman di v0 sampai AWS announce deprecation.</span>
                 </div>
             </div>
 
             <!-- Auth -->
             <div class="op-panel" id="op-meta-auth">
                 <div class="breadcrumb-mini">General / Authentication</div>
-                <h1>Authentication</h1>
+                <h1 data-i18n="meta_auth">Authentication</h1>
                 <p class="op-desc" data-i18n="auth_desc">Dua-duanya support API Key (recommended frontend) atau AWS SigV4 (backend).</p>
 
-                <h3>API Key di URL</h3>
+                <h3 data-i18n="label_api_key_url">API Key in URL</h3>
                 <pre><code>?key=v1.public.eyJq...</code></pre>
 
-                <h3>Resource ARN (per service)</h3>
+                <h3 data-i18n="label_resource_arn">Resource ARN (per service)</h3>
                 <table class="param-table">
                     <thead>
                         <tr>
@@ -3671,14 +3764,14 @@
                 </table>
 
                 <div class="alert-mini warn">
-                    ⚠️ Saat bikin API Key di AWS Console, centang <strong>actions</strong> per service yang dibutuhkan. Action yang gak dicentang akan return <code>403 Forbidden</code> (explicit deny).
+                    ⚠️ <span data-i18n-html="auth_actions_note">Saat bikin API Key di AWS Console, centang <strong>actions</strong> per service yang dibutuhkan. Action yang gak dicentang akan return <code>403 Forbidden</code> (explicit deny).</span>
                 </div>
             </div>
 
             <!-- Quotas -->
             <div class="op-panel" id="op-meta-quotas">
                 <div class="breadcrumb-mini">General / Quotas &amp; Limits</div>
-                <h1>Quotas &amp; Limits</h1>
+                <h1 data-i18n="meta_quotas">Quotas &amp; Limits</h1>
                 <p class="op-desc" data-i18n="qu_desc">Limit per request untuk API Location v2.</p>
 
                 <table class="param-table">
@@ -3739,7 +3832,7 @@
             <!-- Migration -->
             <div class="op-panel" id="op-meta-migration">
                 <div class="breadcrumb-mini">General / Migration Guide</div>
-                <h1>Migration v0 → v2</h1>
+                <h1 data-i18n="meta_migration">Migration v0 → v2</h1>
                 <p class="op-desc" data-i18n="mig_desc">Checklist 3-step untuk pindahin code dari v0 (resource-based) ke v2 (standalone).</p>
 
                 <h3>1. Maps</h3>
@@ -3833,23 +3926,73 @@
             });
         });
 
-        // ===== Search filter =====
+        // ===== Search filter — with highlight + empty state + group auto-hide =====
+        const SEARCH_HL_CLASS = 'match-hl';
+        function clearHighlights() {
+            document.querySelectorAll('.op-link .' + SEARCH_HL_CLASS).forEach(span => {
+                const parent = span.parentNode;
+                parent.replaceChild(document.createTextNode(span.textContent), span);
+                parent.normalize();
+            });
+        }
+        function highlightInLink(link, query) {
+            // Only operate on the leaf text node(s) inside <a>, skip <span class="badge-soon">
+            link.childNodes.forEach(node => {
+                if (node.nodeType !== Node.TEXT_NODE) return;
+                const text = node.textContent;
+                const lower = text.toLowerCase();
+                const idx = lower.indexOf(query);
+                if (idx === -1) return;
+                const before = document.createTextNode(text.slice(0, idx));
+                const match = document.createElement('span');
+                match.className = SEARCH_HL_CLASS;
+                match.textContent = text.slice(idx, idx + query.length);
+                const after = document.createTextNode(text.slice(idx + query.length));
+                const parent = node.parentNode;
+                parent.insertBefore(before, node);
+                parent.insertBefore(match, node);
+                parent.insertBefore(after, node);
+                parent.removeChild(node);
+            });
+        }
+
         document.getElementById('searchBox').addEventListener('input', e => {
             const q = e.target.value.toLowerCase().trim();
+            clearHighlights();
+
+            let totalVisible = 0;
             document.querySelectorAll('.op-link').forEach(a => {
                 const txt = a.textContent.toLowerCase();
                 const li = a.parentElement;
-                li.style.display = !q || txt.includes(q) ? '' : 'none';
+                const matches = !q || txt.includes(q);
+                li.style.display = matches ? '' : 'none';
+                if (matches) totalVisible++;
+                if (matches && q) highlightInLink(a, q);
             });
-            // Auto-expand all groups while searching
+
+            // Hide groups that have no visible op-links
             document.querySelectorAll('.service-group').forEach(g => {
-                if (q) g.classList.remove('collapsed');
+                if (q) {
+                    g.classList.remove('collapsed');
+                    const visibleOps = g.querySelectorAll('.operations > li:not([style*="display: none"])').length;
+                    g.style.display = visibleOps > 0 ? '' : 'none';
+                } else {
+                    g.style.display = '';
+                }
             });
+
+            // Show/hide empty state
+            const empty = document.getElementById('sidebarSearchEmpty');
+            if (empty) empty.style.display = (q && totalVisible === 0) ? 'block' : 'none';
         });
 
-        // ===== Init from URL hash =====
-        const hash = window.location.hash.replace('#', '');
-        if (hash) showOp(hash);
+        // ===== Init from URL hash (with hashchange listener for sharing) =====
+        function handleHashNav() {
+            const hash = window.location.hash.replace('#', '').replace(/^op-/, '');
+            if (hash) showOp(hash);
+        }
+        handleHashNav(); // initial
+        window.addEventListener('hashchange', handleHashNav);
 
         /* ============================================================
            I18N — pindah ke file: public/javascript/docs/aws-api-i18n.js

@@ -315,7 +315,7 @@
             gap: 5px;
             transition: all 0.15s;
         }
-        .style-btn:hover {
+        .style-btn:hover:not(:disabled) {
             border-color: #16a34a;
             color: #16a34a;
         }
@@ -323,6 +323,13 @@
             background: #16a34a;
             color: #fff;
             border-color: #16a34a;
+        }
+        .style-btn:disabled,
+        .mini-copy:disabled,
+        .panel-toggle:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            pointer-events: none;
         }
         .style-divider {
             height: 1px;
@@ -490,6 +497,20 @@
         let myLocationMarker = null;
 
         /* =========================================
+           BUTTON GUARD — prevent double-click rapid-fire
+           ========================================= */
+        function guard(btn, ms = 400) {
+            if (btn.disabled || btn.dataset.locked === '1') return false;
+            btn.dataset.locked = '1';
+            btn.disabled = true;
+            setTimeout(() => {
+                delete btn.dataset.locked;
+                btn.disabled = false;
+            }, ms);
+            return true;
+        }
+
+        /* =========================================
            PANEL COLLAPSE TOGGLE
            ========================================= */
         const featurePanel = document.getElementById('featurePanel');
@@ -507,6 +528,7 @@
         if (isMobile()) setPanelCollapsed(true);
 
         panelToggle.addEventListener('click', () => {
+            if (!guard(panelToggle, 250)) return;
             setPanelCollapsed(!featurePanel.classList.contains('collapsed'));
         });
 
@@ -521,25 +543,42 @@
            STYLE SWITCHER
            ========================================= */
         const styleSwitcher = document.getElementById('styleSwitcher');
+        const styleAllBtns = () => styleSwitcher.querySelectorAll('.style-btn');
+        let styleLoading = false;
+
+        function lockStyleBtns(locked) {
+            styleLoading = locked;
+            styleAllBtns().forEach(b => b.disabled = locked);
+        }
+
         styleSwitcher.addEventListener('click', (ev) => {
             const btn = ev.target.closest('.style-btn');
-            if (!btn) return;
+            if (!btn || btn.disabled || styleLoading) return;
 
+            let changed = false;
             if (btn.dataset.style) {
                 if (mapState.style === btn.dataset.style) return;
                 mapState.style = btn.dataset.style;
                 styleSwitcher.querySelectorAll('[data-style]').forEach(b => b.classList.toggle('active', b === btn));
+                changed = true;
             } else if (btn.dataset.color) {
                 if (mapState.color === btn.dataset.color) return;
                 mapState.color = btn.dataset.color;
                 styleSwitcher.querySelectorAll('[data-color]').forEach(b => b.classList.toggle('active', b === btn));
-            } else {
-                return;
+                changed = true;
             }
+            if (!changed) return;
 
-            // Swap basemap — markers persist (they're DOM, not part of style)
+            lockStyleBtns(true);
             map.setStyle(styleUrl());
         });
+
+        // Re-enable switcher once new style is rendered
+        map.on('styledata', () => {
+            if (styleLoading) lockStyleBtns(false);
+        });
+        // Safety net: re-enable even if styledata never fires
+        map.on('error', () => { if (styleLoading) lockStyleBtns(false); });
 
         /* =========================================
            TOAST HELPER
@@ -635,13 +674,14 @@
         function flashCopied(btn) {
             if (!btn) return;
             btn.classList.add('copied');
+            btn.disabled = true;
             const icon = btn.querySelector('i');
-            if (!icon) return;
-            const original = icon.className;
-            icon.className = 'bi bi-check-lg';
+            const original = icon ? icon.className : null;
+            if (icon) icon.className = 'bi bi-check-lg';
             setTimeout(() => {
                 btn.classList.remove('copied');
-                icon.className = original;
+                btn.disabled = false;
+                if (icon && original) icon.className = original;
             }, 1200);
         }
 
@@ -711,6 +751,7 @@
         });
 
         btnCopyCoords.addEventListener('click', () => {
+            if (!guard(btnCopyCoords, 300)) return;
             copyModeOn = !copyModeOn;
             if (copyModeOn) {
                 map.on('click', handleCopyClick);

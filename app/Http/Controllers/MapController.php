@@ -575,34 +575,326 @@ class MapController extends Controller
         }
     }
 
+    /**
+     * Routes — adapter: accepts v0-shape request, calls v2 AWS, returns v0-shape response.
+     * v0 routes endpoint is no longer authorized for this account's API key — all calls
+     * are routed to v2 transparently while preserving the legacy contract for callers.
+     */
     public function calculateRoute(Request $request)
     {
         $cfg = $this->resolveAwsConfig($request);
-        $url = "https://routes.geo.{$cfg['region']}.amazonaws.com/routes/v0/calculators/{$cfg['route_calc']}/calculate/route?key={$cfg['api_key']}";
+        $v0  = $request->all();
+        $v2Body = $this->buildV2RouteRequest($v0);
+
+        $url = "https://routes.geo.{$cfg['region']}.amazonaws.com/v2/routes?key={$cfg['api_key']}";
 
         try {
-            $response = Http::timeout(30)->post($url, $request->all());
+            $response = Http::timeout(30)->post($url, $v2Body);
             $this->logUsage($cfg['company'], 'calculate_route', $response->status());
-            return response()->json($response->json(), $response->status());
+
+            if (!$response->successful()) {
+                Log::error('Routes v2 (adapted) error: ' . $response->body());
+                return response()->json($response->json() ?? ['error' => $response->body()], $response->status());
+            }
+
+            return response()->json($this->translateV2RouteToV0Shape($response->json()), 200);
         } catch (\Exception $e) {
             $this->logUsage($cfg['company'], 'calculate_route', 500);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
+    /**
+     * Routes Matrix — adapter: v0-shape in, v2 AWS, v0-shape out.
+     */
     public function calculateRouteMatrix(Request $request)
     {
         $cfg = $this->resolveAwsConfig($request);
-        $url = "https://routes.geo.{$cfg['region']}.amazonaws.com/routes/v0/calculators/{$cfg['route_calc']}/calculate/route-matrix?key={$cfg['api_key']}";
+        $v0  = $request->all();
+
+        $v2Body = [
+            'Origins'         => array_map(fn($p) => ['Position' => $p], $v0['DeparturePositions'] ?? []),
+            'Destinations'    => array_map(fn($p) => ['Position' => $p], $v0['DestinationPositions'] ?? []),
+            'TravelMode'      => $this->mapTravelModeV0toV2($v0['TravelMode'] ?? 'Car'),
+            'RoutingBoundary' => ['Unbounded' => true],
+        ];
+
+        $url = "https://routes.geo.{$cfg['region']}.amazonaws.com/v2/route-matrix?key={$cfg['api_key']}";
 
         try {
-            $response = Http::timeout(30)->post($url, $request->all());
+            $response = Http::timeout(30)->post($url, $v2Body);
             $this->logUsage($cfg['company'], 'calculate_route_matrix', $response->status());
-            return response()->json($response->json(), $response->status());
+
+            if (!$response->successful()) {
+                Log::error('Routes Matrix v2 (adapted) error: ' . $response->body());
+                return response()->json($response->json() ?? ['error' => $response->body()], $response->status());
+            }
+
+            $v2 = $response->json();
+            $matrix = [];
+            foreach ($v2['RouteMatrix'] ?? [] as $row) {
+                $newRow = [];
+                foreach ($row as $cell) {
+                    if (!empty($cell['Error'])) {
+                        $newRow[] = ['Error' => $cell['Error']];
+                    } else {
+                        $newRow[] = [
+                            'Distance'        => (float) ($cell['Distance'] ?? 0) / 1000.0,
+                            'DistanceUnit'    => 'Kilometers',
+                            'DurationSeconds' => (int) ($cell['Duration'] ?? 0),
+                        ];
+                    }
+                }
+                $matrix[] = $newRow;
+            }
+
+            return response()->json([
+                'RouteMatrix' => $matrix,
+                'Summary'     => ['DistanceUnit' => 'Kilometers'],
+            ], 200);
         } catch (\Exception $e) {
             $this->logUsage($cfg['company'], 'calculate_route_matrix', 500);
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Compose a human-readable instruction string from a v2 TravelStep.
+     * v2 doesn't return a ready instruction text; assemble from Type + SteeringDirection + road names.
+     */
+    private function buildStepInstruction(string $type, ?string $direction, ?string $intensity, ?string $currentRoad, ?string $nextRoad, array $step): string
+    {
+        switch ($type) {
+            case 'Depart':
+                return $currentRoad ? "Depart on {$currentRoad}" : 'Depart';
+            case 'Arrive':
+                return 'Arrive at destination';
+            case 'Turn':
+                $dir = $direction ?: 'Right';
+                $prefix = $intensity === 'Sharp' ? "Sharp {$dir}" :
+                          ($intensity === 'Slight' ? "Slight {$dir}" : "Turn {$dir}");
+                return $nextRoad ? "{$prefix} onto {$nextRoad}" : $prefix;
+            case 'Continue':
+                $road = $nextRoad ?: $currentRoad;
+                return $road ? "Continue on {$road}" : 'Continue';
+            case 'Keep':
+                $dir = $direction ?: 'Right';
+                return $nextRoad ? "Keep {$dir} onto {$nextRoad}" : "Keep {$dir}";
+            case 'UTurn':
+                return $nextRoad ? "Make a U-turn onto {$nextRoad}" : 'Make a U-turn';
+            case 'Merge':
+                $dir = $direction ?: '';
+                $base = $dir ? "Merge {$dir}" : 'Merge';
+                return $nextRoad ? "{$base} onto {$nextRoad}" : $base;
+            case 'Exit':
+                $dir = $direction ? " {$direction}" : '';
+                $exitNum = $step['ExitNumber'][0]['Value'] ?? null;
+                $base = $exitNum ? "Take exit {$exitNum}{$dir}" : ("Take exit{$dir}");
+                return $nextRoad ? "{$base} onto {$nextRoad}" : $base;
+            case 'Ramp':
+                $dir = $direction ? " {$direction}" : '';
+                return $nextRoad ? "Take the ramp{$dir} onto {$nextRoad}" : "Take the ramp{$dir}";
+            case 'RoundaboutEnter':
+                return $nextRoad ? "Enter roundabout, exit onto {$nextRoad}" : 'Enter roundabout';
+            case 'RoundaboutPass':
+                return 'Pass through roundabout';
+            case 'RoundaboutExit':
+                return $nextRoad ? "Exit roundabout onto {$nextRoad}" : 'Exit roundabout';
+            case 'Ferry':
+                return $nextRoad ? "Take ferry to {$nextRoad}" : 'Take ferry';
+            default:
+                return $nextRoad ? "{$type} onto {$nextRoad}" : $type;
+        }
+    }
+
+    private function mapTravelModeV0toV2(string $mode): string
+    {
+        $map = [
+            'Car'        => 'Car',
+            'Truck'      => 'Truck',
+            'Walking'    => 'Pedestrian',
+            'Pedestrian' => 'Pedestrian',
+            'Bicycle'    => 'Scooter',
+            'Scooter'    => 'Scooter',
+        ];
+        return $map[$mode] ?? 'Car';
+    }
+
+    private function buildV2RouteRequest(array $v0): array
+    {
+        $body = [
+            'Origin'      => $v0['DeparturePosition'] ?? [],
+            'Destination' => $v0['DestinationPosition'] ?? [],
+            'TravelMode'  => $this->mapTravelModeV0toV2($v0['TravelMode'] ?? 'Car'),
+            'LegGeometryFormat'             => 'Simple',
+            'InstructionsMeasurementSystem' => 'Metric',
+            'TravelStepType' => 'TurnByTurn',
+        ];
+
+        // Note: PassThrough is not supported in ap-southeast-1 — omit it.
+        if (!empty($v0['WaypointPositions']) && is_array($v0['WaypointPositions'])) {
+            $body['Waypoints'] = array_map(
+                fn($p) => ['Position' => $p],
+                $v0['WaypointPositions']
+            );
+        }
+
+        // Alternative routes (A→B): MaxAlternatives 0–6
+        if (isset($v0['MaxAlternatives']) && is_numeric($v0['MaxAlternatives'])) {
+            $n = max(0, min(6, (int) $v0['MaxAlternatives']));
+            if ($n > 0) $body['MaxAlternatives'] = $n;
+        }
+
+        // Departure time (ISO 8601). Falls back to "now" if not provided.
+        if (!empty($v0['DepartureTime']) && is_string($v0['DepartureTime'])) {
+            $body['DepartureTime'] = $v0['DepartureTime'];
+        }
+
+        // Avoidances: pass through only options supported in ap-southeast-1.
+        // (DirtRoads/Tunnels/UTurns are rejected by AWS in this region.)
+        if (!empty($v0['Avoid']) && is_array($v0['Avoid'])) {
+            $allowed = ['TollRoads', 'Ferries', 'ControlledAccessHighways'];
+            $avoid = [];
+            foreach ($allowed as $key) {
+                if (!empty($v0['Avoid'][$key])) $avoid[$key] = true;
+            }
+            if ($avoid) $body['Avoid'] = $avoid;
+        }
+
+        return $body;
+    }
+
+    private function translateV2RouteToV0Shape(array $v2): array
+    {
+        $routes = $v2['Routes'] ?? [];
+        if (empty($routes)) {
+            return [
+                'Legs'    => [],
+                'Summary' => ['Distance' => 0, 'DistanceUnit' => 'Kilometers', 'DurationSeconds' => 0],
+            ];
+        }
+
+        $convert = function(array $route): array {
+            $summary = $route['Summary'] ?? [];
+            $totalDistKm  = (float) ($summary['Distance'] ?? 0) / 1000.0;
+            $totalDurSecs = (int)   ($summary['Duration'] ?? 0);
+
+            $legs = [];
+            foreach ($route['Legs'] ?? [] as $leg) {
+                $details = $leg['VehicleLegDetails']
+                    ?? $leg['PedestrianLegDetails']
+                    ?? $leg['TruckLegDetails']
+                    ?? [];
+
+                $legDistM = 0.0;
+                $legDurS  = 0;
+                foreach ($details['Spans'] ?? [] as $span) {
+                    $legDistM += (float) ($span['Distance'] ?? 0);
+                    $legDurS  += (int)   ($span['Duration'] ?? 0);
+                }
+                if ($legDistM === 0.0 && $legDurS === 0) {
+                    foreach ($details['TravelSteps'] ?? [] as $step) {
+                        $legDistM += (float) ($step['Distance'] ?? 0);
+                        $legDurS  += (int)   ($step['Duration'] ?? 0);
+                    }
+                }
+
+                // Turn-by-turn steps (v2 TurnByTurn travel-step type) — synthesize
+                // a usable instruction string + extract direction (Left/Right) since v2
+                // does not return a ready-made "Instruction" field.
+                $steps = [];
+                foreach ($details['TravelSteps'] ?? [] as $step) {
+                    $type = (string) ($step['Type'] ?? 'Continue');
+                    $currentRoad = $step['CurrentRoad']['RoadName'][0]['Value'] ?? null;
+                    $nextRoad    = $step['NextRoad']['RoadName'][0]['Value'] ?? null;
+                    $turnDetails = $step['TurnStepDetails'] ?? null;
+                    $direction   = $turnDetails['SteeringDirection'] ?? null; // Left|Right|Straight
+                    $intensity   = $turnDetails['TurnIntensity'] ?? null;     // Sharp|Normal|Slight
+
+                    // Note: human-readable Instruction is built on the frontend (so it can be
+                    // localized to the user's current language). Backend only exposes the
+                    // structured fields and an English fallback.
+                    $instruction = $this->buildStepInstruction($type, $direction, $intensity, $currentRoad, $nextRoad, $step);
+
+                    $steps[] = [
+                        'Distance'        => (float) ($step['Distance'] ?? 0) / 1000.0, // km
+                        'DurationSeconds' => (int)   ($step['Duration'] ?? 0),
+                        'Type'            => $type,
+                        'Direction'       => $direction,
+                        'Intensity'       => $intensity,
+                        'CurrentRoad'     => $currentRoad,
+                        'NextRoad'        => $nextRoad,
+                        'Instruction'     => $instruction, // fallback only
+                        'GeometryOffset'  => (int)   ($step['GeometryOffset'] ?? 0),
+                    ];
+                }
+
+                $linestring = $leg['Geometry']['LineString'] ?? [];
+                $start = $linestring[0] ?? null;
+                $end   = $linestring ? $linestring[count($linestring) - 1] : null;
+
+                $legs[] = [
+                    'Distance'        => $legDistM / 1000.0,
+                    'DistanceUnit'    => 'Kilometers',
+                    'DurationSeconds' => $legDurS,
+                    'Geometry'        => ['LineString' => $linestring],
+                    'StartPosition'   => $start,
+                    'EndPosition'     => $end,
+                    'Steps'           => $steps,
+                ];
+            }
+
+            // Major road labels (v2: each item has RoadName.Value)
+            $majorRoads = [];
+            foreach ($route['MajorRoadLabels'] ?? [] as $label) {
+                if (!is_array($label)) continue;
+                $name = $label['RoadName']['Value'] ?? null;
+                if ($name) $majorRoads[] = (string) $name;
+            }
+
+            // Tolls — v2 returns route-level Tolls (when applicable). Extract total cost.
+            $tolls = null;
+            if (!empty($route['Tolls']) && is_array($route['Tolls'])) {
+                $totalValue = 0.0;
+                $currency = null;
+                $items = [];
+                foreach ($route['Tolls'] as $tollSystem) {
+                    foreach ($tollSystem['Payment']['Items'] ?? [] as $payItem) {
+                        $price = $payItem['Price'] ?? null;
+                        if (!$price) continue;
+                        $val = (float) ($price['Value'] ?? 0);
+                        $cur = $price['Currency'] ?? null;
+                        $totalValue += $val;
+                        if (!$currency && $cur) $currency = $cur;
+                        $items[] = ['value' => $val, 'currency' => $cur];
+                    }
+                }
+                if ($totalValue > 0) {
+                    $tolls = [
+                        'Total'    => $totalValue,
+                        'Currency' => $currency,
+                        'Items'    => $items,
+                    ];
+                }
+            }
+
+            return [
+                'Legs'    => $legs,
+                'Summary' => [
+                    'Distance'        => $totalDistKm,
+                    'DistanceUnit'    => 'Kilometers',
+                    'DurationSeconds' => $totalDurSecs,
+                ],
+                'MajorRoadLabels' => $majorRoads,
+                'Tolls' => $tolls,
+            ];
+        };
+
+        $primary = $convert($routes[0]);
+        if (count($routes) > 1) {
+            $primary['Alternatives'] = array_map($convert, array_slice($routes, 1));
+        }
+        return $primary;
     }
 
     public function calculateRouteV2(Request $request)

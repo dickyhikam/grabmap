@@ -60,10 +60,199 @@
         return `<b>${ms}ms</b> · ${ok ? `<b>${count}</b> result${count !== 1 ? 's' : ''}` : 'error'}`;
     }
 
+    /**
+     * Resolve the AWS direct URL from the panel's "try-it-url" header.
+     * Picks the first URL (which is the AWS endpoint), falls back to proxy URL.
+     */
+    function getAwsUrl(panelId) {
+        try {
+            const urls = document.querySelectorAll('#' + panelId + ' .try-it-url > div > span:nth-child(2)');
+            const first = urls[0]?.textContent?.trim();
+            // Replace {region} placeholder with actual env value if still there
+            return first && first.startsWith('http') ? first : null;
+        } catch (_) { return null; }
+    }
+
+    /** Generate curl command from method + URL + body */
+    function buildCurl(method, url, body) {
+        let cmd = `curl -X ${method} "${url}" \\\n  -H "Content-Type: application/json"`;
+        if (body && method !== 'GET') {
+            const bodyStr = JSON.stringify(body, null, 2).split('\n').map((l, i) => i === 0 ? l : '  ' + l).join('\n');
+            cmd += ` \\\n  -d '${bodyStr}'`;
+        }
+        return cmd;
+    }
+
+    /** Generate JS fetch() code */
+    function buildJs(method, url, body) {
+        const bodyPart = body && method !== 'GET' ? `,\n  body: JSON.stringify(${JSON.stringify(body, null, 2)})` : '';
+        return `const res = await fetch("${url}", {\n  method: "${method}",\n  headers: { "Content-Type": "application/json" }${bodyPart}\n});\nconst data = await res.json();\nconsole.log(data);`;
+    }
+
+    /** Generate PHP cURL code */
+    function buildPhp(method, url, body) {
+        const bodyPart = body && method !== 'GET' ? `\n$body = json_encode(${JSON.stringify(body, null, 2).replace(/^/gm, '    ')});\n` : '';
+        const setOpt = body && method !== 'GET' ? `\ncurl_setopt($ch, CURLOPT_POSTFIELDS, $body);` : '';
+        return `<?php${bodyPart}
+$ch = curl_init("${url}");
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "${method}");
+curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json"]);${setOpt}
+$response = curl_exec($ch);
+curl_close($ch);
+$data = json_decode($response, true);
+print_r($data);`;
+    }
+
+    /** Inject "Copy as curl" + Code snippet tabs button row into the Try-It panel */
+    function injectExtraActions(prefix, panelId, proxy, httpMethod) {
+        const sendRow = document.querySelector('#' + panelId + ' .send-row');
+        if (!sendRow) return;
+
+        // Avoid double-inject
+        if (sendRow.querySelector('.tryit-copy-curl')) return;
+
+        // Container for extra actions
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'display:flex;gap:6px;margin-left:auto;align-items:center;';
+
+        // Copy curl button
+        const curlBtn = document.createElement('button');
+        curlBtn.className = 'btn-copy tryit-copy-curl';
+        curlBtn.type = 'button';
+        curlBtn.innerHTML = '🔗 curl';
+        curlBtn.title = 'Copy as curl';
+        curlBtn.onclick = () => {
+            const url = getAwsUrl(panelId) || proxy;
+            const body = tryParse(prefix);
+            const curl = buildCurl(httpMethod, url, body);
+            navigator.clipboard.writeText(curl).then(() => {
+                const o = curlBtn.innerHTML;
+                curlBtn.innerHTML = '✓ Copied';
+                setTimeout(() => curlBtn.innerHTML = o, 1500);
+            });
+        };
+
+        // View code button (opens modal with JS/PHP/curl tabs)
+        const codeBtn = document.createElement('button');
+        codeBtn.className = 'btn-copy tryit-view-code';
+        codeBtn.type = 'button';
+        codeBtn.innerHTML = '📋 code';
+        codeBtn.title = 'View code (JS / PHP / curl)';
+        codeBtn.onclick = () => {
+            const url = getAwsUrl(panelId) || proxy;
+            const body = tryParse(prefix);
+            showCodeModal(httpMethod, url, body);
+        };
+
+        wrap.appendChild(curlBtn);
+        wrap.appendChild(codeBtn);
+        sendRow.appendChild(wrap);
+    }
+
+    /** Code snippet modal (lazy-create on first open) */
+    function ensureCodeModal() {
+        if (document.getElementById('awsapi-code-modal')) return;
+        const modal = document.createElement('div');
+        modal.id = 'awsapi-code-modal';
+        modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;padding:20px;';
+        modal.innerHTML = `
+            <div style="background:#1e1e2e;border-radius:14px;max-width:900px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;color:#cdd6f4;">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <strong style="font-size:0.95rem;">📋 Code snippet</strong>
+                    <button id="awsapi-code-close" style="background:none;border:none;color:#cdd6f4;cursor:pointer;font-size:1.2rem;padding:0 6px;">×</button>
+                </div>
+                <div style="display:flex;gap:4px;padding:10px 20px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <button class="awsapi-code-tab active" data-lang="curl">🐚 curl</button>
+                    <button class="awsapi-code-tab" data-lang="js">📜 JavaScript</button>
+                    <button class="awsapi-code-tab" data-lang="php">🐘 PHP</button>
+                    <button id="awsapi-code-copy" style="margin-left:auto;background:#10b981;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:0.78rem;cursor:pointer;font-weight:600;">Copy</button>
+                </div>
+                <pre style="margin:0;padding:18px 20px;overflow:auto;flex:1;background:#181825;"><code id="awsapi-code-content" class="language-bash" style="font-size:0.78rem;font-family:'SF Mono',Consolas,monospace;"></code></pre>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Close handlers
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+        document.getElementById('awsapi-code-close').onclick = () => modal.style.display = 'none';
+
+        // Tab handlers
+        modal.querySelectorAll('.awsapi-code-tab').forEach(tab => {
+            tab.style.cssText = 'background:transparent;border:none;color:#7f849c;padding:8px 14px;font-size:0.82rem;cursor:pointer;border-bottom:2px solid transparent;font-weight:600;';
+            tab.onclick = () => {
+                modal.querySelectorAll('.awsapi-code-tab').forEach(t => {
+                    t.style.color = '#7f849c';
+                    t.style.borderBottomColor = 'transparent';
+                    t.classList.remove('active');
+                });
+                tab.style.color = '#10b981';
+                tab.style.borderBottomColor = '#10b981';
+                tab.classList.add('active');
+                renderCodeForLang(tab.dataset.lang);
+            };
+        });
+        // Initial active style
+        const firstTab = modal.querySelector('.awsapi-code-tab.active');
+        if (firstTab) { firstTab.style.color = '#10b981'; firstTab.style.borderBottomColor = '#10b981'; }
+
+        // Copy handler
+        document.getElementById('awsapi-code-copy').onclick = (ev) => {
+            const txt = document.getElementById('awsapi-code-content').textContent;
+            navigator.clipboard.writeText(txt).then(() => {
+                ev.target.textContent = '✓ Copied';
+                setTimeout(() => ev.target.textContent = 'Copy', 1500);
+            });
+        };
+    }
+
+    let _codeState = { method: 'POST', url: '', body: null };
+    function renderCodeForLang(lang) {
+        const code = document.getElementById('awsapi-code-content');
+        if (!code) return;
+        const { method, url, body } = _codeState;
+        let text, langClass;
+        if (lang === 'curl') { text = buildCurl(method, url, body); langClass = 'language-bash'; }
+        else if (lang === 'js') { text = buildJs(method, url, body); langClass = 'language-javascript'; }
+        else { text = buildPhp(method, url, body); langClass = 'language-php'; }
+        code.className = langClass;
+        code.textContent = text;
+        if (window.Prism) Prism.highlightElement(code);
+    }
+    function showCodeModal(method, url, body) {
+        ensureCodeModal();
+        _codeState = { method, url, body };
+        document.getElementById('awsapi-code-modal').style.display = 'flex';
+        // Reset to curl tab
+        document.querySelectorAll('.awsapi-code-tab').forEach(t => {
+            t.classList.remove('active');
+            t.style.color = '#7f849c';
+            t.style.borderBottomColor = 'transparent';
+        });
+        const curlTab = document.querySelector('.awsapi-code-tab[data-lang="curl"]');
+        if (curlTab) { curlTab.classList.add('active'); curlTab.style.color = '#10b981'; curlTab.style.borderBottomColor = '#10b981'; }
+        renderCodeForLang('curl');
+    }
+
+    /** Render a JSON value with syntax highlighting via Prism */
+    function renderPrettyJson(container, data) {
+        if (!container) return;
+        const text = JSON.stringify(data, null, 2);
+        container.innerHTML = `<pre style="margin:0;background:transparent;"><code class="language-json" style="font-size:0.78rem;">${escapeHtml(text)}</code></pre>`;
+        if (window.Prism) Prism.highlightElement(container.querySelector('code'));
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
     function init(config) {
         const { prefix, panelId, proxy, presets, defaultPreset, metaFormatter, method } = config;
         const httpMethod = method || 'POST';
         const fmt = metaFormatter || defaultMetaFormatter;
+
+        // 0. Inject Copy-as-curl + View-code buttons into send-row
+        injectExtraActions(prefix, panelId, proxy, httpMethod);
 
         // 1. JSON editor live validation
         const editor = $(prefix + '-req-preview');
@@ -138,7 +327,7 @@
                     metaEl.innerHTML = fmt(data, ms, res.ok);
 
                     if (!res.ok) respEl.classList.add('error');
-                    respEl.textContent = JSON.stringify(data, null, 2);
+                    renderPrettyJson(respEl, data);
                 } catch (err) {
                     const ms = Math.round(performance.now() - t0);
                     respEl.classList.add('error');

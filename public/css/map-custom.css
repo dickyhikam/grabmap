@@ -856,6 +856,377 @@
             margin-right: 3px;
         }
 
+        /* Search dropdown wrapper (replaces standalone suggestions-list) */
+        .search-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            z-index: 1100;
+            padding: 8px;
+        }
+
+        /* Override standalone .suggestions-list styling when nested inside .search-dropdown.
+           The original .suggestions-list was a standalone dropdown with absolute positioning;
+           inside the wrapper it should flow as a normal block child. */
+        .search-dropdown .suggestions-list {
+            position: static;
+            top: auto;
+            left: auto;
+            right: auto;
+            width: auto;
+            background: transparent;
+            backdrop-filter: none;
+            border-radius: 0;
+            box-shadow: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            max-height: none;
+            overflow: visible;
+            list-style: none;
+        }
+        .search-dropdown .suggestions-list.show {
+            animation: none;
+        }
+
+        /* Category quick-filter chips */
+        .category-chips-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 6px 4px;
+            margin-bottom: 4px;
+        }
+        .category-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .category-chip:hover {
+            background: #f0fdf4;
+            border-color: #00B14F;
+            color: #00B14F;
+        }
+        .category-chip i { font-size: 0.85rem; }
+
+        /* Recent searches */
+        .recent-searches {
+            border-top: 1px solid #f3f4f6;
+            padding-top: 6px;
+        }
+        .recent-searches-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 6px 10px 4px;
+        }
+        .recent-clear-btn {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            border-radius: 4px;
+        }
+        .recent-clear-btn:hover { color: #dc2626; background: #fef2f2; }
+        .recent-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            color: #374151;
+            transition: background 0.12s;
+        }
+        .recent-item:hover { background: #f9fafb; }
+        .recent-item i { color: #9ca3af; font-size: 0.85rem; }
+        .recent-item .recent-remove {
+            margin-left: auto;
+            color: #d1d5db;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .recent-item .recent-remove:hover { color: #dc2626; background: #fef2f2; }
+
+        /* Search loading & empty states inside dropdown */
+        .search-loading {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 14px;
+            font-size: 0.82rem;
+            color: #6b7280;
+        }
+        .search-empty {
+            display: none;
+            text-align: center;
+            padding: 18px 14px;
+            color: #6b7280;
+            font-size: 0.82rem;
+        }
+        .search-empty i { display: block; margin-bottom: 6px; }
+        .search-empty small { display: block; margin-top: 2px; color: #9ca3af; font-size: 0.72rem; }
+
+        /* Distance / category icon in suggestion items */
+        .suggestion-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 2px;
+        }
+        .suggestion-meta .suggestion-distance {
+            font-size: 0.7rem;
+            color: #00B14F;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+        .suggestion-cat-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+        .suggestion-match-highlight {
+            font-weight: 700;
+            color: #00B14F;
+        }
+
+        /* "Search this area" floating button */
+        .search-this-area-btn {
+            position: fixed;
+            top: 84px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 999;
+            background: #fff;
+            border: 1px solid rgba(0,0,0,0.08);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            border-radius: 24px;
+            padding: 8px 18px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #1f2937;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            animation: searchAreaSlideIn 0.3s var(--transition-bounce);
+        }
+        .search-this-area-btn:hover {
+            background: #00B14F;
+            color: #fff;
+            border-color: #00B14F;
+        }
+        @keyframes searchAreaSlideIn {
+            from { opacity: 0; transform: translate(-50%, -10px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+        @media (max-width: 640px) {
+            .search-this-area-btn { font-size: 0.74rem; padding: 6px 14px; top: 80px; }
+        }
+
+        /* Map utility panel — floating bottom-right (Locate Me / Pick Coords / Map Style) */
+        .map-utility-panel {
+            position: absolute;
+            bottom: 24px;
+            right: 16px;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .map-util-btn-wrap { position: relative; }
+        .map-util-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: #fff;
+            border: 1px solid rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            color: #1f2937;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .map-util-btn:hover { background: #f0fdf4; color: #16a34a; border-color: #16a34a; }
+        .map-util-btn.active { background: #16a34a; color: #fff; border-color: #16a34a; }
+        .map-util-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .map-style-panel {
+            position: absolute;
+            bottom: 0;
+            right: 46px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 200px;
+        }
+        .map-style-row { display: flex; gap: 4px; }
+        .map-style-btn {
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            color: #374151;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 5px 8px;
+            border-radius: 7px;
+            cursor: pointer;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: all 0.15s;
+        }
+        .map-style-btn:hover:not(:disabled) { border-color: #16a34a; color: #16a34a; }
+        .map-style-btn.active {
+            background: #16a34a;
+            color: #fff;
+            border-color: #16a34a;
+        }
+        .map-style-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        .map-style-divider { height: 1px; background: #e5e7eb; }
+        body.pick-coords-mode #map canvas { cursor: crosshair !important; }
+
+        /* Turn-by-turn direction step */
+        .direction-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+            margin-bottom: 4px;
+            font-size: 0.78rem;
+        }
+        .direction-step .direction-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 7px;
+            background: #eff6ff;
+            color: #2563eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.85rem;
+        }
+        .direction-step .direction-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .direction-step .direction-text {
+            font-weight: 500;
+            color: #1f2937;
+            line-height: 1.3;
+        }
+        .direction-step .direction-meta {
+            font-size: 0.68rem;
+            color: #6b7280;
+            margin-top: 2px;
+            font-variant-numeric: tabular-nums;
+        }
+        .direction-step .direction-num {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #f3f4f6;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        /* Multi-route alternatives pills */
+        .route-opt-pill {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 10px 14px;
+            cursor: pointer;
+            background: #fff;
+            transition: all 0.15s;
+            position: relative;
+            margin: 0;
+        }
+        .route-opt-pill input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .route-opt-pill .opt-content { flex: 1; min-width: 0; }
+        .route-opt-pill .opt-head {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.82rem;
+            color: #1f2937;
+            margin-bottom: 2px;
+        }
+        .route-opt-pill .opt-stats {
+            font-size: 0.72rem;
+            color: #6b7280;
+            font-variant-numeric: tabular-nums;
+        }
+        .route-opt-pill .opt-check {
+            color: #16a34a;
+            font-size: 1.15rem;
+            opacity: 0;
+            transition: opacity 0.15s;
+            flex-shrink: 0;
+        }
+        .route-opt-pill:hover { border-color: #00B14F; }
+        .route-opt-pill:has(input:checked) {
+            border-color: #00B14F;
+            background: #f0fdf4;
+        }
+        .route-opt-pill:has(input:checked) .opt-check { opacity: 1; }
+        .route-opt-pill:has(input:focus-visible) {
+            outline: 2px solid #00B14F;
+            outline-offset: 2px;
+        }
+
         /* C. Result Summary Card */
         .route-result-card {
             background: linear-gradient(135deg, var(--grab-green-light) 0%, #dcfce7 100%);
@@ -1245,5 +1616,12 @@
             .more-menu-dropdown {
                 min-width: 200px;
                 right: 0;
+            }
+
+            /* Push MapLibre top-right zoom/compass controls below the floating header
+               so they don't get covered (and become un-tappable) on small screens.
+               Header is top:20 + ~56px height + 8px gap ≈ 84px. */
+            .maplibregl-ctrl-top-right {
+                margin-top: 84px;
             }
         }

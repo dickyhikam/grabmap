@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Login — Grab Maps Admin</title>
     <link rel="shortcut icon" href="{{ asset('logo2.png') }}" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -413,9 +413,9 @@
         /* Modern Toast Alert */
         .toast-alert {
             position: fixed;
-            top: 24px;
+            top: calc(24px + env(safe-area-inset-top, 0px));
             left: 50%;
-            transform: translateX(-50%) translateY(-120%);
+            transform: translateX(-50%) translateY(-200%);
             background: #fff;
             border-radius: 14px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
@@ -424,7 +424,7 @@
             align-items: center;
             gap: 12px;
             min-width: 320px;
-            max-width: 90vw;
+            max-width: calc(100vw - 24px);
             z-index: 9999;
             transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             border-left: 4px solid var(--error);
@@ -432,6 +432,15 @@
 
         .toast-alert.show {
             transform: translateX(-50%) translateY(0);
+        }
+
+        @media (max-width: 640px) {
+            .toast-alert {
+                top: calc(12px + env(safe-area-inset-top, 0px));
+                min-width: 0;
+                width: calc(100vw - 24px);
+                padding: 12px 14px;
+            }
         }
 
         .toast-alert .toast-icon {
@@ -787,11 +796,7 @@
         // === Lockout countdown timer ===
         const lockoutBanner = document.getElementById('lockoutBanner');
         if (lockoutBanner) {
-            let secs = {
-                {
-                    session('lockoutSeconds', 0)
-                }
-            };
+            let secs = {{ session('lockoutSeconds', 0) }};
             const timerEl = document.getElementById('lockoutTimer');
             const submitBtn = document.getElementById('submitBtn');
             const formInputs = document.querySelectorAll('#loginForm input:not([type="hidden"])');
