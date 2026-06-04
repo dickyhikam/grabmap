@@ -55,6 +55,7 @@
             padding: 0 24px;
             display: flex;
             align-items: center;
+            gap: 14px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             z-index: 10;
             position: relative;
@@ -75,22 +76,27 @@
 
         .topbar .search-box {
             margin-left: auto;
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.35);
-            color: #fff;
-            padding: 6px 12px;
-            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1.5px solid rgba(255, 255, 255, 0.9);
+            color: #1f2937;
+            padding: 7px 14px;
+            border-radius: 8px;
             font-size: 0.82rem;
-            width: 240px;
+            width: 260px;
+            font-weight: 500;
+            transition: all 0.15s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         }
 
         .topbar .search-box::placeholder {
-            color: rgba(255, 255, 255, 0.7);
+            color: #9ca3af;
         }
 
         .topbar .search-box:focus {
             outline: none;
-            background: rgba(255, 255, 255, 0.3);
+            background: #fff;
+            border-color: #fde68a;
+            box-shadow: 0 0 0 3px rgba(252, 211, 77, 0.35), 0 2px 6px rgba(0,0,0,0.12);
         }
 
         /* Language toggle */
@@ -99,7 +105,6 @@
             background: rgba(255, 255, 255, 0.18);
             border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 6px;
-            margin-left: 10px;
             overflow: hidden;
         }
 
@@ -123,6 +128,213 @@
         .lang-toggle button.active {
             background: #fff;
             color: #00B14F;
+        }
+
+        /* === API Key Inspector — topbar button === */
+        .key-inspector-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: #ffffff;
+            color: #047857;
+            border: 1.5px solid #ffffff;
+            border-radius: 10px;
+            padding: 7px 14px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.18s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            white-space: nowrap;
+        }
+        .key-inspector-btn i {
+            font-size: 0.95rem;
+            color: #d97706;
+        }
+        .key-inspector-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+            background: #fffbeb;
+        }
+        .key-inspector-btn.has-key {
+            background: #fef3c7;
+            color: #92400e;
+            border-color: #fde68a;
+        }
+        .key-inspector-btn.has-key i { color: #d97706; }
+        .key-inspector-btn .key-pill {
+            background: #ef4444;
+            color: #fff;
+            font-size: 0.66rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 700;
+            margin-left: 2px;
+            line-height: 1.2;
+        }
+        .key-inspector-btn .key-pill.ok { background: #16a34a; }
+        .key-inspector-btn .key-pill.warn { background: #f59e0b; }
+
+        /* === API Key Inspector — modal === */
+        .key-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 9998;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 30px 20px;
+            overflow-y: auto;
+        }
+        .key-modal-card {
+            background: #fff;
+            border-radius: 14px;
+            max-width: 680px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            overflow: hidden;
+        }
+        .key-modal-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, #00B14F, #008b3d);
+            color: #fff;
+        }
+        .key-modal-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: #fff;
+            font-size: 1.4rem;
+            line-height: 1;
+            cursor: pointer;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+        }
+        .key-modal-close:hover { background: rgba(255,255,255,0.3); }
+        .key-modal-body { padding: 18px 20px; max-height: 70vh; overflow-y: auto; }
+        .key-modal-footer {
+            padding: 12px 20px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            background: #f9fafb;
+        }
+        .key-btn-primary,
+        .key-btn-secondary {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .key-btn-primary { background: #00B14F; color: #fff; }
+        .key-btn-primary:hover { background: #008b3d; }
+        .key-btn-secondary { background: #fff; color: #6b7280; border-color: #d1d5db; }
+        .key-btn-secondary:hover { background: #f3f4f6; color: #dc2626; border-color: #fca5a5; }
+
+        .key-form-row { margin-bottom: 14px; }
+        .key-form-row label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+        .key-form-row input[type="text"],
+        .key-form-row input[type="datetime-local"],
+        .key-form-row select {
+            width: 100%;
+            padding: 7px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 7px;
+            font-size: 0.85rem;
+            background: #fff;
+        }
+        .key-form-row input:focus,
+        .key-form-row select:focus {
+            outline: none;
+            border-color: #00B14F;
+            box-shadow: 0 0 0 3px rgba(0,177,79,0.1);
+        }
+        .key-checkbox-row {
+            display: flex !important;
+            align-items: flex-start;
+            gap: 8px;
+            font-weight: 500 !important;
+            color: #4b5563 !important;
+            font-size: 0.74rem !important;
+        }
+        .key-actions-group {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+        }
+        .key-actions-group strong { font-size: 0.8rem; color: #1f2937; display: block; margin-bottom: 6px; }
+        .key-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 4px;
+        }
+        .key-actions-grid label {
+            font-size: 0.74rem;
+            font-weight: 500;
+            color: #4b5563;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            margin: 0;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        .key-actions-grid label:hover { background: #fff; }
+        .key-actions-grid input { margin: 0; }
+
+        /* Visual badge when response came from direct AWS call */
+        .resp-body.direct-mode {
+            border-left: 3px solid #f59e0b;
+        }
+        .resp-body.direct-mode::before {
+            content: '🔑 Direct AWS call (your key)';
+            display: block;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 6px 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin: -12px -12px 8px;
+            border-radius: 6px 6px 0 0;
+        }
+
+        /* === Sidebar op-link permission indicators === */
+        .op-link.key-allowed::after {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #10b981;
+            margin-left: 6px;
+            vertical-align: middle;
+            box-shadow: 0 0 0 2px rgba(16,185,129,0.2);
+        }
+        .op-link.key-denied {
+            opacity: 0.55;
+        }
+        .op-link.key-denied::after {
+            content: '⛔';
+            display: inline-block;
+            font-size: 0.65rem;
+            margin-left: 6px;
+            vertical-align: middle;
         }
 
         /* Layout */
@@ -1314,11 +1526,114 @@
     <header class="topbar">
         <span class="brand">📚 <span data-i18n="topbar_title">AWS Location Service Reference</span> <small data-i18n="topbar_subtitle">v0 (legacy) &amp; v2 (standalone)</small></span>
         <input type="text" class="search-box" placeholder="🔍 Search operation..." id="searchBox" data-i18n-placeholder="search_placeholder">
+
+        <!-- My API Key button (opens inspector modal) -->
+        <button type="button" id="btnKeyInspector" class="key-inspector-btn" data-i18n-title="key_inspector_title" title="Configure your API Key">
+            <i class="bi bi-key-fill"></i>
+            <span id="keyInspectorLabel" data-i18n="key_inspector_btn">My Key</span>
+            <span id="keyInspectorPill" class="key-pill" style="display:none;"></span>
+        </button>
+
         <div class="lang-toggle">
             <button data-lang="id">ID</button>
             <button data-lang="en">EN</button>
         </div>
     </header>
+
+    <!-- ====================== API KEY INSPECTOR MODAL ====================== -->
+    <div id="keyInspectorModal" class="key-modal" style="display:none;">
+        <div class="key-modal-card">
+            <div class="key-modal-header">
+                <strong><i class="bi bi-key-fill me-2"></i><span data-i18n="key_inspector_title">Configure your API Key</span></strong>
+                <button type="button" class="key-modal-close" id="keyModalClose">×</button>
+            </div>
+            <div class="key-modal-body">
+                <p style="font-size:0.78rem;color:#6b7280;margin-bottom:14px;" data-i18n="key_inspector_intro">
+                    Paste your AWS Location Service API Key info to see which operations you can access. All data stays in your browser (localStorage).
+                </p>
+
+                <div class="key-form-row">
+                    <label data-i18n="key_field_name">Name</label>
+                    <input type="text" id="keyForm_name" placeholder="e.g. KFC, Transjakarta" maxlength="50">
+                </div>
+
+                <div class="key-form-row">
+                    <label data-i18n="key_field_region">Region</label>
+                    <input type="text" id="keyForm_region" value="ap-southeast-1" readonly tabindex="-1" style="background:#f3f4f6;color:#6b7280;cursor:not-allowed;">
+                    <small style="color:#9ca3af;font-size:0.7rem;display:block;margin-top:4px;" data-i18n="key_region_locked">Region locked — this project targets ap-southeast-1 (GrabMaps).</small>
+                </div>
+
+                <div class="key-form-row">
+                    <label data-i18n="key_field_key">API Key</label>
+                    <input type="text" id="keyForm_apiKey" placeholder="v1.public.eyJqdGki..." style="font-family:ui-monospace,monospace;font-size:0.78rem;">
+                </div>
+
+                <div class="key-form-row">
+                    <label data-i18n="key_field_expiration">Expiration (UTC)</label>
+                    <input type="datetime-local" id="keyForm_expiration">
+                </div>
+
+                <div class="key-form-row">
+                    <label><i class="bi bi-shield-fill-check me-1" style="color:#10b981;"></i> <span data-i18n="key_field_actions">Allowed Actions per Service</span></label>
+                    <small style="color:#9ca3af;font-size:0.7rem;display:block;margin-bottom:8px;" data-i18n="key_field_actions_hint">Tick the actions your API key has permission for. Operations marked with ❌ in the sidebar mean your key is denied.</small>
+
+                    <div class="key-actions-group">
+                        <strong>Maps <code style="font-weight:400;font-size:0.7rem;color:#6b7280;">geo-maps:*</code></strong>
+                        <div class="key-actions-grid" data-service="Maps">
+                            <label><input type="checkbox" data-action="GetTile"> GetTile</label>
+                            <label><input type="checkbox" data-action="GetStyleDescriptor"> GetStyleDescriptor</label>
+                            <label><input type="checkbox" data-action="GetGlyphs"> GetGlyphs</label>
+                            <label><input type="checkbox" data-action="GetSprites"> GetSprites</label>
+                            <label><input type="checkbox" data-action="GetStaticMap"> GetStaticMap</label>
+                        </div>
+                    </div>
+
+                    <div class="key-actions-group">
+                        <strong>Places <code style="font-weight:400;font-size:0.7rem;color:#6b7280;">geo-places:*</code></strong>
+                        <div class="key-actions-grid" data-service="Places">
+                            <label><input type="checkbox" data-action="SearchText"> SearchText</label>
+                            <label><input type="checkbox" data-action="Suggest"> Suggest</label>
+                            <label><input type="checkbox" data-action="ReverseGeocode"> ReverseGeocode</label>
+                            <label><input type="checkbox" data-action="GetPlace"> GetPlace</label>
+                            <label><input type="checkbox" data-action="Autocomplete"> Autocomplete</label>
+                            <label><input type="checkbox" data-action="Geocode"> Geocode</label>
+                            <label><input type="checkbox" data-action="SearchNearby"> SearchNearby</label>
+                        </div>
+                    </div>
+
+                    <div class="key-actions-group">
+                        <strong>Routes <code style="font-weight:400;font-size:0.7rem;color:#6b7280;">geo-routes:*</code></strong>
+                        <div class="key-actions-grid" data-service="Routes">
+                            <label><input type="checkbox" data-action="CalculateRoutes"> CalculateRoutes</label>
+                            <label><input type="checkbox" data-action="CalculateRouteMatrix"> CalculateRouteMatrix</label>
+                            <label><input type="checkbox" data-action="CalculateIsolines"> CalculateIsolines</label>
+                            <label><input type="checkbox" data-action="OptimizeWaypoints"> OptimizeWaypoints</label>
+                            <label><input type="checkbox" data-action="SnapToRoads"> SnapToRoads</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="key-form-row">
+                    <label class="key-checkbox-row">
+                        <input type="checkbox" id="keyForm_useInTryIt">
+                        <span data-i18n="key_use_in_tryit">Use my key in code snippets (curl / JS / PHP)</span>
+                    </label>
+                </div>
+
+                <div class="key-form-row" style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;">
+                    <label class="key-checkbox-row" style="font-weight:600!important;color:#92400e!important;font-size:0.78rem!important;">
+                        <input type="checkbox" id="keyForm_useForSend">
+                        <span><i class="bi bi-shield-fill-check me-1"></i> <span data-i18n="key_use_for_send"><b>Use my key for Send Request</b> — bypass proxy and call AWS directly to test your key's real permissions</span></span>
+                    </label>
+                    <small style="display:block;margin-top:6px;color:#a16207;font-size:0.7rem;line-height:1.4;" data-i18n="key_use_for_send_warn">⚠️ Your key will appear in browser Network tab. Useful for testing real allow/deny. Server-side usage logging skipped.</small>
+                </div>
+            </div>
+            <div class="key-modal-footer">
+                <button type="button" class="key-btn-secondary" id="keyClearBtn" data-i18n="key_clear">Clear & Reset</button>
+                <button type="button" class="key-btn-primary" id="keySaveBtn" data-i18n="key_save">Save</button>
+            </div>
+        </div>
+    </div>
 
     <div class="layout">
         <!-- ========================== SIDEBAR ========================== -->
@@ -3993,6 +4308,176 @@
         }
         handleHashNav(); // initial
         window.addEventListener('hashchange', handleHashNav);
+
+        /* ============================================================
+           API KEY INSPECTOR
+           ============================================================ */
+        const KEY_STORAGE = 'awsapi_user_key';
+
+        /** Convert op-id (e.g. "maps-get-tile") to AWS action ("Maps.GetTile") */
+        function opToAction(opId) {
+            const parts = opId.split('-');
+            const service = parts[0]; // maps / places / routes / meta
+            if (service === 'meta') return null; // General docs aren't real ops
+            const Service = service.charAt(0).toUpperCase() + service.slice(1);
+            const action = parts.slice(1).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('');
+            return Service + '.' + action;
+        }
+
+        function loadUserKey() {
+            try { return JSON.parse(localStorage.getItem(KEY_STORAGE) || 'null'); }
+            catch (_) { return null; }
+        }
+        function saveUserKey(data) {
+            if (!data) localStorage.removeItem(KEY_STORAGE);
+            else localStorage.setItem(KEY_STORAGE, JSON.stringify(data));
+        }
+
+        function daysUntil(isoStr) {
+            if (!isoStr) return null;
+            const target = new Date(isoStr).getTime();
+            if (isNaN(target)) return null;
+            return Math.floor((target - Date.now()) / (1000 * 60 * 60 * 24));
+        }
+
+        /** Apply current key state to sidebar dots + topbar pill + form values */
+        function applyKeyToUI() {
+            const key = loadUserKey();
+            const btn = document.getElementById('btnKeyInspector');
+            const label = document.getElementById('keyInspectorLabel');
+            const pill = document.getElementById('keyInspectorPill');
+
+            // Clear all existing key-* classes
+            document.querySelectorAll('.op-link').forEach(a => {
+                a.classList.remove('key-allowed', 'key-denied');
+            });
+
+            if (!key) {
+                btn.classList.remove('has-key');
+                label.textContent = window.AWSAPI_I18N && window.AWSAPI_I18N.t ? window.AWSAPI_I18N.t('key_inspector_btn') : 'My Key';
+                pill.style.display = 'none';
+                return;
+            }
+
+            // Has key — update topbar
+            btn.classList.add('has-key');
+            label.textContent = key.name || 'API Key';
+            const days = daysUntil(key.expirationUtc);
+            if (days !== null) {
+                pill.style.display = 'inline-block';
+                if (days < 0) {
+                    pill.textContent = '⚠ EXPIRED';
+                    pill.className = 'key-pill';
+                } else if (days <= 30) {
+                    pill.textContent = days + 'd';
+                    pill.className = 'key-pill warn';
+                } else {
+                    pill.textContent = days + 'd';
+                    pill.className = 'key-pill ok';
+                }
+            } else {
+                pill.style.display = 'none';
+            }
+
+            // Annotate sidebar items
+            const allowed = key.allowed || {};
+            document.querySelectorAll('.op-link[data-op]').forEach(a => {
+                const action = opToAction(a.dataset.op);
+                if (!action) return; // meta items
+                const [svc, act] = action.split('.');
+                const allowList = allowed[svc] || [];
+                if (allowList.includes(act)) a.classList.add('key-allowed');
+                else a.classList.add('key-denied');
+            });
+        }
+
+        /** Open modal + populate form from saved key */
+        function openKeyModal() {
+            const modal = document.getElementById('keyInspectorModal');
+            const key = loadUserKey() || {};
+
+            document.getElementById('keyForm_name').value = key.name || '';
+            // Region locked to ap-southeast-1
+            document.getElementById('keyForm_region').value = 'ap-southeast-1';
+            document.getElementById('keyForm_apiKey').value = key.apiKey || '';
+            // datetime-local expects YYYY-MM-DDTHH:MM (no seconds/Z)
+            const exp = key.expirationUtc ? new Date(key.expirationUtc).toISOString().slice(0, 16) : '';
+            document.getElementById('keyForm_expiration').value = exp;
+            document.getElementById('keyForm_useInTryIt').checked = !!key.useInTryIt;
+            document.getElementById('keyForm_useForSend').checked = !!key.useForSend;
+
+            // Populate checkboxes
+            const allowed = key.allowed || {};
+            document.querySelectorAll('.key-actions-grid').forEach(grid => {
+                const svc = grid.dataset.service;
+                const list = allowed[svc] || [];
+                grid.querySelectorAll('input[type="checkbox"][data-action]').forEach(cb => {
+                    cb.checked = list.includes(cb.dataset.action);
+                });
+            });
+
+            modal.style.display = 'flex';
+        }
+
+        function readKeyForm() {
+            const region = 'ap-southeast-1'; // locked
+            const exp = document.getElementById('keyForm_expiration').value; // YYYY-MM-DDTHH:MM
+            const allowed = {};
+            document.querySelectorAll('.key-actions-grid').forEach(grid => {
+                const svc = grid.dataset.service;
+                const list = [];
+                grid.querySelectorAll('input[type="checkbox"][data-action]:checked').forEach(cb => {
+                    list.push(cb.dataset.action);
+                });
+                if (list.length) allowed[svc] = list;
+            });
+            return {
+                name: document.getElementById('keyForm_name').value.trim(),
+                region,
+                apiKey: document.getElementById('keyForm_apiKey').value.trim(),
+                expirationUtc: exp ? new Date(exp).toISOString() : null,
+                useInTryIt: document.getElementById('keyForm_useInTryIt').checked,
+                useForSend: document.getElementById('keyForm_useForSend').checked,
+                allowed
+            };
+        }
+
+        // Modal trigger
+        document.getElementById('btnKeyInspector').addEventListener('click', openKeyModal);
+        document.getElementById('keyModalClose').addEventListener('click', () => {
+            document.getElementById('keyInspectorModal').style.display = 'none';
+        });
+        document.getElementById('keyInspectorModal').addEventListener('click', (e) => {
+            if (e.target.id === 'keyInspectorModal') e.currentTarget.style.display = 'none';
+        });
+
+        // Save
+        document.getElementById('keySaveBtn').addEventListener('click', () => {
+            const data = readKeyForm();
+            saveUserKey(data);
+            applyKeyToUI();
+            document.getElementById('keyInspectorModal').style.display = 'none';
+            // Expose to AWSAPI_TryIt for code snippet override + Send Request bypass
+            window.AWSAPI_UserKey = data;
+            if (window.AWSAPI_TryIt_refreshBadges) window.AWSAPI_TryIt_refreshBadges();
+        });
+
+        // Clear
+        document.getElementById('keyClearBtn').addEventListener('click', () => {
+            if (!confirm('Clear saved API Key from this browser?')) return;
+            saveUserKey(null);
+            window.AWSAPI_UserKey = null;
+            applyKeyToUI();
+            if (window.AWSAPI_TryIt_refreshBadges) window.AWSAPI_TryIt_refreshBadges();
+            document.getElementById('keyInspectorModal').style.display = 'none';
+        });
+
+        // Initial load
+        const initialKey = loadUserKey();
+        if (initialKey) window.AWSAPI_UserKey = initialKey;
+        applyKeyToUI();
+        // Refresh every hour (countdown updates)
+        setInterval(applyKeyToUI, 60 * 60 * 1000);
 
         /* ============================================================
            I18N — pindah ke file: public/javascript/docs/aws-api-i18n.js

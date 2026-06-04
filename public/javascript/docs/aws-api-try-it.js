@@ -61,15 +61,40 @@
     }
 
     /**
+     * Get raw AWS direct URL from the panel's "try-it-url" header (no key substitution).
+     * Used for direct Send Request (we append the user's key explicitly with proper encoding).
+     */
+    function getAwsUrlRaw(panelId) {
+        try {
+            const urls = document.querySelectorAll('#' + panelId + ' .try-it-url > div > span:nth-child(2)');
+            const first = urls[0]?.textContent?.trim();
+            return first && first.startsWith('http') ? first : null;
+        } catch (_) { return null; }
+    }
+
+    /**
      * Resolve the AWS direct URL from the panel's "try-it-url" header.
      * Picks the first URL (which is the AWS endpoint), falls back to proxy URL.
+     * If user has configured their own API Key + region (via Key Inspector),
+     * substitutes the region in the URL and appends the user's actual key.
      */
     function getAwsUrl(panelId) {
         try {
             const urls = document.querySelectorAll('#' + panelId + ' .try-it-url > div > span:nth-child(2)');
-            const first = urls[0]?.textContent?.trim();
-            // Replace {region} placeholder with actual env value if still there
-            return first && first.startsWith('http') ? first : null;
+            let first = urls[0]?.textContent?.trim();
+            if (!first || !first.startsWith('http')) return null;
+
+            // If user key configured and "use in code snippets" enabled, substitute
+            const userKey = window.AWSAPI_UserKey;
+            if (userKey && userKey.useInTryIt) {
+                if (userKey.region) {
+                    first = first.replace(/(?:ap|us|eu|sa|af|me|ca|cn)-[a-z]+-\d/g, userKey.region);
+                }
+                if (userKey.apiKey) {
+                    first = first.replace(/key=\.\.\.|key=\*\*\*|key=\{[^}]+\}/g, 'key=' + userKey.apiKey);
+                }
+            }
+            return first;
         } catch (_) { return null; }
     }
 
@@ -246,6 +271,30 @@ print_r($data);`;
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    /** Show/hide a "🔑 Using my key" badge on the Send button based on userKey state */
+    function refreshSendBadges() {
+        const userKey = window.AWSAPI_UserKey;
+        const useDirect = userKey && userKey.useForSend && userKey.apiKey;
+        document.querySelectorAll('.btn-send').forEach(btn => {
+            let badge = btn.querySelector('.tryit-direct-badge');
+            if (useDirect) {
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'tryit-direct-badge';
+                    badge.style.cssText = 'background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:8px;font-size:0.65rem;font-weight:700;margin-left:8px;border:1px solid #fde68a;';
+                    badge.innerHTML = '🔑 ' + (userKey.name || 'My Key');
+                    btn.appendChild(badge);
+                } else {
+                    badge.innerHTML = '🔑 ' + (userKey.name || 'My Key');
+                }
+            } else if (badge) {
+                badge.remove();
+            }
+        });
+    }
+    // Expose so the docs page can call it on Save
+    window.AWSAPI_TryIt_refreshBadges = refreshSendBadges;
+
     function init(config) {
         const { prefix, panelId, proxy, presets, defaultPreset, metaFormatter, method } = config;
         const httpMethod = method || 'POST';
@@ -253,6 +302,7 @@ print_r($data);`;
 
         // 0. Inject Copy-as-curl + View-code buttons into send-row
         injectExtraActions(prefix, panelId, proxy, httpMethod);
+        refreshSendBadges();
 
         // 1. JSON editor live validation
         const editor = $(prefix + '-req-preview');
@@ -307,18 +357,46 @@ print_r($data);`;
                 statusEl.textContent = '...';
                 statusEl.className = 'status-pill idle';
                 metaEl.textContent = '';
+                respEl.classList.remove('error', 'direct-mode');
                 respEl.className = 'resp-body';
                 respEl.textContent = '⏳ Sending request...';
 
                 const t0 = performance.now();
                 try {
-                    const opts = {
-                        method: httpMethod,
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF }
-                    };
-                    if (httpMethod !== 'GET') opts.body = JSON.stringify(parsed);
+                    // If user opted in "Use my key for Send Request" → bypass Laravel proxy,
+                    // call AWS endpoint directly with user's API key. Otherwise use proxy.
+                    const userKey = window.AWSAPI_UserKey;
+                    const useDirect = userKey && userKey.useForSend && userKey.apiKey;
 
-                    const res = await fetch(proxy, opts);
+                    let targetUrl, targetOpts;
+                    if (useDirect) {
+                        let awsUrl = getAwsUrlRaw(panelId);
+                        if (!awsUrl) {
+                            respEl.className = 'resp-body error';
+                            respEl.textContent = '❌ AWS direct URL not found in this panel. Falling back to proxy.';
+                        }
+                        // Replace placeholders + append key
+                        if (userKey.region) awsUrl = awsUrl.replace(/\{region\}/g, userKey.region);
+                        // Strip any placeholder key
+                        awsUrl = awsUrl.replace(/key=\.\.\.|key=\*\*\*|key=\{[^}]+\}/g, '');
+                        const sep = awsUrl.includes('?') ? '&' : '?';
+                        targetUrl = awsUrl + sep + 'key=' + encodeURIComponent(userKey.apiKey);
+                        targetOpts = {
+                            method: httpMethod,
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+                        };
+                        // Mark Network tab clearly
+                        respEl.classList.add('direct-mode');
+                    } else {
+                        targetUrl = proxy;
+                        targetOpts = {
+                            method: httpMethod,
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF }
+                        };
+                    }
+                    if (httpMethod !== 'GET') targetOpts.body = JSON.stringify(parsed);
+
+                    const res = await fetch(targetUrl, targetOpts);
                     const ms = Math.round(performance.now() - t0);
                     const data = await res.json();
 

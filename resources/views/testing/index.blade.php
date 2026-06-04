@@ -2358,13 +2358,12 @@
            MINI MAP
            ========================================= */
         function initMiniMap() {
-            const region = document.getElementById('awsRegion').value;
-            const apiKey = document.getElementById('awsApiKey').value;
-            const mapName = "{{ env('AWS_MAP_NAME') }}";
-
+            // Use Laravel proxy v2 endpoint (consistent with /docs/aws-api docs and main app).
+            // Proxy handles API key injection server-side — works regardless of user's pasted key.
+            // (User's pasted key is used for the Try-It panels below, not for the preview map.)
             miniMap = new maplibregl.Map({
                 container: 'miniMap',
-                style: `https://maps.geo.${region}.amazonaws.com/maps/v0/maps/${mapName}/style-descriptor?key=${apiKey}`,
+                style: '/api/v2/map-style?style=Standard&color=Light',
                 center: [106.8456, -6.2088],
                 zoom: 11,
                 attributionControl: false
@@ -4334,8 +4333,8 @@
                     gateError.style.display = 'block';
                     return;
                 }
-                // Save & sync to main input
-                localStorage.setItem('tester_aws_api_key', val);
+                // Save & sync to main input (uses shared storage with docs Inspector)
+                saveSharedKey(val);
                 apiKeyInput.value = val;
                 apiKeyInput.classList.remove('is-invalid');
                 // Hide modal
@@ -4362,34 +4361,75 @@
             badge.title = hasKey ? 'API Key configured' : 'API Key not set';
         }
 
+        /* === Shared API Key storage with /docs/aws-api Inspector ===
+           Read order: docs Inspector key (awsapi_user_key.apiKey) → tester own key (tester_aws_api_key).
+           Write: always save to BOTH stores so user only needs to paste once.
+           Also syncs region when docs Inspector has one set. */
+        function loadDocsInspectorKey() {
+            try {
+                const obj = JSON.parse(localStorage.getItem('awsapi_user_key') || 'null');
+                if (obj && obj.apiKey) return obj;
+            } catch (_) {}
+            return null;
+        }
+        function saveSharedKey(apiKey) {
+            apiKey = (apiKey || '').trim();
+            if (apiKey) {
+                localStorage.setItem('tester_aws_api_key', apiKey);
+                // Also update docs Inspector key if it exists — preserve other fields
+                try {
+                    const obj = JSON.parse(localStorage.getItem('awsapi_user_key') || 'null') || {};
+                    obj.apiKey = apiKey;
+                    localStorage.setItem('awsapi_user_key', JSON.stringify(obj));
+                } catch (_) {}
+            } else {
+                localStorage.removeItem('tester_aws_api_key');
+                // Don't fully delete docs Inspector key — just clear apiKey field
+                try {
+                    const obj = JSON.parse(localStorage.getItem('awsapi_user_key') || 'null');
+                    if (obj) { obj.apiKey = ''; localStorage.setItem('awsapi_user_key', JSON.stringify(obj)); }
+                } catch (_) {}
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             setupApiKeyGate();
 
-            // Load saved key
+            // Load saved key (prefer docs Inspector if available)
             const apiKeyInput = document.getElementById('awsApiKey');
-            const saved = localStorage.getItem('tester_aws_api_key');
+            const docsKey = loadDocsInspectorKey();
+            const saved = docsKey?.apiKey || localStorage.getItem('tester_aws_api_key');
             if (saved) {
                 apiKeyInput.value = saved;
+                // If docs Inspector has region, sync it (test page region is readonly env)
+                const regionInput = document.getElementById('awsRegion');
+                if (docsKey?.region && regionInput) regionInput.value = docsKey.region;
                 bootstrapTester();
             } else {
-                // No saved key — show gate modal, block until entered
                 showApiKeyGate();
             }
             updateApiKeyStatusBadge();
 
-            // Sync changes from main input → localStorage
+            // Sync changes from main input → BOTH localStorage stores
             if (apiKeyInput) {
                 apiKeyInput.addEventListener('input', () => {
                     const val = apiKeyInput.value.trim();
-                    if (val) {
-                        apiKeyInput.classList.remove('is-invalid');
-                        localStorage.setItem('tester_aws_api_key', val);
-                    } else {
-                        localStorage.removeItem('tester_aws_api_key');
-                    }
+                    if (val) apiKeyInput.classList.remove('is-invalid');
+                    saveSharedKey(val);
                     updateApiKeyStatusBadge();
                 });
             }
+
+            // Listen for cross-tab storage changes (e.g. user updates key in /docs/aws-api in another tab)
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'awsapi_user_key' || e.key === 'tester_aws_api_key') {
+                    const k = loadDocsInspectorKey()?.apiKey || localStorage.getItem('tester_aws_api_key') || '';
+                    if (k && apiKeyInput && apiKeyInput.value !== k) {
+                        apiKeyInput.value = k;
+                        updateApiKeyStatusBadge();
+                    }
+                }
+            });
             ['depLng', 'depLat', 'destLng', 'destLat'].forEach(id => {
                 document.getElementById(id).addEventListener('change', updateMapMarkers);
             });
