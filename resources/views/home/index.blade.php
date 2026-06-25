@@ -725,9 +725,9 @@
                         <div class="d-flex align-items-center gap-2 mb-1">
                             <i class="bi bi-stars" style="font-size:1.4rem;"></i>
                             <h5 class="modal-title mb-0" id="whatsNewModalLabel" style="font-weight:700;" data-i18n="whats_new">What's New</h5>
-                            <span class="badge bg-light text-success ms-1" style="font-size:0.7rem;">v2.0</span>
+                            <span class="badge bg-light text-success ms-1" style="font-size:0.7rem;">v2.1</span>
                         </div>
-                        <small style="opacity:0.9;" data-i18n="whats_new_subtitle">Latest GrabMaps app update</small>
+                        <small style="opacity:0.9;" data-i18n="whats_new_subtitle">Home v2: Places, Routes, Maps, and smarter map tools</small>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -737,8 +737,8 @@
                         <div class="d-flex align-items-start gap-2 mb-2">
                             <i class="bi bi-rocket-takeoff-fill" style="color:#16a34a;font-size:1.2rem;"></i>
                             <div>
-                                <div style="font-weight:700;color:#166534;" data-i18n="v2_migration_title">Migration to Places API v2</div>
-                                <small style="color:#15803d;" data-i18n="v2_migration_desc">Powered by AWS Location Service Places v2 + GrabMaps</small>
+                                <div style="font-weight:700;color:#166534;" data-i18n="v2_migration_title">Home is now powered by AWS Location v2</div>
+                                <small style="color:#15803d;" data-i18n="v2_migration_desc">Places v2, Routes v2, Route Matrix v2, and Maps v2 styles are proxied through Laravel.</small>
                             </div>
                         </div>
                     </div>
@@ -754,8 +754,8 @@
                                 <i class="bi bi-search"></i>
                             </div>
                             <div class="flex-grow-1">
-                                <div style="font-weight:600;color:#1f2937;" data-i18n="feat_search_title">Richer Search Results</div>
-                                <small style="color:#6b7280;" data-i18n="feat_search_desc">POI name and address are now separated — like Grab/Google Maps. Example:</small>
+                                <div style="font-weight:600;color:#1f2937;" data-i18n="feat_search_title">Search v2 + Search This Area</div>
+                                <small style="color:#6b7280;" data-i18n="feat_search_desc">Search and autocomplete now separate POI title and address, bias to the visible map, and preview results on the map.</small>
                                 <div class="mt-2 p-2 rounded-2" style="background:#fff;border:1px solid #e5e7eb;font-size:0.78rem;">
                                     <div style="font-weight:600;color:#1f2937;">Kantor Pusat PT. Kereta Api Indonesia</div>
                                     <div style="color:#6b7280;font-size:0.72rem;">Jl. Perintis Kemerdekaan No.1, Bandung</div>
@@ -767,11 +767,11 @@
                     <div class="mb-3 p-3 rounded-3" style="background:#f9fafb;border:1px solid #e5e7eb;">
                         <div class="d-flex align-items-start gap-3">
                             <div style="background:#dbeafe;color:#2563eb;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="bi bi-lightning-charge-fill"></i>
+                                <i class="bi bi-sign-turn-right-fill"></i>
                             </div>
                             <div class="flex-grow-1">
-                                <div style="font-weight:600;color:#1f2937;" data-i18n="feat_autocomplete_title">Faster Autocomplete</div>
-                                <small style="color:#6b7280;" data-i18n="feat_autocomplete_desc">Suggestion dropdown shows POI name (bold) + full address below. Biased to your map view.</small>
+                                <div style="font-weight:600;color:#1f2937;" data-i18n="feat_autocomplete_title">Routes v2 & Multi-stop</div>
+                                <small style="color:#6b7280;" data-i18n="feat_autocomplete_desc">A-to-B routes, alternatives, turn-by-turn directions, and route-matrix optimization now run on the v2 adapter.</small>
                             </div>
                         </div>
                     </div>
@@ -782,8 +782,8 @@
                                 <i class="bi bi-pin-map-fill"></i>
                             </div>
                             <div class="flex-grow-1">
-                                <div style="font-weight:600;color:#1f2937;" data-i18n="feat_reverse_title">Reverse Geocode v2</div>
-                                <small style="color:#6b7280;" data-i18n="feat_reverse_desc">Click anywhere on the map — get full POI info with categories, not just plain address.</small>
+                                <div style="font-weight:600;color:#1f2937;" data-i18n="feat_reverse_title">Place Details v2</div>
+                                <small style="color:#6b7280;" data-i18n="feat_reverse_desc">Click a marker or location row to open richer place details, including categories, contact data, and opening hours when available.</small>
                             </div>
                         </div>
                     </div>
@@ -791,11 +791,11 @@
                     <div class="mb-3 p-3 rounded-3" style="background:#f9fafb;border:1px solid #e5e7eb;">
                         <div class="d-flex align-items-start gap-3">
                             <div style="background:#fce7f3;color:#db2777;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="bi bi-database-fill-check"></i>
+                                <i class="bi bi-moon-stars-fill"></i>
                             </div>
                             <div class="flex-grow-1">
-                                <div style="font-weight:600;color:#1f2937;" data-i18n="feat_resourceless_title">Resource-less API</div>
-                                <small style="color:#6b7280;" data-i18n="feat_resourceless_desc">No need to setup Place Index — AWS auto-routes to GrabMaps in Southeast Asia. Faster setup.</small>
+                                <div style="font-weight:600;color:#1f2937;" data-i18n="feat_resourceless_title">Map styles & utilities</div>
+                                <small style="color:#6b7280;" data-i18n="feat_resourceless_desc">The map can switch Light/Dark automatically by local time, with Standard/Monochrome styles, Locate Me, and Pick Coordinates tools.</small>
                             </div>
                         </div>
                     </div>
@@ -806,15 +806,13 @@
                             <i class="bi bi-code-slash me-1"></i> <span data-i18n="tech_details">Technical Details</span>
                         </summary>
                         <div class="mt-2 p-3 rounded-3" style="background:#1f2937;color:#e5e7eb;font-size:0.72rem;font-family:monospace;">
-                            <div style="color:#9ca3af;">// v0 (legacy)</div>
-                            <div>POST /places/v0/indexes/&lcub;idx&rcub;/search/text</div>
-                            <div>{ Text: "...", Position: [...] }</div>
-                            <div>→ data.Results[0].Place.Label</div>
-                            <br>
-                            <div style="color:#9ca3af;">// v2 (baru) ✨</div>
-                            <div style="color:#86efac;">POST /v2/search-text</div>
-                            <div style="color:#86efac;">{ QueryText: "...", QueryPosition: [...] }</div>
-                            <div style="color:#86efac;">→ data.ResultItems[0].Title + Address.Label</div>
+                            <div style="color:#9ca3af;">// Home v2 endpoints</div>
+                            <div style="color:#86efac;">GET  /api/v2/map-style</div>
+                            <div style="color:#86efac;">POST /api/places/suggestions</div>
+                            <div style="color:#86efac;">POST /api/places/search</div>
+                            <div style="color:#86efac;">GET  /api/places/{placeId}</div>
+                            <div style="color:#86efac;">POST /api/routes/calculate</div>
+                            <div style="color:#86efac;">POST /api/routes/matrix</div>
                         </div>
                     </details>
 
@@ -1168,7 +1166,7 @@
         function initMap() {
             map = new maplibregl.Map({
                 container: 'map',
-                style: '/api/v2/map-style',
+                style: buildMapStyleUrl(),
                 center: [106.8456, -6.2088],
                 zoom: 13,
                 attributionControl: false
@@ -1227,7 +1225,12 @@
                             offset: 25
                         }).setHTML(buildPopupHtml(place.title, place.address)));
                         renderLocationList();
-                        showToast(t('location_found'), place.title, 'success');
+                        // If a POI was nearby (but >50m), mention it as soft info — don't claim it's the place
+                        if (place.nearby) {
+                            showToast(t('location_found'), `${place.title} • ${t('near')} ${place.nearby.name} (~${place.nearby.distance}m)`, 'info');
+                        } else {
+                            showToast(t('location_found'), place.title, 'success');
+                        }
                     } else {
                         item.name = `Location (${coords[1].toFixed(4)}, ${coords[0].toFixed(4)})`;
                         item.address = null;
@@ -1314,7 +1317,11 @@
                         offset: 25
                     }).setHTML(buildPopupHtml(newPlace.title, newPlace.address)));
                     renderLocationList();
-                    showToast(t('location_updated'), newPlace.title, 'success');
+                    if (newPlace.nearby) {
+                        showToast(t('location_updated'), `${newPlace.title} • ${t('near')} ${newPlace.nearby.name} (~${newPlace.nearby.distance}m)`, 'info');
+                    } else {
+                        showToast(t('location_updated'), newPlace.title, 'success');
+                    }
                 } else {
                     item.name = `Location (${updatedCoords[1].toFixed(4)}, ${updatedCoords[0].toFixed(4)})`;
                     item.address = null;
@@ -1741,23 +1748,47 @@
             try {
                 const response = await proxyPost('/api/places/reverse', {
                     QueryPosition: coords,
-                    MaxResults: 1,
+                    MaxResults: 5,                    // ask for top 5 — we may filter out distant POIs
                     Language: currentLang
                 });
 
                 if (!response.ok) throw new Error('API Error');
                 const data = await response.json();
+                const items = data.ResultItems;
+                if (!items || items.length === 0) return null;
 
-                if (data.ResultItems && data.ResultItems.length > 0) {
-                    const item = data.ResultItems[0];
-                    const title = item.Title || '';
-                    const address = (item.Address && item.Address.Label) || '';
+                const top = items[0];
+                const dist = Number(top.Distance) || 0;
+                const addr = top.Address || {};
+                const POI_PROXIMITY_M = 50; // POI within this distance → trust as "the place user clicked"
+
+                // POI is close enough — return as-is (current behaviour)
+                if (top.PlaceType !== 'PointOfInterest' || dist <= POI_PROXIMITY_M) {
+                    const title = top.Title || addr.Label || '';
+                    const address = addr.Label || '';
                     return {
                         title: title || address || null,
                         address: title && address && title !== address ? address : null
                     };
                 }
-                return null;
+
+                // POI is far (>50m) — user likely clicked an empty area (sawah/lapangan/jalan).
+                // Don't claim it's the POI. Synthesize a neutral label from structured address parts.
+                const localTitle = addr.Street || addr.SubDistrict || addr.District || addr.Locality
+                    || `Pinned (${coords[1].toFixed(4)}, ${coords[0].toFixed(4)})`;
+
+                // Build sub-line from area hierarchy, deduplicating repeated parts
+                const parts = [addr.SubDistrict, addr.District, addr.Locality, addr.PostalCode]
+                    .filter(Boolean)
+                    .filter((v, i, a) => a.indexOf(v) === i);
+                const subLine = parts.join(', ');
+
+                // Optional info — let caller surface "near X" toast if useful (not embedded in title)
+                return {
+                    title: localTitle,
+                    address: subLine || null,
+                    nearby: { name: top.Title, distance: Math.round(dist) }
+                };
             } catch (error) {
                 console.error("Reverse geocode failed:", error);
                 return null;
@@ -2382,8 +2413,51 @@
         /* =========================================
            MAP STYLE SWITCHER (Standard/Monochrome × Light/Dark)
            ========================================= */
-        const mapStyleState = { style: 'Standard', color: 'Light' };
+        const MAP_LIGHT_START_HOUR = 6;
+        const MAP_DARK_START_HOUR = 18;
+
+        function getTimeBasedMapColor(date = new Date()) {
+            const hour = date.getHours();
+            return hour >= MAP_LIGHT_START_HOUR && hour < MAP_DARK_START_HOUR ? 'Light' : 'Dark';
+        }
+
+        function getNextMapThemeDelay() {
+            const now = new Date();
+            const nextSwitch = new Date(now);
+            const nextHour = now.getHours() < MAP_LIGHT_START_HOUR
+                ? MAP_LIGHT_START_HOUR
+                : (now.getHours() < MAP_DARK_START_HOUR ? MAP_DARK_START_HOUR : MAP_LIGHT_START_HOUR);
+
+            nextSwitch.setHours(nextHour, 0, 0, 0);
+            if (nextSwitch <= now) {
+                nextSwitch.setDate(nextSwitch.getDate() + 1);
+            }
+
+            return nextSwitch.getTime() - now.getTime();
+        }
+
+        const mapStyleState = { style: 'Standard', color: getTimeBasedMapColor() };
         let mapStyleLoading = false;
+        let mapAutoThemeTimer = null;
+        let lastAutoMapColor = mapStyleState.color;
+
+        function buildMapStyleUrl() {
+            const params = new URLSearchParams({
+                style: mapStyleState.style,
+                color: mapStyleState.color
+            });
+
+            return `/api/v2/map-style?${params.toString()}`;
+        }
+
+        function syncMapStyleButtons() {
+            document.querySelectorAll('.map-style-btn[data-style]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.style === mapStyleState.style);
+            });
+            document.querySelectorAll('.map-style-btn[data-color]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.color === mapStyleState.color);
+            });
+        }
 
         function toggleStylePanel() {
             const panel = document.getElementById('mapStylePanel');
@@ -2392,9 +2466,39 @@
         }
 
         function applyMapStyle() {
+            if (!map) return;
             mapStyleLoading = true;
             document.querySelectorAll('.map-style-btn').forEach(b => b.disabled = true);
-            map.setStyle(`/api/v2/map-style?style=${mapStyleState.style}&color=${mapStyleState.color}`);
+            map.setStyle(buildMapStyleUrl());
+        }
+
+        function applyTimeBasedMapStyle() {
+            const timeBasedColor = getTimeBasedMapColor();
+            if (timeBasedColor === lastAutoMapColor) {
+                syncMapStyleButtons();
+                return;
+            }
+
+            lastAutoMapColor = timeBasedColor;
+            if (mapStyleState.color === timeBasedColor) {
+                syncMapStyleButtons();
+                return;
+            }
+
+            mapStyleState.color = timeBasedColor;
+            syncMapStyleButtons();
+            applyMapStyle();
+        }
+
+        function scheduleAutoMapStyle() {
+            if (mapAutoThemeTimer) {
+                clearTimeout(mapAutoThemeTimer);
+            }
+
+            mapAutoThemeTimer = setTimeout(() => {
+                applyTimeBasedMapStyle();
+                scheduleAutoMapStyle();
+            }, getNextMapThemeDelay() + 1000);
         }
 
         // Wire map-style buttons + reattach route layers after style swap
@@ -2404,13 +2508,19 @@
             if (btn.dataset.style) {
                 if (mapStyleState.style === btn.dataset.style) return;
                 mapStyleState.style = btn.dataset.style;
-                document.querySelectorAll('.map-style-btn[data-style]').forEach(b => b.classList.toggle('active', b === btn));
+                syncMapStyleButtons();
                 applyMapStyle();
             } else if (btn.dataset.color) {
                 if (mapStyleState.color === btn.dataset.color) return;
                 mapStyleState.color = btn.dataset.color;
-                document.querySelectorAll('.map-style-btn[data-color]').forEach(b => b.classList.toggle('active', b === btn));
+                syncMapStyleButtons();
                 applyMapStyle();
+            }
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                applyTimeBasedMapStyle();
             }
         });
 
@@ -3771,7 +3881,7 @@
 
         // --- WHAT'S NEW MODAL ---
         // Bump this version when releasing new updates — modal will auto-show again
-        const WHATS_NEW_VERSION = 'v2.0';
+        const WHATS_NEW_VERSION = 'v2.1';
 
         function showWhatsNewModal() {
             const modal = new bootstrap.Modal(document.getElementById('whatsNewModal'));
@@ -3795,8 +3905,10 @@
         // --- MAIN BOOTSTRAP ---
         document.addEventListener('DOMContentLoaded', () => {
             applyTranslations();
+            syncMapStyleButtons();
             initMap();
             setupEventListeners();
+            scheduleAutoMapStyle();
             updateRouteButtonsByCount(); // Initial state: 0 markers → both disabled
             maybeShowWhatsNew();
         });

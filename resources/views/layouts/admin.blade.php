@@ -619,6 +619,10 @@
                     class="nav-tab-item {{ request()->routeIs('admin.api-keys.*') ? 'active' : '' }}">
                     <i class="bi bi-key"></i> {{ __('admin.api_keys') }}
                 </a>
+                <a href="{{ route('admin.cost-settings.index') }}"
+                    class="nav-tab-item {{ request()->routeIs('admin.cost-settings.*') ? 'active' : '' }}">
+                    <i class="bi bi-cash-coin"></i> Kurs &amp; Pajak
+                </a>
                 @if(auth()->user()?->isAdmin())
                 <a href="{{ route('admin.users.index') }}"
                     class="nav-tab-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">

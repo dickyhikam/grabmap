@@ -115,6 +115,9 @@
                             <a href="{{ route('admin.companies.usage', $company) }}" class="btn-action me-1" title="Usage">
                                 <i class="bi bi-bar-chart"></i>
                             </a>
+                            <a href="{{ route('admin.companies.invoice', $company) }}" target="_blank" class="btn-action me-1" title="Invoice / PDF tagihan">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                            </a>
                             <a href="{{ route('admin.companies.edit', $company) }}" class="btn-action me-1" title="Edit">
                                 <i class="bi bi-pencil"></i>
                             </a>

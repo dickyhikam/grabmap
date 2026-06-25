@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Controllers\Admin\ApiKeyController;
+use App\Http\Controllers\Admin\CostSettingController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\ClientMapController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\PricingController;
+use App\Http\Controllers\Tools\TransfersToolController;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 
@@ -106,6 +108,11 @@ Route::get('/feature-lab', function () {
     return view('features.lab');
 })->name('pageFeatureLab');
 
+// === Tools: transfers.txt (GTFS) generator ===
+Route::get('/tools/transfers', [TransfersToolController::class, 'index'])->name('tools.transfers');
+Route::post('/tools/transfers/preview', [TransfersToolController::class, 'preview']);
+Route::post('/tools/transfers/generate', [TransfersToolController::class, 'generate']);
+
 // === Auth Routes ===
 Route::middleware('guest')->group(function () {
     Route::get('/login', [\App\Http\Controllers\Auth\AuthController::class, 'showLogin'])->name('login');
@@ -151,6 +158,7 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
         Route::get('/{keyName}/edit', [ApiKeyController::class, 'edit'])->name('admin.api-keys.edit');
         Route::put('/{keyName}', [ApiKeyController::class, 'update'])->name('admin.api-keys.update');
         Route::get('/{keyName}/usage', [ApiKeyController::class, 'usage'])->name('admin.api-keys.usage');
+        Route::get('/{keyName}/invoice', [ApiKeyController::class, 'invoice'])->name('admin.api-keys.invoice');
     });
 
     // User Management (admin only)
@@ -175,6 +183,16 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
         Route::put('/{company}', [CompanyController::class, 'update'])->name('admin.companies.update');
         Route::patch('/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])->name('admin.companies.toggle-status');
         Route::get('/{company}/usage', [CompanyController::class, 'usage'])->name('admin.companies.usage');
+        Route::get('/{company}/invoice', [CompanyController::class, 'invoice'])->name('admin.companies.invoice');
+    });
+
+    // Pengaturan Biaya: Kurs (history + bukti) & Pajak
+    Route::prefix('admin/cost-settings')->group(function () {
+        Route::get('/', [CostSettingController::class, 'index'])->name('admin.cost-settings.index');
+        Route::post('/rate', [CostSettingController::class, 'storeRate'])->name('admin.cost-settings.rate.store');
+        Route::post('/rate/{rate}/activate', [CostSettingController::class, 'activate'])->name('admin.cost-settings.rate.activate');
+        Route::post('/tax', [CostSettingController::class, 'updateTax'])->name('admin.cost-settings.tax');
+        Route::post('/budget', [CostSettingController::class, 'updateBudget'])->name('admin.cost-settings.budget');
     });
 });
 

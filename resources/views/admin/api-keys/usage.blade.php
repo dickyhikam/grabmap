@@ -109,9 +109,16 @@
                     style="border-radius:8px; min-width:48px; font-size:0.8rem;" data-start="{{ $qStart }}" data-end="{{ $qEnd }}">{{ $label }}</button>
                 @endforeach
                 <div class="vr mx-1" style="height:20px;"></div>
-                @if($isCached)<span class="text-muted" style="font-size:0.72rem;"><i class="bi bi-clock-history"></i> {{ __('admin.cached', ['min' => 30]) }}</span>@endif
+                @if($fetchedAt)
+                    @php $stale = $fetchedAt->lt(now()->subDay()); @endphp
+                    <span class="{{ $stale ? 'text-warning fw-semibold' : 'text-muted' }}" style="font-size:0.72rem;" title="Waktu data terakhir diambil dari AWS (tidak real-time)">
+                        <i class="bi bi-clock-history"></i> Data per {{ $fetchedAt->timezone('Asia/Jakarta')->format('d M Y H:i') }} WIB{{ $stale ? ' — sudah lama, klik Refresh' : '' }}
+                    </span>
+                @endif
+                <a href="{{ route('admin.api-keys.invoice', ['keyName' => $keyName, 'start' => $startDate, 'end' => $endDate]) }}"
+                    target="_blank" class="btn btn-sm btn-grab" style="margin-left:auto;" title="Buka dokumen tagihan siap cetak / Simpan PDF"><i class="bi bi-file-earmark-pdf me-1"></i>Invoice / PDF</a>
                 <a href="{{ route('admin.api-keys.usage', array_filter(['keyName' => $keyName, 'start' => $startDate, 'end' => $endDate, 'operation' => $filterOperation, 'refresh' => 1])) }}"
-                    class="btn btn-sm btn-outline-grab" style="margin-left:auto;"><i class="bi bi-arrow-clockwise"></i></a>
+                    class="btn btn-sm btn-outline-grab" title="Ambil data terbaru dari AWS"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</a>
             </div>
 
             <input type="hidden" name="start" id="filterStart" value="{{ $startDate }}">
@@ -224,18 +231,16 @@
     {{-- Operation Breakdown + Cost --}}
     @if(!empty($metrics['operations']))
     @php
-        $pricing = [
-            'GetMapTile' => 0.04, 'GetMapStyleDescriptor' => 0, 'GetMapGlyphs' => 0.04, 'GetMapSprites' => 0.04,
-            'SearchPlaceIndexForSuggestions' => 4.00, 'SearchPlaceIndexForText' => 4.00, 'SearchPlaceIndexForPosition' => 4.00, 'GetPlace' => 4.00,
-            'CalculateRoute' => 5.00, 'CalculateRouteMatrix' => 5.00,
-        ];
+        // Harga AWS dari satu sumber kebenaran (AwsLocationService::PRICING).
+        $pricing = \App\Services\AwsLocationService::PRICING;
         $categories = [
-            'maps' => ['GetMapTile', 'GetMapStyleDescriptor', 'GetMapGlyphs', 'GetMapSprites'],
-            'places' => ['SearchPlaceIndexForSuggestions', 'SearchPlaceIndexForText', 'SearchPlaceIndexForPosition', 'GetPlace'],
-            'routes' => ['CalculateRoute', 'CalculateRouteMatrix'],
+            'maps' => ['GetMapTile', 'GetTile', 'GetMapStyleDescriptor', 'GetMapGlyphs', 'GetMapSprites'],
+            'places' => ['SearchText', 'ReverseGeocode', 'Suggest', 'GetPlace'],
+            'routes' => ['CalculateRoutes', 'CalculateRouteMatrix'],
         ];
         $categoryLabels = ['maps' => 'Maps', 'places' => 'Places / Search', 'routes' => 'Routes'];
         $categoryIcons = ['maps' => 'bi-map', 'places' => 'bi-search', 'routes' => 'bi-sign-turn-right'];
+        $idrRate = $idrRate ?? config('aws.usd_to_idr', 16500); // dari controller, bisa diubah lewat input
         $totalCost = 0;
         $categoryTotals = [];
         foreach ($categories as $cat => $ops) { $c = 0; foreach ($ops as $op) { $c += $metrics['operations'][$op] ?? 0; } $categoryTotals[$cat] = $c; }
@@ -267,13 +272,37 @@
                         @endforeach
                     </tbody>
                     <tfoot>
+                        @php $tax = $totalCost * $taxRate; $grand = $totalCost + $tax; @endphp
                         <tr style="border-top: 2px solid #e2e8f0;">
-                            <td class="fw-bold">{{ __('admin.total') }}</td><td></td>
-                            <td class="text-end fw-bold">{{ number_format(array_sum($metrics['operations'])) }}</td><td></td>
-                            <td class="text-end fw-bold" style="color: var(--grab-green); font-size:1rem;">${{ number_format($totalCost, 2) }}</td>
+                            <td class="fw-semibold">{{ __('admin.subtotal') }}</td><td></td>
+                            <td class="text-end fw-semibold">{{ number_format(array_sum($metrics['operations'])) }}</td><td></td>
+                            <td class="text-end fw-semibold">${{ number_format($totalCost, 2) }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">PPN {{ round($taxRate * 100, 2) }}%</td><td></td><td></td><td></td>
+                            <td class="text-end text-muted">${{ number_format($tax, 2) }}</td>
+                        </tr>
+                        <tr style="border-top: 1px solid #e2e8f0;">
+                            <td class="fw-bold">{{ __('admin.total') }} + PPN</td><td></td><td></td><td></td>
+                            <td class="text-end fw-bold" style="color: var(--grab-green); font-size:1rem;">
+                                ${{ number_format($grand, 2) }}
+                                <div class="fw-normal text-muted" style="font-size:0.72rem;">≈ Rp {{ number_format($grand * $idrRate, 0, ',', '.') }}</div>
+                            </td>
                         </tr>
                     </tfoot>
                 </table>
+            </div>
+            <p class="text-muted mb-0 mt-2" style="font-size:0.72rem;">
+                <i class="bi bi-info-circle me-1"></i>Estimasi dari CloudWatch &times; harga AWS (sudah termasuk PPN {{ round($taxRate * 100, 2) }}%). Bisa berbeda ~5% dari tagihan resmi karena CloudWatch &amp; sistem penagihan AWS mengukur sedikit berbeda.
+            </p>
+            <div class="d-flex align-items-center flex-wrap gap-2 mt-2 p-2 rounded-3" style="background:#f8f9fa; font-size:0.78rem;">
+                <i class="bi bi-cash-coin text-muted"></i>
+                <span class="text-muted">Kurs dipakai:</span>
+                <span class="fw-semibold">Rp {{ number_format($idrRate, 0, ',', '.') }}/USD</span>
+                @if(!empty($activeRate))
+                    <span class="text-muted">&mdash; {{ $activeRate->source }} per {{ $activeRate->rate_date->format('d M Y') }}@if($activeRate->reference) ({{ $activeRate->reference }})@endif</span>
+                @endif
+                <a href="{{ route('admin.cost-settings.index') }}" class="btn btn-sm btn-outline-grab ms-auto"><i class="bi bi-pencil me-1"></i>Ubah kurs / pajak</a>
             </div>
         </div>
     </div>

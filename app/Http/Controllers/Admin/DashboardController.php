@@ -3,129 +3,91 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ApiUsageLog;
 use App\Models\Company;
+use App\Models\ExchangeRate;
+use App\Models\Setting;
 use App\Services\AwsLocationService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
-    public function index()
+    // Pemetaan operasi AWS -> kategori (memakai nama API baru).
+    private const CATEGORY_OPS = [
+        'maps'   => ['GetMapTile', 'GetTile', 'GetMapStyleDescriptor', 'GetMapGlyphs', 'GetMapSprites'],
+        'places' => ['SearchText', 'ReverseGeocode', 'Suggest', 'GetPlace'],
+        'routes' => ['CalculateRoutes', 'CalculateRouteMatrix'],
+    ];
+
+    public function index(Request $request)
     {
-        // Companies stats
-        $totalCompanies = Company::count();
-        $activeCompanies = Company::where('is_active', true)->count();
+        // Statistik company
+        $totalCompanies   = Company::count();
+        $activeCompanies  = Company::where('is_active', true)->count();
         $companiesWithKey = Company::whereNotNull('aws_api_key_name')->count();
 
-        // API Keys stats (cached 30 min)
+        // Rentang: bulan berjalan (selaras siklus tagihan AWS).
+        $refresh   = $request->query('refresh') === '1';
+        $startDate = now()->startOfMonth()->format('Y-m-d');
+        $endDate   = now()->format('Y-m-d');
+
         $apiKeysData = ['total' => 0, 'active' => 0];
+        $cw          = ['total' => 0, 'operations' => [], 'by_key' => [], 'daily' => [], 'error' => null];
+        $fetchedAt   = null;
+
         if (AwsLocationService::hasCredentials()) {
-            $apiKeysData = Cache::remember('dashboard_api_keys', 30 * 60, function () {
-                $service = new AwsLocationService();
-                $result = $service->listApiKeys();
-                $keys = $result['keys'];
-                $active = collect($keys)->filter(fn($k) => !($k['expire_time'] && \Carbon\Carbon::parse($k['expire_time'])->isPast()))->count();
+            $service = new AwsLocationService();
+
+            // Jumlah API key (murah, boleh cache otomatis).
+            $apiKeysData = Cache::remember('dashboard_api_keys', 30 * 60, function () use ($service) {
+                $keys = $service->listApiKeys()['keys'] ?? [];
+                $active = collect($keys)
+                    ->filter(fn ($k) => !($k['expire_time'] && \Carbon\Carbon::parse($k['expire_time'])->isPast()))
+                    ->count();
                 return ['total' => count($keys), 'active' => $active];
             });
+
+            // Usage agregat — model manual refresh (TIDAK menembak AWS tiap load).
+            $snapshot  = $service->getCachedAggregateUsage($startDate, $endDate, $refresh);
+            $cw        = $snapshot['data'];
+            $fetchedAt = !empty($snapshot['fetched_at']) ? \Carbon\Carbon::parse($snapshot['fetched_at']) : null;
         }
 
-        // Local usage stats (this month)
-        $month = now()->startOfMonth();
-        $localRequestsThisMonth = ApiUsageLog::where('created_at', '>=', $month)->count();
-        $localRequestsTotal = ApiUsageLog::count();
+        $operations    = $cw['operations'] ?? [];
+        $totalRequests = $cw['total'] ?? 0;
+        $totalCost     = AwsLocationService::estimateCost($operations);
 
-        // Local usage by endpoint (this month)
-        $localByEndpoint = ApiUsageLog::where('created_at', '>=', $month)
-            ->selectRaw('endpoint_type, COUNT(*) as count')
-            ->groupBy('endpoint_type')
-            ->pluck('count', 'endpoint_type');
-
-        $localEstimatedCost = 0;
-        foreach ($localByEndpoint as $type => $count) {
-            $localEstimatedCost += ApiUsageLog::estimateCost($type, $count);
-        }
-
-        // Local daily usage (last 30 days)
-        $localDaily = ApiUsageLog::where('created_at', '>=', now()->subDays(30))
-            ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
-            ->groupBy('date')
-            ->orderBy('date')
-            ->pluck('count', 'date');
-
-        // Top companies by usage (this month)
-        $topCompanies = ApiUsageLog::where('created_at', '>=', $month)
-            ->whereNotNull('company_id')
-            ->selectRaw('company_id, COUNT(*) as count')
-            ->groupBy('company_id')
-            ->orderByDesc('count')
-            ->limit(5)
-            ->get()
-            ->map(function ($item) {
-                $item->company = Company::find($item->company_id);
-                return $item;
-            })
-            ->filter(fn($item) => $item->company !== null);
-
-        // CloudWatch aggregate usage (cached 30 min)
-        $cloudwatchData = null;
-        if (AwsLocationService::hasCredentials()) {
-            $cloudwatchData = Cache::remember('dashboard_cloudwatch', 30 * 60, function () {
-                $service = new AwsLocationService();
-                // Get usage for all keys combined
-                $result = $service->listApiKeys();
-                $totalRequests = 0;
-                $byCategory = ['maps' => 0, 'places' => 0, 'routes' => 0];
-                $byOperation = [];
-                $byKey = [];
-                $daily = [];
-
-                $mapOps = ['GetMapTile', 'GetMapStyleDescriptor', 'GetMapGlyphs', 'GetMapSprites'];
-                $placeOps = ['SearchPlaceIndexForSuggestions', 'SearchPlaceIndexForText', 'SearchPlaceIndexForPosition', 'GetPlace'];
-                $routeOps = ['CalculateRoute', 'CalculateRouteMatrix'];
-
-                foreach ($result['keys'] ?? [] as $key) {
-                    $metrics = $service->getKeyUsageMetrics($key['key_name'], now()->subDays(29)->format('Y-m-d'), now()->format('Y-m-d'));
-                    $totalRequests += $metrics['total'];
-                    if ($metrics['total'] > 0) {
-                        $byKey[$key['key_name']] = $metrics['total'];
-                    }
-                    foreach ($metrics['daily'] ?? [] as $date => $count) {
-                        $daily[$date] = ($daily[$date] ?? 0) + $count;
-                    }
-                    foreach ($metrics['operations'] ?? [] as $op => $count) {
-                        $byOperation[$op] = ($byOperation[$op] ?? 0) + $count;
-                        if (in_array($op, $mapOps)) $byCategory['maps'] += $count;
-                        elseif (in_array($op, $placeOps)) $byCategory['places'] += $count;
-                        elseif (in_array($op, $routeOps)) $byCategory['routes'] += $count;
-                    }
+        // Jumlah & biaya per kategori (harga per-operasi yang akurat, bukan rata-rata kategori).
+        $catCount = ['maps' => 0, 'places' => 0, 'routes' => 0];
+        $catCost  = ['maps' => 0.0, 'places' => 0.0, 'routes' => 0.0];
+        foreach ($operations as $op => $count) {
+            foreach (self::CATEGORY_OPS as $cat => $ops) {
+                if (in_array($op, $ops, true)) {
+                    $catCount[$cat] += $count;
+                    $catCost[$cat]  += AwsLocationService::estimateCost([$op => $count]);
+                    break;
                 }
-                arsort($byOperation);
-                arsort($byKey);
-                ksort($daily);
-
-                // Estimate cost
-                $pricing = ['maps' => 0.04, 'places' => 4.00, 'routes' => 5.00];
-                $totalCost = 0;
-                foreach ($byCategory as $cat => $count) {
-                    $totalCost += ($count / 1000) * $pricing[$cat];
-                }
-
-                return [
-                    'total_requests' => $totalRequests,
-                    'by_category' => $byCategory,
-                    'by_operation' => $byOperation,
-                    'by_key' => $byKey,
-                    'daily' => $daily,
-                    'total_cost' => $totalCost,
-                ];
-            });
+            }
         }
+
+        // Kurs & pajak (sumber kebenaran: menu Kurs & Pajak).
+        $activeRate = ExchangeRate::current();
+        $idrRate    = $activeRate ? (float) $activeRate->rate : (float) config('aws.usd_to_idr', 16500);
+        $taxRate    = (float) Setting::get('tax_rate', config('aws.tax_rate', 0.11));
+        $tax        = $totalCost * $taxRate;
+        $grandCost  = $totalCost + $tax;
+
+        // Ambang peringatan budget (selaras AWS Budgets) — default $170.
+        $budgetAlert = (float) Setting::get('budget_alert_usd', 170);
+
+        // Peta API key -> company (untuk label "paling banyak dipakai").
+        $companyByKey = Company::whereNotNull('aws_api_key_name')->get()->keyBy('aws_api_key_name');
 
         return view('admin.dashboard', compact(
             'totalCompanies', 'activeCompanies', 'companiesWithKey',
-            'apiKeysData', 'localRequestsThisMonth', 'localRequestsTotal',
-            'localByEndpoint', 'localEstimatedCost', 'localDaily',
-            'topCompanies', 'cloudwatchData'
+            'apiKeysData', 'fetchedAt', 'cw', 'operations', 'totalRequests',
+            'totalCost', 'tax', 'grandCost', 'catCount', 'catCost',
+            'activeRate', 'idrRate', 'taxRate', 'budgetAlert', 'companyByKey', 'startDate', 'endDate'
         ));
     }
 }

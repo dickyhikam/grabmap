@@ -303,7 +303,7 @@
     </div>
     @endif
 
-    <button class="btn-map-mode" id="btnMapMode" onclick="toggleMapMode()" title="Mode Siang/Malam">
+    <button class="btn-map-mode" id="btnMapMode" onclick="toggleMapMode()" title="Mode Siang/Malam Otomatis">
         <i class="bi bi-moon-fill" id="mapModeIcon"></i>
     </button>
 
@@ -357,6 +357,14 @@
         let markersData = [];
         let selectedMarkerId = null;
         let highlightMarkers = [];
+        let activeRouteData = null;
+
+        const MAP_LIGHT_START_HOUR = 6;
+        const MAP_DARK_START_HOUR = 18;
+        const mapStyleState = { style: 'Standard', color: getTimeBasedMapColor() };
+        let mapStyleLoading = false;
+        let mapAutoThemeTimer = null;
+        let lastAutoMapColor = mapStyleState.color;
 
 
         /* =========================================
@@ -424,10 +432,88 @@
         /* =========================================
            3. MAP INITIALIZATION
            ========================================= */
+        function getTimeBasedMapColor(date = new Date()) {
+            const hour = date.getHours();
+            return hour >= MAP_LIGHT_START_HOUR && hour < MAP_DARK_START_HOUR ? 'Light' : 'Dark';
+        }
+
+        function getNextMapThemeDelay() {
+            const now = new Date();
+            const nextSwitch = new Date(now);
+            const nextHour = now.getHours() < MAP_LIGHT_START_HOUR
+                ? MAP_LIGHT_START_HOUR
+                : (now.getHours() < MAP_DARK_START_HOUR ? MAP_DARK_START_HOUR : MAP_LIGHT_START_HOUR);
+
+            nextSwitch.setHours(nextHour, 0, 0, 0);
+            if (nextSwitch <= now) {
+                nextSwitch.setDate(nextSwitch.getDate() + 1);
+            }
+
+            return nextSwitch.getTime() - now.getTime();
+        }
+
+        function buildMapStyleUrl() {
+            const params = new URLSearchParams({
+                style: mapStyleState.style,
+                color: mapStyleState.color,
+                company: companySlug
+            });
+
+            return `/api/v2/map-style?${params.toString()}`;
+        }
+
+        function syncMapModeButton() {
+            const icon = document.getElementById('mapModeIcon');
+            if (!icon) return;
+
+            const isDark = mapStyleState.color === 'Dark';
+            document.body.classList.toggle('dark-mode-active', isDark);
+            icon.className = isDark ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+        }
+
+        function applyMapStyle() {
+            if (!map) return;
+            mapStyleLoading = true;
+            map.setStyle(buildMapStyleUrl());
+        }
+
+        function setMapColor(color) {
+            if (mapStyleState.color === color) {
+                syncMapModeButton();
+                return;
+            }
+
+            mapStyleState.color = color;
+            syncMapModeButton();
+            applyMapStyle();
+        }
+
+        function applyTimeBasedMapStyle() {
+            const timeBasedColor = getTimeBasedMapColor();
+            if (timeBasedColor === lastAutoMapColor) {
+                syncMapModeButton();
+                return;
+            }
+
+            lastAutoMapColor = timeBasedColor;
+            setMapColor(timeBasedColor);
+        }
+
+        function scheduleAutoMapStyle() {
+            if (mapAutoThemeTimer) {
+                clearTimeout(mapAutoThemeTimer);
+            }
+
+            mapAutoThemeTimer = setTimeout(() => {
+                applyTimeBasedMapStyle();
+                scheduleAutoMapStyle();
+            }, getNextMapThemeDelay() + 1000);
+        }
+
         function initMap() {
             map = new maplibregl.Map({
                 container: 'map',
-                style: '/api/map-style?company=' + companySlug,
+                style: buildMapStyleUrl(),
                 center: [106.8456, -6.2088],
                 zoom: 13,
                 attributionControl: false
@@ -437,6 +523,21 @@
             map.addControl(new maplibregl.AttributionControl({
                 customAttribution: '© Grab, © AWS'
             }), 'bottom-right');
+
+            map.on('styledata', () => {
+                if (!mapStyleLoading) return;
+                mapStyleLoading = false;
+                if (!activeRouteData) return;
+
+                try {
+                    drawRouteOnMap(activeRouteData, {
+                        persist: false,
+                        fitBounds: false
+                    });
+                } catch (error) {
+                    console.error('Failed to restore route after map style change:', error);
+                }
+            });
 
             // Add Geolocation Control
             const geolocate = new maplibregl.GeolocateControl({
@@ -977,8 +1078,15 @@
         /* =========================================
            6. VISUALIZATION & HELPERS
            ========================================= */
-        function drawRouteOnMap(geoJsonFeatureCollection) {
-            removeRouteLayer();
+        function drawRouteOnMap(geoJsonFeatureCollection, options = {}) {
+            const persist = options.persist !== false;
+            const fitBounds = options.fitBounds !== false;
+
+            if (persist) {
+                activeRouteData = geoJsonFeatureCollection;
+            }
+
+            removeRouteLayer({ clearStoredRoute: false });
             map.addSource('routeSource', {
                 type: 'geojson',
                 data: geoJsonFeatureCollection
@@ -1011,18 +1119,22 @@
                     'line-opacity': 0.9
                 }
             });
-            const bounds = new maplibregl.LngLatBounds();
-            geoJsonFeatureCollection.features.forEach(f => f.geometry.coordinates.forEach(c => bounds.extend(c)));
-            map.fitBounds(bounds, {
-                padding: 50
-            });
+            if (fitBounds) {
+                const bounds = new maplibregl.LngLatBounds();
+                geoJsonFeatureCollection.features.forEach(f => f.geometry.coordinates.forEach(c => bounds.extend(c)));
+                map.fitBounds(bounds, {
+                    padding: 50
+                });
+            }
         }
 
-        function removeRouteLayer() {
+        function removeRouteLayer(options = {}) {
+            const clearStoredRoute = options.clearStoredRoute !== false;
             clearSegmentHighlight();
             if (map.getLayer('routeLayer')) map.removeLayer('routeLayer');
             if (map.getLayer('routeLayerOutline')) map.removeLayer('routeLayerOutline');
             if (map.getSource('routeSource')) map.removeSource('routeSource');
+            if (clearStoredRoute) activeRouteData = null;
         }
 
         function highlightSegment(seg) {
@@ -1353,17 +1465,10 @@
         /* =========================================
            9. MAP MODE (Day/Night)
            ========================================= */
-        let isDarkMode = false;
-
         function toggleMapMode() {
-            isDarkMode = !isDarkMode;
-            const mapEl = document.getElementById('map');
-            const icon = document.getElementById('mapModeIcon');
-
-            mapEl.classList.toggle('dark-mode', isDarkMode);
-            document.body.classList.toggle('dark-mode-active', isDarkMode);
-
-            icon.className = isDarkMode ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+            const nextColor = mapStyleState.color === 'Dark' ? 'Light' : 'Dark';
+            setMapColor(nextColor);
+            scheduleAutoMapStyle();
         }
 
 
@@ -1384,9 +1489,17 @@
             }
         }
 
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                applyTimeBasedMapStyle();
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
+            syncMapModeButton();
             initMap();
             setupEventListeners();
+            scheduleAutoMapStyle();
         });
     </script>
 </body>

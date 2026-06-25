@@ -1,0 +1,6 @@
+from_station,from_mode,from_id,to_station,to_mode,to_id,straight_m,walk_m,walk_sec,transfer_type,reason
+Stasiun MRT Dukuh Atas BNI,MRT,IT.3HASRMTSA5D1U,Stasiun Sudirman,KRL,IT.1S4ZEOZUVFKMO,189,273,144,2,
+Stasiun Cawang,KRL,IT.0YIX66ONHNAYV,Stasiun LRT Cikoko,LRT,IT.0T3GIK2454O72,204,480,251,2,
+Stasiun Sudirman,KRL,IT.1S4ZEOZUVFKMO,Stasiun LRT Dukuh Atas,LRT,IT.1F54EDKE3I0AL,356,695,363,2,
+Stasiun Pondok jati,KRL,IT.09CLJFNQOE9CA,Stasun Matraman,KRL,IT.0A9MBIXMGS6D6,425,623,340,2,
+Stasiun Cawang,KRL,IT.0YIX66ONHNAYV,Stasiun LRT Ciliwung,LRT,IT.1ALXFO1LTJYL6,494,6533,3430,3,jalan 3430s > 900s (mungkin bukan transfer / type 3)

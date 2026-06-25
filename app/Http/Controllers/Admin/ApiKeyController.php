@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\ExchangeRate;
+use App\Models\Setting;
 use App\Services\AwsLocationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -306,19 +308,60 @@ class ApiKeyController extends Controller
         $keyInfo = $keyResult['key'];
         $keyError = $keyResult['error'];
 
-        // Cache metrics
-        $metricsCacheKey = "aws_key_metrics:{$keyName}:{$startDate}:{$endDate}:" . ($filterOperation ?? 'all');
-        if ($refresh) {
-            Cache::forget($metricsCacheKey);
-        }
-        $metrics = Cache::remember($metricsCacheKey, $cacheTtl, fn() => $service->getKeyUsageMetrics($keyName, $startDate, $endDate, $filterOperation));
+        // Metrik usage: model "manual refresh" — hanya menembak AWS saat tombol Refresh ditekan
+        // atau saat snapshot belum ada. Selain itu pakai snapshot terakhir + waktu pengambilannya.
+        $snapshot = $service->getCachedUsage($keyName, $startDate, $endDate, $filterOperation, $refresh);
+        $metrics = $snapshot['metrics'];
+        $fetchedAt = !empty($snapshot['fetched_at']) ? \Carbon\Carbon::parse($snapshot['fetched_at']) : null;
 
         $assignedCompany = Company::where('aws_api_key_name', $keyName)->first();
-        $isCached = !$refresh;
+
+        // Kurs & PPN diambil dari menu Pengaturan Biaya (bukti & history) — bukan hardcode.
+        $activeRate = ExchangeRate::current();
+        $idrRate = $activeRate ? (float) $activeRate->rate : (float) config('aws.usd_to_idr', 16500);
+        $taxRate = (float) Setting::get('tax_rate', config('aws.tax_rate', 0.11));
 
         return view('admin.api-keys.usage', compact(
             'keyName', 'keyInfo', 'keyError', 'metrics', 'assignedCompany',
-            'startDate', 'endDate', 'days', 'filterOperation', 'operations', 'isCached'
+            'startDate', 'endDate', 'days', 'filterOperation', 'operations',
+            'fetchedAt', 'idrRate', 'taxRate', 'activeRate'
+        ));
+    }
+
+    /**
+     * Dokumen tagihan (invoice/perincian) per API key — siap cetak / Simpan-PDF.
+     * Memakai snapshot CloudWatch yang sama dengan halaman usage (tidak menembak AWS lagi).
+     */
+    public function invoice(Request $request, string $keyName)
+    {
+        $startDate = $request->query('start', now()->startOfMonth()->format('Y-m-d'));
+        $endDate   = $request->query('end', now()->format('Y-m-d'));
+
+        $service   = new AwsLocationService();
+        $snapshot  = $service->getCachedUsage($keyName, $startDate, $endDate, null, false);
+        $metrics   = $snapshot['metrics'];
+        $fetchedAt = !empty($snapshot['fetched_at']) ? \Carbon\Carbon::parse($snapshot['fetched_at']) : null;
+
+        // Kalau key ini terhubung ke company, pakai identitas company-nya.
+        $company = Company::where('aws_api_key_name', $keyName)->first();
+
+        $operations = $metrics['operations'] ?? [];
+        $subtotal   = AwsLocationService::estimateCost($operations);
+        $activeRate = ExchangeRate::current();
+        $idrRate    = $activeRate ? (float) $activeRate->rate : (float) config('aws.usd_to_idr', 16500);
+        $taxRate    = (float) Setting::get('tax_rate', config('aws.tax_rate', 0.11));
+        $tax        = $subtotal * $taxRate;
+        $grand      = $subtotal + $tax;
+
+        $slugPart  = $company ? strtoupper($company->slug) : strtoupper($keyName);
+        $invoiceNo = 'INV/' . \Carbon\Carbon::parse($endDate)->format('Ym') . '/' . $slugPart;
+        $issuedAt  = now();
+        $backUrl   = route('admin.api-keys.usage', ['keyName' => $keyName, 'start' => $startDate, 'end' => $endDate]);
+
+        return view('admin.companies.invoice', compact(
+            'company', 'keyName', 'metrics', 'operations', 'fetchedAt',
+            'subtotal', 'tax', 'grand', 'idrRate', 'taxRate', 'activeRate',
+            'startDate', 'endDate', 'invoiceNo', 'issuedAt', 'backUrl'
         ));
     }
 }

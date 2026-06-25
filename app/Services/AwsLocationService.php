@@ -6,6 +6,7 @@ use Aws\CloudWatch\CloudWatchClient;
 use Aws\LocationService\LocationServiceClient;
 use Aws\Exception\AwsException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class AwsLocationService
 {
@@ -194,11 +195,119 @@ class AwsLocationService
      *
      * @return array{total: int, daily: array, error: string|null}
      */
+    // Nama operasi GeoPlaces/GeoRoutes terbaru yang dipublikasikan AWS ke CloudWatch.
+    // (Nama lama SearchPlaceIndexFor*/CalculateRoute sudah tidak menghasilkan metric apa pun.)
     private const OPERATIONS = [
-        'GetMapTile', 'GetMapStyleDescriptor', 'GetMapGlyphs', 'GetMapSprites',
-        'SearchPlaceIndexForSuggestions', 'SearchPlaceIndexForText', 'SearchPlaceIndexForPosition',
-        'GetPlace', 'CalculateRoute', 'CalculateRouteMatrix',
+        'GetMapTile', 'GetTile', 'GetMapStyleDescriptor', 'GetMapGlyphs', 'GetMapSprites',
+        'SearchText', 'ReverseGeocode', 'Suggest', 'GetPlace',
+        'CalculateRoutes', 'CalculateRouteMatrix',
     ];
+
+    // Harga AWS Location Service (USD per 1.000 request) — ap-southeast-1, satu sumber kebenaran.
+    // Glyphs/Sprites/StyleDescriptor tidak ditagih terpisah (bagian dari load peta) => 0.
+    public const PRICING = [
+        'GetMapTile' => 0.04, 'GetTile' => 0.04, 'GetMapStyleDescriptor' => 0, 'GetMapGlyphs' => 0, 'GetMapSprites' => 0,
+        'SearchText' => 0.50, 'ReverseGeocode' => 0.50, 'Suggest' => 0.50, 'GetPlace' => 1.50,
+        'CalculateRoutes' => 0.50, 'CalculateRouteMatrix' => 0.50,
+    ];
+
+    /** Total estimasi biaya (USD, sebelum pajak) dari [operasi => jumlah request]. */
+    public static function estimateCost(array $operations): float
+    {
+        $total = 0.0;
+        foreach ($operations as $op => $count) {
+            $total += ($count / 1000) * (self::PRICING[$op] ?? 0);
+        }
+        return $total;
+    }
+
+    /**
+     * Ambil metrik usage dengan model "manual refresh":
+     * - TIDAK menembak CloudWatch tiap halaman dibuka (hemat & tidak real-time).
+     * - Hasil disimpan sebagai snapshot + waktu pengambilan.
+     * - Hanya menembak AWS lagi kalau $forceRefresh = true (tombol Refresh) atau belum ada snapshot.
+     * Return: ['metrics' => [...], 'fetched_at' => ISO8601 string]
+     */
+    public function getCachedUsage(string $keyName, string $startDate, string $endDate, ?string $filterOperation, bool $forceRefresh = false): array
+    {
+        $cacheKey = "aws_usage_snapshot:{$keyName}:{$startDate}:{$endDate}:" . ($filterOperation ?? 'all');
+
+        if ($forceRefresh) {
+            Cache::forget($cacheKey);
+        }
+
+        $snapshot = Cache::get($cacheKey);
+        if (!$snapshot || !isset($snapshot['metrics'])) {
+            $metrics = $this->getKeyUsageMetrics($keyName, $startDate, $endDate, $filterOperation);
+            $snapshot = ['metrics' => $metrics, 'fetched_at' => now()->toIso8601String()];
+            Cache::put($cacheKey, $snapshot, now()->addDays(30)); // hanya berubah saat refresh manual
+        }
+
+        return $snapshot;
+    }
+
+    /**
+     * Agregat usage SEMUA API key (untuk dashboard) — model manual refresh.
+     * Snapshot disimpan terpisah; hanya menembak AWS saat $forceRefresh atau belum ada snapshot.
+     * Return: ['data' => ['total','operations','by_key','daily','error'], 'fetched_at' => ISO8601]
+     */
+    public function getCachedAggregateUsage(string $startDate, string $endDate, bool $forceRefresh = false): array
+    {
+        $cacheKey = "aws_usage_aggregate:{$startDate}:{$endDate}";
+
+        if ($forceRefresh) {
+            Cache::forget($cacheKey);
+        }
+
+        $snapshot = Cache::get($cacheKey);
+        if (!$snapshot || !isset($snapshot['data'])) {
+            $snapshot = ['data' => $this->aggregateAllKeys($startDate, $endDate), 'fetched_at' => now()->toIso8601String()];
+            Cache::put($cacheKey, $snapshot, now()->addDays(30)); // hanya berubah saat refresh manual
+        }
+
+        return $snapshot;
+    }
+
+    /** Jumlahkan metrik CloudWatch dari seluruh API key menjadi satu agregat. */
+    private function aggregateAllKeys(string $startDate, string $endDate): array
+    {
+        $total = 0;
+        $operations = [];
+        $byKey = [];
+        $daily = [];
+        $error = null;
+
+        try {
+            foreach ($this->listApiKeys()['keys'] ?? [] as $key) {
+                $name = $key['key_name'] ?? null;
+                if (!$name) {
+                    continue;
+                }
+                $m = $this->getKeyUsageMetrics($name, $startDate, $endDate);
+                if (!empty($m['error'])) {
+                    $error = $m['error'];
+                    continue;
+                }
+                $total += $m['total'];
+                if ($m['total'] > 0) {
+                    $byKey[$name] = $m['total'];
+                }
+                foreach ($m['daily'] ?? [] as $d => $c) {
+                    $daily[$d] = ($daily[$d] ?? 0) + $c;
+                }
+                foreach ($m['operations'] ?? [] as $op => $c) {
+                    $operations[$op] = ($operations[$op] ?? 0) + $c;
+                }
+            }
+            arsort($operations);
+            arsort($byKey);
+            ksort($daily);
+        } catch (\Throwable $e) {
+            $error = $e->getMessage();
+        }
+
+        return ['total' => $total, 'operations' => $operations, 'by_key' => $byKey, 'daily' => $daily, 'error' => $error];
+    }
 
     public function getKeyUsageMetrics(string $keyName, string $startDate, string $endDate, ?string $filterOperation = null): array
     {

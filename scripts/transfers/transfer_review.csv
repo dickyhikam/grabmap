@@ -1,0 +1,2 @@
+from_station,from_mode,from_id,to_station,to_mode,to_id,straight_m,walk_m,walk_sec,reason
+Stasiun Cawang,KRL,IT.0YIX66ONHNAYV,Stasiun LRT Ciliwung,LRT,IT.1ALXFO1LTJYL6,494,6533,3430,jalan 3430s > 900s (mungkin bukan transfer / type 3)
