@@ -2,7 +2,7 @@
 
 return [
     // Header
-    'search_placeholder' => 'Cari tempat...',
+    'search_placeholder' => 'Cari tempat atau paste koordinat...',
     'search_btn' => 'Cari',
     'more_features' => 'Fitur Lainnya',
     'menu_pricing' => 'Dashboard Harga',
@@ -269,6 +269,7 @@ return [
     'from' => 'dari',
     'from_center' => 'dari pusat peta',
     'near' => 'dekat',
+    'pin_at_coords' => 'Pin di koordinat',
     'route_options' => 'Pilihan Rute',
     'fastest_route' => 'Rute Tercepat',
     'input_order' => 'Urutan Input',

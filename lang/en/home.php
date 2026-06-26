@@ -2,7 +2,7 @@
 
 return [
     // Header
-    'search_placeholder' => 'Search a place...',
+    'search_placeholder' => 'Search a place or paste coordinates...',
     'search_btn' => 'Search',
     'more_features' => 'More Features',
     'menu_pricing' => 'Pricing Dashboard',
@@ -269,6 +269,7 @@ return [
     'from' => 'from',
     'from_center' => 'from map center',
     'near' => 'near',
+    'pin_at_coords' => 'Pin at coordinates',
     'route_options' => 'Route Options',
     'fastest_route' => 'Fastest Route',
     'input_order' => 'Input Order',

@@ -34,7 +34,9 @@
         <div class="search-wrapper">
             <div class="search-input-wrap">
                 <i class="bi bi-search"></i>
-                <input type="text" class="search-input" data-i18n-placeholder="search_placeholder" placeholder="Search a place..." id="searchInput">
+                <input type="search" class="search-input" data-i18n-placeholder="search_placeholder" placeholder="Search a place..." id="searchInput"
+                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                    name="grabmaps-search" enterkeyhint="search">
             </div>
 
             <!-- Search dropdown — shown when input is focused -->
@@ -3547,9 +3549,100 @@
 
         let lastQueryString = '';
 
+        /**
+         * Parse a string as coordinates. Supports common formats:
+         *   - "-7.94259, 110.25978"   (decimal, comma)
+         *   - "-7.94259 110.25978"    (decimal, space)
+         *   - "7.94259S, 110.25978E"  (decimal + direction)
+         *   - "7°54'15.4\"S 110°17'43.9\"E"  (DMS — Google Maps style)
+         * Returns { lat, lng } or null if not parseable.
+         */
+        function parseCoords(text) {
+            if (!text) return null;
+            const s = text.trim();
+
+            // 1. Decimal: e.g. "-7.94259, 110.25978" or "-7.94259 110.25978"
+            const dec = s.match(/^(-?\d{1,2}(?:\.\d+)?)[\s,]+(-?\d{1,3}(?:\.\d+)?)$/);
+            if (dec) {
+                const lat = parseFloat(dec[1]);
+                const lng = parseFloat(dec[2]);
+                if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+            }
+
+            // 2. Decimal with direction: "7.94259S, 110.25978E"
+            const dir = s.match(/^(\d{1,2}(?:\.\d+)?)\s*([NS])[\s,]+(\d{1,3}(?:\.\d+)?)\s*([EW])$/i);
+            if (dir) {
+                let lat = parseFloat(dir[1]);
+                let lng = parseFloat(dir[3]);
+                if (dir[2].toUpperCase() === 'S') lat = -lat;
+                if (dir[4].toUpperCase() === 'W') lng = -lng;
+                if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+            }
+
+            // 3. DMS: 7°54'15.4"S 110°17'43.9"E
+            const dms = s.match(/^(\d{1,2})°\s*(\d{1,2})'?\s*(\d{1,2}(?:\.\d+)?)?"?\s*([NS])[\s,]+(\d{1,3})°\s*(\d{1,2})'?\s*(\d{1,2}(?:\.\d+)?)?"?\s*([EW])$/i);
+            if (dms) {
+                let lat = parseInt(dms[1]) + parseInt(dms[2]) / 60 + (parseFloat(dms[3]) || 0) / 3600;
+                let lng = parseInt(dms[5]) + parseInt(dms[6]) / 60 + (parseFloat(dms[7]) || 0) / 3600;
+                if (dms[4].toUpperCase() === 'S') lat = -lat;
+                if (dms[8].toUpperCase() === 'W') lng = -lng;
+                if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+            }
+
+            return null;
+        }
+
+        /** Render a single "Pin at coordinates" suggestion in the dropdown */
+        function renderCoordsSuggestion(parsed, rawQuery) {
+            list.innerHTML = '';
+            const li = document.createElement('li');
+            li.className = 'suggestion-item';
+            li.innerHTML = `
+                <div class="suggestion-cat-icon" style="background:#eef2ff;color:#4338ca;">
+                    <i class="bi bi-pin-map-fill"></i>
+                </div>
+                <div class="suggestion-text" style="flex:1;min-width:0;">
+                    <div class="suggestion-title">${escapeHtml(t('pin_at_coords') || 'Pin at coordinates')}</div>
+                    <div class="suggestion-address" style="font-family:ui-monospace,monospace;">${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}</div>
+                </div>
+            `;
+            li.onclick = async () => {
+                hideSearchDropdown();
+                input.value = '';
+                const coords = [parsed.lng, parsed.lat];
+                addLocation(coords, t('loading'));
+                const currentId = selectedMarkerId;
+                // Try to reverse-geocode for a friendly label
+                try {
+                    const place = await getPlaceNameByCoords(coords);
+                    const item = markersData.find(m => m.id === currentId);
+                    if (item && place && place.title) {
+                        item.name = place.title;
+                        item.address = place.address;
+                        item.marker.setPopup(new maplibregl.Popup({offset:25}).setHTML(buildPopupHtml(place.title, place.address)));
+                        renderLocationList();
+                    }
+                } catch (_) {}
+            };
+            list.appendChild(li);
+            list.classList.add('show');
+        }
+
         input.addEventListener('input', debounce(async (e) => {
             const query = e.target.value;
             const chipsBar = document.getElementById('categoryChipsBar');
+
+            // Coordinate detection — short-circuit before triggering AWS Suggest
+            const coordsMatch = parseCoords(query);
+            if (coordsMatch) {
+                if (chipsBar) chipsBar.style.display = 'none';
+                document.getElementById('recentSearchesPanel').style.display = 'none';
+                setSearchLoading(false);
+                setSearchEmpty(false);
+                renderCoordsSuggestion(coordsMatch, query);
+                refreshDropdownVisibility();
+                return;
+            }
 
             if (query.length < 3) {
                 list.classList.remove('show');
@@ -3769,6 +3862,30 @@
         async function handleManualSearch() {
             const query = input.value;
             if (!query) return showToast(t('empty_search'), t('enter_keyword'), 'warning');
+
+            // Coordinate shortcut — bypass AWS search-text, drop pin directly
+            const coordsMatch = parseCoords(query);
+            if (coordsMatch) {
+                list.classList.remove('show');
+                hideSearchDropdown();
+                input.value = '';
+                const coords = [coordsMatch.lng, coordsMatch.lat];
+                addLocation(coords, t('loading'));
+                const currentId = selectedMarkerId;
+                try {
+                    const place = await getPlaceNameByCoords(coords);
+                    const item = markersData.find(m => m.id === currentId);
+                    if (item && place && place.title) {
+                        item.name = place.title;
+                        item.address = place.address;
+                        item.marker.setPopup(new maplibregl.Popup({offset:25}).setHTML(buildPopupHtml(place.title, place.address)));
+                        renderLocationList();
+                    }
+                } catch (_) {}
+                showToast(t('found'), `${coordsMatch.lat.toFixed(5)}, ${coordsMatch.lng.toFixed(5)}`, 'success');
+                return;
+            }
+
             list.classList.remove('show');
             hideSearchDropdown();
             lastQueryString = query;
