@@ -94,9 +94,11 @@ Route::get('/map-config', function () {
     ]);
 });
 
-// Pricing Comparison
-Route::get('/pricing', [PricingController::class, 'index'])->name('pricing');
-Route::post('/api/pricing/calculate', [PricingController::class, 'calculate']);
+// Pricing Comparison — gated by MAINTENANCE_PRICING env flag
+Route::middleware('feature.maintenance:pricing')->group(function () {
+    Route::get('/pricing', [PricingController::class, 'index'])->name('pricing');
+    Route::post('/api/pricing/calculate', [PricingController::class, 'calculate']);
+});
 
 // Pricing Admin
 Route::get('/pricing/admin', [PricingController::class, 'adminIndex'])->name('pricing.admin');

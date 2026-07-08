@@ -20,16 +20,323 @@
         body {
             background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 50%, #e8f0fe 100%);
             min-height: 100vh;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background:
+                radial-gradient(700px 400px at 5% 5%, rgba(0,177,79,0.10), transparent 60%),
+                radial-gradient(700px 400px at 95% 20%, rgba(37,99,235,0.08), transparent 60%),
+                radial-gradient(600px 400px at 50% 100%, rgba(245,158,11,0.06), transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+            animation: floatBg 22s ease-in-out infinite alternate;
+        }
+        @keyframes floatBg {
+            0% { transform: translate(0,0) scale(1); }
+            100% { transform: translate(-30px, 20px) scale(1.05); }
+        }
+        body > * { position: relative; z-index: 1; }
+
+        .grab-logo { height: 24px; width: auto; }
+
+        /* ─── Reading progress bar ─── */
+        .price-progress {
+            position: fixed; top: 0; left: 0; right: 0;
+            height: 3px; z-index: 9999; pointer-events: none;
+        }
+        .price-progress-fill {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, #00B14F, #10d966, #f59e0b);
+            transition: width 0.1s linear;
+            box-shadow: 0 0 10px rgba(0,177,79,0.5);
         }
 
-        .grab-logo {
-            height: 24px;
-            width: auto;
+        /* ─── Hero enhancements ─── */
+        .hero-section {
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-section::before,
+        .hero-section::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            pointer-events: none;
+        }
+        .hero-section::before {
+            top: -30%; right: -10%;
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(255,255,255,0.18), transparent 70%);
+            animation: heroBlob 18s ease-in-out infinite;
+        }
+        .hero-section::after {
+            bottom: -40%; left: -15%;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(16,217,102,0.18), transparent 70%);
+            animation: heroBlob 24s ease-in-out infinite reverse;
+        }
+        @keyframes heroBlob {
+            0%, 100% { transform: translate(0,0) scale(1); }
+            50% { transform: translate(30px, 20px) scale(1.08); }
+        }
+        .hero-section > .container { position: relative; z-index: 2; }
+        .hero-section h1 {
+            animation: fadeInUp 0.8s ease both;
+            letter-spacing: -0.02em;
+        }
+        .hero-section p {
+            animation: fadeInUp 0.8s ease 0.1s both;
+        }
+        .hero-section small {
+            animation: fadeInUp 0.8s ease 0.2s both;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ─── Calculator polish ─── */
+        .calculator-card {
+            transition: box-shadow 0.3s cubic-bezier(0.4,0,0.2,1), transform 0.3s cubic-bezier(0.4,0,0.2,1);
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+        .calculator-card:hover {
+            box-shadow: 0 12px 32px rgba(0,0,0,0.08), 0 4px 12px rgba(0,177,79,0.08) !important;
+        }
+        .btn-calculate {
+            position: relative; overflow: hidden;
+            transition: all 0.2s cubic-bezier(0.4,0,0.2,1) !important;
+        }
+        .btn-calculate::before {
+            content: '';
+            position: absolute; top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+            transition: left 0.5s;
+        }
+        .btn-calculate:hover::before { left: 100%; }
+        .btn-calculate:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,177,79,0.35) !important; }
+
+        /* ─── Chart cards ─── */
+        .chart-card {
+            transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+        .chart-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08), 0 6px 16px rgba(0,0,0,0.05);
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           PROVIDER TABS — Compare / AWS / Google
+           Filter table columns via body[data-provider-view]
+           ═══════════════════════════════════════════════════════════ */
+        .provider-tabs-wrap {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 24px;
+            animation: fadeInUp 0.6s ease both;
+        }
+        .provider-tabs {
+            display: inline-flex;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 16px;
+            padding: 6px;
+            gap: 4px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.04);
+        }
+        .provider-tab {
+            background: transparent;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 11px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #6b7280;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            position: relative;
+        }
+        .provider-tab .provider-emoji { font-size: 1rem; }
+        .provider-tab:hover { color: #1f2937; background: rgba(0,0,0,0.03); }
+        .provider-tab.active {
+            background: #fff;
+            color: #1f2937;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+            transform: translateY(-1px);
+        }
+        .provider-tab[data-view="compare"].active { color: #7c3aed; }
+        .provider-tab[data-view="compare"].active::before {
+            content: '';
+            position: absolute; inset: -2px;
+            border-radius: 13px;
+            background: linear-gradient(135deg, #7c3aed, #ec4899);
+            z-index: -1;
+            opacity: 0.15;
+        }
+        .provider-tab[data-view="als"].active { color: #d97706; }
+        .provider-tab[data-view="als"].active::before {
+            content: '';
+            position: absolute; inset: -2px;
+            border-radius: 13px;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            z-index: -1;
+            opacity: 0.15;
+        }
+        .provider-tab[data-view="google"].active { color: #2563eb; }
+        .provider-tab[data-view="google"].active::before {
+            content: '';
+            position: absolute; inset: -2px;
+            border-radius: 13px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            z-index: -1;
+            opacity: 0.15;
+        }
+
+        /* Column visibility rules (default = compare, shows all) */
+        /* AWS-only view: hide Google columns */
+        body[data-provider-view="als"] .col-google-price,
+        body[data-provider-view="als"] .col-google-free,
+        body[data-provider-view="als"] .col-google-cost,
+        body[data-provider-view="als"] .col-savings,
+        body[data-provider-view="als"] .td-google,
+        body[data-provider-view="als"] .td-free,
+        body[data-provider-view="als"] .td-cost-google,
+        body[data-provider-view="als"] .td-savings,
+        body[data-provider-view="als"] .subtotal-google,
+        body[data-provider-view="als"] .subtotal-savings {
+            display: none !important;
+        }
+
+        /* Google-only view: hide AWS columns */
+        body[data-provider-view="google"] .col-als-price,
+        body[data-provider-view="google"] .col-als-cost,
+        body[data-provider-view="google"] .col-savings,
+        body[data-provider-view="google"] .td-als,
+        body[data-provider-view="google"] .td-cost-als,
+        body[data-provider-view="google"] .td-savings,
+        body[data-provider-view="google"] .subtotal-als,
+        body[data-provider-view="google"] .subtotal-savings {
+            display: none !important;
+        }
+
+        /* Hide ALS-exclusive category rows when in Google-only view */
+        body[data-provider-view="google"] .pricing-card.als-only-card {
+            display: none;
+        }
+        /* Show "Google doesn't have this" banner for hidden category */
+        body[data-provider-view="google"] .als-only-notice {
+            display: block;
+        }
+        .als-only-notice { display: none; }
+
+        /* Provider column color hints — subtle bg tint */
+        body[data-provider-view="compare"] .td-als,
+        body[data-provider-view="compare"] .td-cost-als,
+        body[data-provider-view="compare"] .subtotal-als {
+            background: rgba(245, 158, 11, 0.05);
+        }
+        body[data-provider-view="compare"] .td-google,
+        body[data-provider-view="compare"] .td-free,
+        body[data-provider-view="compare"] .td-cost-google,
+        body[data-provider-view="compare"] .subtotal-google {
+            background: rgba(37, 99, 235, 0.045);
+        }
+
+        /* ─── Pricing card polish ─── */
+        .pricing-card {
+            transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+        .pricing-card:hover {
+            box-shadow: 0 16px 40px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .pricing-card-header .category-badge {
+            transition: transform 0.2s;
+        }
+        .pricing-card:hover .category-badge {
+            transform: scale(1.05);
+        }
+        .unified-table tbody tr {
+            transition: background-color 0.15s;
+        }
+        .unified-table tbody tr:hover:not(.row-disabled):not(.subtotal-row) {
+            background: rgba(0,177,79,0.04);
+        }
+
+        /* ─── Key insights ─── */
+        .insight-card {
+            transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+        .insight-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1), 0 6px 16px rgba(0,0,0,0.06);
+        }
+        .insight-icon {
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+        .insight-card:hover .insight-icon {
+            transform: scale(1.12) rotate(-4deg);
+        }
+
+        /* ─── Reveal-on-scroll ─── */
+        .reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ─── Custom scrollbar ─── */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.15);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,177,79,0.4); }
+
+        /* ─── ALS-only notice card ─── */
+        .als-only-notice {
+            background: linear-gradient(135deg, #fef3c7, #fed7aa);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #78350f;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .als-only-notice i {
+            color: #d97706;
+            margin-right: 6px;
+        }
+
+        @media (max-width: 640px) {
+            .provider-tab { padding: 8px 12px; font-size: 0.78rem; }
+            .provider-tab .provider-label { display: none; }
         }
     </style>
 </head>
 
 <body>
+    <div class="price-progress"><div class="price-progress-fill" id="priceProgressFill"></div></div>
+
     <!-- NAVBAR -->
     <nav class="pricing-navbar">
         <div class="container">
@@ -119,13 +426,39 @@
         </div>
     </section>
 
+    <!-- PROVIDER TABS — Compare / Amazon Location / Google Maps -->
+    <section class="content-section" style="padding-bottom:0;">
+        <div class="provider-tabs-wrap">
+            <div class="provider-tabs" role="tablist" aria-label="Provider view">
+                <button type="button" class="provider-tab active" data-view="compare" role="tab" aria-selected="true">
+                    <span class="provider-emoji">⚖️</span>
+                    <span class="provider-label">{{ __('pricing.tab_compare') ?? 'Compare' }}</span>
+                </button>
+                <button type="button" class="provider-tab" data-view="als" role="tab" aria-selected="false">
+                    <span class="provider-emoji">🟠</span>
+                    <span class="provider-label">Amazon Location</span>
+                </button>
+                <button type="button" class="provider-tab" data-view="google" role="tab" aria-selected="false">
+                    <span class="provider-emoji">🔵</span>
+                    <span class="provider-label">Google Maps</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
     <!-- UNIFIED PRICING TABLES -->
     <section class="content-section pricing-tables-section animate-in delay-2">
+        <!-- Shown only in Google-only view: notice that some categories are AWS-exclusive -->
+        <div class="als-only-notice">
+            <i class="bi bi-info-circle-fill"></i>
+            {{ __('pricing.als_only_notice') ?? 'Some categories (Trackers, Geofences) are exclusive to Amazon Location Service — switch to Compare or AWS view to see them.' }}
+        </div>
+
         @foreach($categories as $category)
         @php
         $allAlsOnly = $category->items->where('als_only', true)->count() === $category->items->count();
         @endphp
-        <div class="pricing-card" data-category="{{ $category->slug }}">
+        <div class="pricing-card {{ $allAlsOnly ? 'als-only-card' : '' }}" data-category="{{ $category->slug }}">
             <div class="pricing-card-header">
                 <div class="pricing-card-title-wrap">
                     <h5>{{ $category->name_translated ?? $category->name }}</h5>
@@ -161,11 +494,11 @@
                             <th class="col-check"><input type="checkbox" class="check-all" data-category="{{ $category->slug }}" {{ $checkAllChecked ? 'checked' : '' }}></th>
                             <th>{{ __('pricing.api') }}</th>
                             <th>{{ __('pricing.tier') }}</th>
-                            <th class="col-price">{{ __('pricing.als_1k') }}</th>
-                            <th class="col-price">{{ __('pricing.google_1k') }}</th>
-                            <th class="col-free">{{ __('pricing.free_tier') }}</th>
-                            <th class="col-cost">{{ __('pricing.als_cost') }}</th>
-                            <th class="col-cost">{{ __('pricing.google_cost') }}</th>
+                            <th class="col-price col-als-price">{{ __('pricing.als_1k') }}</th>
+                            <th class="col-price col-google-price">{{ __('pricing.google_1k') }}</th>
+                            <th class="col-free col-google-free">{{ __('pricing.free_tier') }}</th>
+                            <th class="col-cost col-als-cost">{{ __('pricing.als_cost') }}</th>
+                            <th class="col-cost col-google-cost">{{ __('pricing.google_cost') }}</th>
                             <th class="col-savings">{{ __('pricing.savings') }}</th>
                         </tr>
                     </thead>
@@ -955,6 +1288,58 @@
             syncCheckAllState();
             buildLineChartControls();
             calculateCosts();
+
+            /* ═══ Provider tabs (Compare / AWS / Google) ═══ */
+            const savedView = (() => {
+                try { return localStorage.getItem('pricing_provider_view') || 'compare'; } catch (_) { return 'compare'; }
+            })();
+            function setProviderView(view) {
+                document.body.setAttribute('data-provider-view', view);
+                document.querySelectorAll('.provider-tab').forEach(t => {
+                    const active = t.dataset.view === view;
+                    t.classList.toggle('active', active);
+                    t.setAttribute('aria-selected', active ? 'true' : 'false');
+                });
+                try { localStorage.setItem('pricing_provider_view', view); } catch (_) {}
+                // Charts re-render so bars reflect visible providers
+                if (typeof reRender === 'function') reRender();
+            }
+            document.querySelectorAll('.provider-tab').forEach(tab => {
+                tab.addEventListener('click', () => setProviderView(tab.dataset.view));
+            });
+            setProviderView(savedView);
+
+            /* ═══ Reading progress bar ═══ */
+            const bar = document.getElementById('priceProgressFill');
+            if (bar) {
+                const updateBar = () => {
+                    const doc = document.documentElement;
+                    const scrollTop = window.scrollY || doc.scrollTop;
+                    const scrollHeight = doc.scrollHeight - doc.clientHeight;
+                    const pct = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+                    bar.style.width = pct + '%';
+                };
+                window.addEventListener('scroll', updateBar, { passive: true });
+                updateBar();
+            }
+
+            /* ═══ Reveal-on-scroll for key sections ═══ */
+            const revealTargets = document.querySelectorAll(
+                '.pricing-card, .insight-card, .chart-card, .calculator-card'
+            );
+            revealTargets.forEach((el, i) => {
+                el.classList.add('reveal');
+                el.style.transitionDelay = Math.min(i * 45, 260) + 'ms';
+            });
+            const revealObs = new IntersectionObserver((entries) => {
+                entries.forEach(e => {
+                    if (e.isIntersecting) {
+                        e.target.classList.add('visible');
+                        revealObs.unobserve(e.target);
+                    }
+                });
+            }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+            revealTargets.forEach(el => revealObs.observe(el));
         });
     </script>
 </body>

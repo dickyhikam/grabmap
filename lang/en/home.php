@@ -11,6 +11,8 @@ return [
     'menu_tester_desc' => 'Test API endpoints',
     'menu_docs' => 'API Reference',
     'menu_docs_desc' => 'AWS Location v0 & v2 docs',
+    'menu_tutorial' => 'Tutorial & Docs',
+    'menu_tutorial_desc' => 'Setup AWS key, playground & API reference',
     'menu_address' => 'Address Verification',
     'menu_address_desc' => 'Verify & geocode addresses',
     'menu_admin' => 'Company Admin',

@@ -48,6 +48,13 @@ class PricingController extends Controller
 
     public function calculate(Request $request)
     {
+        if (filter_var(env('PRICING_MAINTENANCE', false), FILTER_VALIDATE_BOOLEAN)) {
+            return response()->json([
+                'error' => 'Pricing service under maintenance',
+                'message' => 'The pricing comparison is temporarily disabled while we correct our data.',
+            ], 503);
+        }
+
         $request->validate([
             'volume' => 'required|integer|min:0|max:10000000',
         ]);
