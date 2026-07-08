@@ -2459,6 +2459,9 @@
             document.querySelectorAll('.map-style-btn[data-color]').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.color === mapStyleState.color);
             });
+            // Sync UI theme with map color scheme (Dark map → dark panels)
+            const theme = mapStyleState.color === 'Dark' ? 'dark' : 'light';
+            document.body.setAttribute('data-map-theme', theme);
         }
 
         function toggleStylePanel() {

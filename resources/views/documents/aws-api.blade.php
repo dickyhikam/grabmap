@@ -47,45 +47,67 @@
             overflow: hidden;
         }
 
-        /* Top bar */
+        /* Top bar (glass style — matches tutorial page) */
         .topbar {
-            height: 56px;
-            background: linear-gradient(90deg, #00B14F 0%, #00d65a 100%);
-            color: #fff;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            color: #1f2937;
             padding: 0 24px;
             display: flex;
             align-items: center;
-            gap: 14px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            gap: 12px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
             z-index: 10;
             position: relative;
         }
 
         .topbar .brand {
-            font-weight: 700;
-            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 0.95rem;
             letter-spacing: -0.2px;
+            color: #1f2937;
+            text-decoration: none;
+        }
+
+        .topbar .brand .logo-dot {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #00B14F, #008b3d);
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 6px rgba(0, 177, 79, 0.35);
         }
 
         .topbar .brand small {
-            opacity: 0.85;
+            opacity: 0.7;
             font-weight: 500;
-            margin-left: 8px;
-            font-size: 0.78rem;
+            margin-left: 4px;
+            font-size: 0.75rem;
+            color: #6b7280;
         }
 
         .topbar .search-box {
             margin-left: auto;
-            background: rgba(255, 255, 255, 0.95);
-            border: 1.5px solid rgba(255, 255, 255, 0.9);
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
             color: #1f2937;
-            padding: 7px 14px;
+            padding: 7px 14px 7px 14px;
             border-radius: 8px;
             font-size: 0.82rem;
             width: 260px;
             font-weight: 500;
             transition: all 0.15s;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
         }
 
         .topbar .search-box::placeholder {
@@ -95,71 +117,81 @@
         .topbar .search-box:focus {
             outline: none;
             background: #fff;
-            border-color: #fde68a;
-            box-shadow: 0 0 0 3px rgba(252, 211, 77, 0.35), 0 2px 6px rgba(0,0,0,0.12);
+            border-color: #00B14F;
+            box-shadow: 0 0 0 3px rgba(0, 177, 79, 0.15), 0 1px 2px rgba(0,0,0,0.06);
         }
 
-        /* Language toggle */
+        /* Language toggle (glass) */
         .lang-toggle {
             display: flex;
-            background: rgba(255, 255, 255, 0.18);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 6px;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
             overflow: hidden;
+            padding: 2px;
+            gap: 2px;
         }
 
         .lang-toggle button {
             background: transparent;
             border: 0;
-            color: rgba(255, 255, 255, 0.85);
+            color: #6b7280;
             font-size: 0.74rem;
             font-weight: 700;
             padding: 5px 10px;
             cursor: pointer;
             letter-spacing: 0.5px;
+            border-radius: 6px;
             transition: all 0.12s;
         }
 
         .lang-toggle button:hover {
-            background: rgba(255, 255, 255, 0.12);
-            color: #fff;
+            background: rgba(0, 0, 0, 0.04);
+            color: #1f2937;
         }
 
         .lang-toggle button.active {
-            background: #fff;
+            background: #ffffff;
             color: #00B14F;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
         }
 
-        /* === API Key Inspector — topbar button === */
+        /* === API Key Inspector — topbar button (glass ver.) === */
         .key-inspector-btn {
             display: inline-flex;
             align-items: center;
             gap: 7px;
-            background: #ffffff;
-            color: #047857;
-            border: 1.5px solid #ffffff;
-            border-radius: 10px;
+            background: #00B14F;
+            color: #ffffff;
+            border: 1.5px solid #00B14F;
+            border-radius: 8px;
             padding: 7px 14px;
-            font-size: 0.82rem;
+            font-size: 0.8rem;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.18s;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            box-shadow: 0 2px 6px rgba(0, 177, 79, 0.25);
             white-space: nowrap;
         }
         .key-inspector-btn i {
             font-size: 0.95rem;
-            color: #d97706;
+            color: #ffffff;
         }
         .key-inspector-btn:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.18);
-            background: #fffbeb;
+            background: #008b3d;
+            border-color: #008b3d;
+            box-shadow: 0 4px 12px rgba(0, 177, 79, 0.35);
         }
         .key-inspector-btn.has-key {
             background: #fef3c7;
             color: #92400e;
             border-color: #fde68a;
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2);
+        }
+        .key-inspector-btn.has-key:hover {
+            background: #fde68a;
+            border-color: #fbbf24;
         }
         .key-inspector-btn.has-key i { color: #d97706; }
         .key-inspector-btn .key-pill {
@@ -340,7 +372,7 @@
         /* Layout */
         .layout {
             display: flex;
-            height: calc(100vh - 56px);
+            height: calc(100vh - 60px);
         }
 
         /* Sidebar */
@@ -1515,6 +1547,105 @@
             background: #cbd5e1;
             border-radius: 4px;
         }
+
+        /* === No-key banner (sticky notice when user hasn't set API key) === */
+        .no-key-banner {
+            position: sticky;
+            top: 60px;
+            z-index: 9;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-bottom: 1px solid #f59e0b;
+            padding: 10px 24px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.82rem;
+            color: #78350f;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+            animation: slideDownBanner 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .no-key-banner.visible { display: flex; }
+        .no-key-banner .nkb-icon {
+            font-size: 1.1rem;
+            animation: gentleShake 3s ease-in-out infinite;
+        }
+        .no-key-banner .nkb-text { flex: 1; }
+        .no-key-banner .nkb-text b { color: #92400e; }
+        .no-key-banner .nkb-btn {
+            background: #d97706;
+            color: #fff;
+            border: none;
+            padding: 7px 16px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            box-shadow: 0 2px 6px rgba(217, 119, 6, 0.35);
+            white-space: nowrap;
+        }
+        .no-key-banner .nkb-btn:hover {
+            background: #b45309;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(217, 119, 6, 0.5);
+        }
+        @keyframes slideDownBanner {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes gentleShake {
+            0%, 100% { transform: rotate(0deg); }
+            10% { transform: rotate(-8deg); }
+            20% { transform: rotate(8deg); }
+            30% { transform: rotate(-6deg); }
+            40% { transform: rotate(6deg); }
+            50% { transform: rotate(0deg); }
+        }
+        /* Pulse-alert for My Key button */
+        .key-inspector-btn.pulse-alert {
+            animation: pulseAlert 0.6s cubic-bezier(0.4, 0, 0.2, 1) 3;
+        }
+        @keyframes pulseAlert {
+            0%, 100% { transform: scale(1); }
+            50% {
+                transform: scale(1.08);
+                box-shadow: 0 8px 24px rgba(239, 68, 68, 0.5), 0 0 0 6px rgba(239, 68, 68, 0.15);
+            }
+        }
+        /* No-key state on My Key button (needs-key) */
+        .key-inspector-btn.needs-key {
+            background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
+            color: #78350f !important;
+            border-color: #f59e0b !important;
+            animation: subtleBreathe 2.5s ease-in-out infinite;
+        }
+        .key-inspector-btn.needs-key i { color: #d97706 !important; }
+        @keyframes subtleBreathe {
+            0%, 100% { box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3); }
+            50% { box-shadow: 0 4px 16px rgba(245, 158, 11, 0.5); }
+        }
+
+        /* Direct-mode indicator on response */
+        .resp-body.direct-mode::before {
+            content: '🔑 Direct call — your API Key';
+            display: inline-block;
+            background: #dcfce7;
+            color: #166534;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 6px;
+            border: 1px solid #bbf7d0;
+            margin-bottom: 8px;
+        }
+
+        /* Mobile: hide button label on banner */
+        @media (max-width: 640px) {
+            .no-key-banner { padding: 8px 12px; font-size: 0.75rem; }
+            .no-key-banner .nkb-btn { padding: 6px 10px; font-size: 0.72rem; }
+            .no-key-banner .nkb-text b { display: block; }
+        }
     </style>
 </head>
 
@@ -1524,7 +1655,10 @@
     <script src="{{ asset('javascript/docs/aws-api-try-it.js') }}"></script>
 
     <header class="topbar">
-        <span class="brand">📚 <span data-i18n="topbar_title">AWS Location Service Reference</span> <small data-i18n="topbar_subtitle">v0 (legacy) &amp; v2 (standalone)</small></span>
+        <a href="/" class="brand" title="Home">
+            <span class="logo-dot">📚</span>
+            <span><span data-i18n="topbar_title">AWS Location Service Reference</span> <small data-i18n="topbar_subtitle">v0 (legacy) &amp; v2 (standalone)</small></span>
+        </a>
         <input type="text" class="search-box" placeholder="🔍 Search operation..." id="searchBox" data-i18n-placeholder="search_placeholder">
 
         <!-- My API Key button (opens inspector modal) -->
@@ -1539,6 +1673,15 @@
             <button data-lang="en">EN</button>
         </div>
     </header>
+
+    <!-- Persistent no-key banner (shown when user hasn't configured API Key) -->
+    <div class="no-key-banner" id="noKeyBanner" role="alert">
+        <span class="nkb-icon">🔑</span>
+        <span class="nkb-text" data-i18n-html="no_key_banner">
+            <b>Configure your API Key first</b> — <span>Try it Live is disabled until you paste your own AWS Location Service API Key. Your key stays in this browser only.</span>
+        </span>
+        <button type="button" class="nkb-btn" id="nkbConfigureBtn" data-i18n="no_key_banner_cta">Configure now</button>
+    </div>
 
     <!-- ====================== API KEY INSPECTOR MODAL ====================== -->
     <div id="keyInspectorModal" class="key-modal" style="display:none;">
@@ -2527,21 +2670,63 @@
 
                 <script>
                 (function() {
-                    const REGION = "{{ env('AWS_REGION') }}";
-                    const API_KEY = "{{ env('AWS_API_KEY') }}";
+                    // Read ONLY from user's My Key Inspector — env key stays server-side.
+                    function resolveCreds() {
+                        const uk = window.AWSAPI_UserKey;
+                        if (uk && uk.apiKey) {
+                            return { region: uk.region || 'ap-southeast-1', apiKey: uk.apiKey };
+                        }
+                        return { region: 'ap-southeast-1', apiKey: '' };
+                    }
+
                     function build() {
+                        const { region, apiKey } = resolveCreds();
                         const z = document.getElementById('gt-z').value;
                         const x = document.getElementById('gt-x').value;
                         const y = document.getElementById('gt-y').value;
                         const s = document.getElementById('gt-style').value;
-                        return `https://maps.geo.${REGION}.amazonaws.com/v2/tiles/${s}/Default/Default/${z}/${x}/${y}?key=${API_KEY}`;
+                        return {
+                            url: `https://maps.geo.${region}.amazonaws.com/v2/tiles/${s}/Default/Default/${z}/${x}/${y}?key=${apiKey}`,
+                            hasKey: !!apiKey
+                        };
                     }
+
                     function refresh() {
-                        document.getElementById('gt-url').textContent = build().replace(API_KEY, '***');
+                        const { url, hasKey } = build();
+                        const el = document.getElementById('gt-url');
+                        const btn = document.getElementById('gt-open');
+                        // Mask displayed key (last 20 chars) but keep real URL for Open
+                        el.textContent = hasKey
+                            ? url.replace(/key=.+$/, 'key=' + '•'.repeat(6) + '…' + url.slice(-6))
+                            : url.replace(/key=$/, 'key=(not set)');
+                        // Toggle button state
+                        if (hasKey) {
+                            btn.disabled = false;
+                            btn.style.opacity = '';
+                            btn.style.cursor = 'pointer';
+                            btn.title = 'Open tile URL in a new tab';
+                        } else {
+                            btn.disabled = true;
+                            btn.style.opacity = '0.5';
+                            btn.style.cursor = 'not-allowed';
+                            btn.title = 'Set your API Key first via the 🔑 My Key button at the top';
+                        }
                     }
+
                     ['gt-z','gt-x','gt-y','gt-style'].forEach(id => document.getElementById(id).addEventListener('input', refresh));
                     document.getElementById('gt-apply').addEventListener('click', refresh);
-                    document.getElementById('gt-open').addEventListener('click', () => window.open(build(), '_blank'));
+                    document.getElementById('gt-open').addEventListener('click', () => {
+                        const { url, hasKey } = build();
+                        if (!hasKey) {
+                            alert('Set your API Key first — click the 🔑 My Key button at the top of the page, paste your key, and check "Use in Try it Live".');
+                            return;
+                        }
+                        window.open(url, '_blank', 'noopener');
+                    });
+
+                    // React to My Key Inspector updates
+                    window.addEventListener('AWSAPI_UserKeyChanged', refresh);
+                    document.addEventListener('DOMContentLoaded', refresh);
                     refresh();
                 })();
                 </script>
@@ -4460,6 +4645,7 @@
             // Expose to AWSAPI_TryIt for code snippet override + Send Request bypass
             window.AWSAPI_UserKey = data;
             if (window.AWSAPI_TryIt_refreshBadges) window.AWSAPI_TryIt_refreshBadges();
+            window.dispatchEvent(new CustomEvent('AWSAPI_UserKeyChanged', { detail: data }));
         });
 
         // Clear
@@ -4470,6 +4656,7 @@
             applyKeyToUI();
             if (window.AWSAPI_TryIt_refreshBadges) window.AWSAPI_TryIt_refreshBadges();
             document.getElementById('keyInspectorModal').style.display = 'none';
+            window.dispatchEvent(new CustomEvent('AWSAPI_UserKeyChanged', { detail: null }));
         });
 
         // Initial load
@@ -4478,6 +4665,26 @@
         applyKeyToUI();
         // Refresh every hour (countdown updates)
         setInterval(applyKeyToUI, 60 * 60 * 1000);
+
+        // === No-key banner control ===
+        const noKeyBanner = document.getElementById('noKeyBanner');
+        const btnKeyInspector = document.getElementById('btnKeyInspector');
+        const nkbConfigureBtn = document.getElementById('nkbConfigureBtn');
+
+        function updateNoKeyBanner() {
+            const hasKey = !!(window.AWSAPI_UserKey && window.AWSAPI_UserKey.apiKey);
+            noKeyBanner.classList.toggle('visible', !hasKey);
+            btnKeyInspector.classList.toggle('needs-key', !hasKey);
+            if (window.AWSAPI_TryIt_refreshBadges) window.AWSAPI_TryIt_refreshBadges();
+        }
+        // Configure now → open key inspector modal
+        if (nkbConfigureBtn) {
+            nkbConfigureBtn.addEventListener('click', () => btnKeyInspector.click());
+        }
+        // React to key changes (dispatched from Save/Clear handlers)
+        window.addEventListener('AWSAPI_UserKeyChanged', updateNoKeyBanner);
+        // Initial state
+        updateNoKeyBanner();
 
         /* ============================================================
            I18N — pindah ke file: public/javascript/docs/aws-api-i18n.js

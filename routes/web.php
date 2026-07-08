@@ -30,6 +30,12 @@ Route::get('/doc-web', function () {
 Route::get('/docs/aws-api', function () {
     return view('documents.aws-api');
 })->name('docs.aws-api');
+Route::get('/tutorial', function () {
+    return view('documents.tutorial-hub');
+})->name('tutorial.hub');
+Route::get('/tutorial/aws-key', function () {
+    return view('documents.aws-tutorial');
+})->name('tutorial.aws-key');
 Route::get('/maps/google', function () {
     return view('documents.google-maps');
 })->name('maps.google');

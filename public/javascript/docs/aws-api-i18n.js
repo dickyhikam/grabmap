@@ -152,6 +152,10 @@ const I18N = {
         ow_tsp_note: 'Previously you had to implement TSP / nearest-neighbor yourself in JS. Now AWS handles it.',
         sidebar_search_empty: 'No operations found',
 
+        /* No-key banner */
+        no_key_banner: '<b>Configure your API Key first</b> — <span>Try it Live is disabled until you paste your own AWS Location Service API Key. Your key stays in this browser only.</span>',
+        no_key_banner_cta: 'Configure now',
+
         /* API Key Inspector */
         key_inspector_btn: 'My Key',
         key_inspector_title: 'Configure your API Key',
@@ -525,6 +529,10 @@ const I18N = {
         iso_thresholds_note: 'Bisa juga pakai <code>Thresholds.Distance</code> (meter) atau kedua-duanya.',
         ow_tsp_note: 'Sebelumnya kamu harus implement TSP / nearest-neighbor sendiri di JS. Sekarang AWS yang hitungkan.',
         sidebar_search_empty: 'Tidak ada operation ditemukan',
+
+        /* No-key banner */
+        no_key_banner: '<b>Konfigurasi API Key kamu dulu</b> — <span>Try it Live nonaktif sampai kamu paste API Key AWS Location Service milik kamu. Key kamu hanya disimpan di browser ini.</span>',
+        no_key_banner_cta: 'Konfigurasi sekarang',
 
         /* API Key Inspector */
         key_inspector_btn: 'API Key Saya',

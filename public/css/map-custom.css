@@ -1625,3 +1625,372 @@
                 margin-top: 84px;
             }
         }
+
+        /* =========================================
+           DARK MODE — refined glassmorphism (mapStyleState.color === 'Dark')
+           Toggled via [data-map-theme="dark"] on <body>
+           Philosophy: light blur + green accent, not flat black boxes.
+           ========================================= */
+        body[data-map-theme="dark"] {
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #7d8598;
+            --bg-glass: rgba(15, 18, 28, 0.55);
+            --bg-glass-strong: rgba(15, 18, 28, 0.68);
+            --bg-surface: rgba(255, 255, 255, 0.04);
+            --bg-subtle: rgba(255, 255, 255, 0.03);
+            --grab-green-light: rgba(0, 177, 79, 0.16);
+            --grab-green-subtle: rgba(0, 177, 79, 0.08);
+            --border-light: rgba(255, 255, 255, 0.10);
+            --border-hover: rgba(0, 177, 79, 0.55);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.38), 0 2px 8px rgba(0, 0, 0, 0.25);
+            --shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.5), 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ── Floating search header ─────────────────── */
+        body[data-map-theme="dark"] .floating-header {
+            background: rgba(15, 18, 28, 0.55);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            box-shadow:
+                0 10px 32px rgba(0, 0, 0, 0.35),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        body[data-map-theme="dark"] .search-input {
+            color: #f8fafc;
+            background: transparent;
+        }
+        body[data-map-theme="dark"] .search-input::placeholder { color: #64748b; }
+        body[data-map-theme="dark"] .search-input-wrap .bi-search { color: #94a3b8; }
+
+        /* Header buttons — subtle chip look */
+        body[data-map-theme="dark"] .btn-search-main,
+        body[data-map-theme="dark"] .btn-header-link {
+            background: rgba(255, 255, 255, 0.06);
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        body[data-map-theme="dark"] .btn-search-main {
+            background: linear-gradient(135deg, #00B14F, #009543);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 4px 14px rgba(0, 177, 79, 0.35);
+        }
+        body[data-map-theme="dark"] .btn-search-main:hover {
+            background: linear-gradient(135deg, #009543, #007a37);
+            box-shadow: 0 6px 18px rgba(0, 177, 79, 0.5);
+        }
+        body[data-map-theme="dark"] .btn-header-link:hover {
+            background: rgba(255, 255, 255, 0.10);
+            color: #fff;
+        }
+
+        /* ── More menu / Lang dropdown ─────────────── */
+        body[data-map-theme="dark"] .more-menu-dropdown,
+        body[data-map-theme="dark"] .lang-menu-dropdown {
+            background: rgba(15, 18, 28, 0.75);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            box-shadow:
+                0 24px 60px rgba(0, 0, 0, 0.5),
+                0 6px 16px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        body[data-map-theme="dark"] .more-menu-item {
+            color: #f1f5f9;
+            border-radius: 12px;
+        }
+        body[data-map-theme="dark"] .more-menu-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(2px);
+        }
+        body[data-map-theme="dark"] .more-menu-item .menu-label { color: #f1f5f9; }
+        body[data-map-theme="dark"] .more-menu-item .menu-label small { color: #8b95a8; }
+        body[data-map-theme="dark"] .more-menu-item .menu-icon {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        body[data-map-theme="dark"] .more-menu-item:hover .menu-icon {
+            transform: scale(1.05);
+        }
+
+        /* ── Locations panel (Manajer Lokasi) ──────── */
+        body[data-map-theme="dark"] .locations-panel {
+            background: rgba(15, 18, 28, 0.62);
+            backdrop-filter: blur(30px) saturate(180%);
+            -webkit-backdrop-filter: blur(30px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            box-shadow:
+                0 24px 60px rgba(0, 0, 0, 0.42),
+                0 8px 20px rgba(0, 0, 0, 0.25),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            color: #f1f5f9;
+        }
+        body[data-map-theme="dark"] .panel-header,
+        body[data-map-theme="dark"] .panel-title h6,
+        body[data-map-theme="dark"] .locations-panel .form-label {
+            color: #f1f5f9;
+        }
+        body[data-map-theme="dark"] .panel-body::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        body[data-map-theme="dark"] .panel-body::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+        }
+        body[data-map-theme="dark"] .panel-body::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 177, 79, 0.45);
+        }
+
+        /* Bootstrap util overrides inside panel */
+        body[data-map-theme="dark"] .locations-panel .bg-white,
+        body[data-map-theme="dark"] .locations-panel .p-3.bg-white {
+            background: rgba(255, 255, 255, 0.04) !important;
+            color: #f1f5f9;
+        }
+        body[data-map-theme="dark"] .locations-panel .text-dark { color: #f1f5f9 !important; }
+        body[data-map-theme="dark"] .locations-panel .text-muted { color: #94a3b8 !important; }
+        body[data-map-theme="dark"] .locations-panel .text-secondary { color: #cbd5e1 !important; }
+        body[data-map-theme="dark"] .locations-panel .border {
+            border-color: rgba(255, 255, 255, 0.08) !important;
+        }
+
+        /* Inline-styled utility buttons (Swap/km/Now) */
+        body[data-map-theme="dark"] .locations-panel button[style*="background:#f9fafb"],
+        body[data-map-theme="dark"] .locations-panel div[style*="background:#f9fafb"] {
+            background: rgba(255, 255, 255, 0.045) !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+            color: #e2e8f0 !important;
+        }
+        body[data-map-theme="dark"] .locations-panel button[style*="background:#f9fafb"]:hover {
+            background: rgba(0, 177, 79, 0.10) !important;
+            border-color: rgba(0, 177, 79, 0.35) !important;
+            color: #f1f5f9 !important;
+        }
+        body[data-map-theme="dark"] .locations-panel *[style*="border:1px solid #e5e7eb"] {
+            border-color: rgba(255, 255, 255, 0.10) !important;
+        }
+
+        /* ── Toggle pills (Car/Motorcycle/Walk, Straight Line/Real Road, Locations/Route Details) ── */
+        body[data-map-theme="dark"] .locations-panel .btn-outline-success,
+        body[data-map-theme="dark"] .locations-panel .btn-light {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        body[data-map-theme="dark"] .locations-panel .btn-outline-success:hover:not(.active),
+        body[data-map-theme="dark"] .locations-panel .btn-light:hover:not(.active) {
+            background: rgba(0, 177, 79, 0.08);
+            border-color: rgba(0, 177, 79, 0.35);
+            color: #f1f5f9;
+        }
+        /* Active state — green glow */
+        body[data-map-theme="dark"] .locations-panel .btn-outline-success.active,
+        body[data-map-theme="dark"] .locations-panel .btn-light.active {
+            background: linear-gradient(135deg, rgba(0, 177, 79, 0.22), rgba(0, 177, 79, 0.14));
+            border-color: rgba(0, 177, 79, 0.55);
+            color: #4ade80;
+            box-shadow:
+                0 4px 12px rgba(0, 177, 79, 0.25),
+                inset 0 0 0 1px rgba(0, 177, 79, 0.2);
+        }
+
+        /* Reset button (outline) */
+        body[data-map-theme="dark"] .locations-panel button[class*="btn-outline-secondary"],
+        body[data-map-theme="dark"] .locations-panel button[class*="btn-outline-dark"] {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #cbd5e1;
+        }
+        body[data-map-theme="dark"] .locations-panel button[class*="btn-outline-secondary"]:hover,
+        body[data-map-theme="dark"] .locations-panel button[class*="btn-outline-dark"]:hover {
+            background: rgba(255, 255, 255, 0.10);
+            color: #fff;
+        }
+
+        /* Empty state icon container (⊙ pin) */
+        body[data-map-theme="dark"] .locations-panel .panel-body > div[style*="background: var(--bg-subtle)"],
+        body[data-map-theme="dark"] .locations-panel .panel-body div[style*="width: 48px"][style*="border-radius: 14px"] {
+            background: rgba(255, 255, 255, 0.06) !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        /* Result cards, route detail cards */
+        body[data-map-theme="dark"] .locations-panel .rounded-3.bg-white,
+        body[data-map-theme="dark"] .locations-panel div[style*="background:#fff"] {
+            background: rgba(255, 255, 255, 0.045) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+        }
+
+        /* ── Feature quick buttons (bottom right) & MapLibre ctrls ── */
+        body[data-map-theme="dark"] .btn-map-mode,
+        body[data-map-theme="dark"] .maplibregl-ctrl-group {
+            background: rgba(15, 18, 28, 0.72) !important;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35) !important;
+        }
+        body[data-map-theme="dark"] .btn-map-mode,
+        body[data-map-theme="dark"] .maplibregl-ctrl button {
+            color: #e2e8f0;
+        }
+        body[data-map-theme="dark"] .maplibregl-ctrl button {
+            background: transparent !important;
+        }
+        body[data-map-theme="dark"] .maplibregl-ctrl button:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+        }
+        /* MapLibre icons — force white filter */
+        body[data-map-theme="dark"] .maplibregl-ctrl-icon {
+            filter: invert(1) brightness(1.1);
+        }
+
+        body[data-map-theme="dark"] .maplibregl-ctrl-attrib {
+            background: rgba(15, 18, 28, 0.72) !important;
+            color: #94a3b8 !important;
+            backdrop-filter: blur(10px);
+        }
+        body[data-map-theme="dark"] .maplibregl-ctrl-attrib a { color: #cbd5e1 !important; }
+
+        /* ── Search dropdown (suggestions & category chips) ─── */
+        body[data-map-theme="dark"] .search-dropdown {
+            background: rgba(15, 18, 28, 0.85);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            box-shadow:
+                0 24px 60px rgba(0, 0, 0, 0.55),
+                0 8px 20px rgba(0, 0, 0, 0.35),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        body[data-map-theme="dark"] .suggestions-list {
+            background: transparent;
+        }
+        body[data-map-theme="dark"] .suggestion-item {
+            color: #f1f5f9;
+        }
+        body[data-map-theme="dark"] .suggestion-item i {
+            color: #94a3b8;
+        }
+        body[data-map-theme="dark"] .suggestion-item:hover {
+            background: rgba(0, 177, 79, 0.14);
+        }
+        body[data-map-theme="dark"] .suggestion-item:hover .suggestion-title,
+        body[data-map-theme="dark"] .suggestion-item:hover i {
+            color: #4ade80;
+        }
+        body[data-map-theme="dark"] .suggestion-title {
+            color: #f8fafc;
+        }
+        body[data-map-theme="dark"] .suggestion-address {
+            color: #94a3b8;
+        }
+        body[data-map-theme="dark"] .suggestion-meta .suggestion-distance {
+            color: #4ade80;
+        }
+        body[data-map-theme="dark"] .suggestion-match-highlight {
+            color: #4ade80;
+        }
+        /* Category icon backgrounds slightly dimmed for dark bg */
+        body[data-map-theme="dark"] .suggestion-cat-icon {
+            filter: brightness(0.85) saturate(1.1);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Category quick-filter chips */
+        body[data-map-theme="dark"] .category-chip {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.10);
+            color: #cbd5e1;
+        }
+        body[data-map-theme="dark"] .category-chip:hover {
+            background: rgba(0, 177, 79, 0.14);
+            border-color: rgba(0, 177, 79, 0.45);
+            color: #4ade80;
+        }
+
+        /* Recent searches */
+        body[data-map-theme="dark"] .recent-searches {
+            border-top-color: rgba(255, 255, 255, 0.08);
+        }
+        body[data-map-theme="dark"] .recent-searches-header {
+            color: #94a3b8;
+        }
+        body[data-map-theme="dark"] .recent-clear-btn {
+            color: #94a3b8;
+        }
+        body[data-map-theme="dark"] .recent-clear-btn:hover {
+            color: #f87171;
+            background: rgba(248, 113, 113, 0.12);
+        }
+        body[data-map-theme="dark"] .recent-item {
+            color: #e2e8f0;
+        }
+        body[data-map-theme="dark"] .recent-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        body[data-map-theme="dark"] .recent-item i {
+            color: #94a3b8;
+        }
+        body[data-map-theme="dark"] .recent-item .recent-remove {
+            color: #64748b;
+        }
+        body[data-map-theme="dark"] .recent-item .recent-remove:hover {
+            color: #f87171;
+            background: rgba(248, 113, 113, 0.12);
+        }
+
+        /* Empty & loading states */
+        body[data-map-theme="dark"] .search-loading,
+        body[data-map-theme="dark"] .search-empty {
+            color: #94a3b8;
+        }
+        body[data-map-theme="dark"] .search-empty small {
+            color: #64748b;
+        }
+
+        /* Scrollbar for search dropdown */
+        body[data-map-theme="dark"] .search-dropdown::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        body[data-map-theme="dark"] .search-dropdown::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+        }
+        body[data-map-theme="dark"] .search-dropdown::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 177, 79, 0.45);
+        }
+
+        /* "Search this area" floating button */
+        body[data-map-theme="dark"] .search-this-area-btn {
+            background: rgba(15, 18, 28, 0.85);
+            border-color: rgba(255, 255, 255, 0.12);
+            color: #f1f5f9;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        }
+        body[data-map-theme="dark"] .search-this-area-btn:hover {
+            background: rgba(0, 177, 79, 0.15);
+            border-color: rgba(0, 177, 79, 0.5);
+            color: #4ade80;
+        }
+
+        /* ── Smooth theme transition ─────────────── */
+        .floating-header,
+        .locations-panel,
+        .more-menu-dropdown,
+        .lang-menu-dropdown,
+        .search-dropdown,
+        .btn-search-main,
+        .btn-header-link,
+        .btn-map-mode,
+        .maplibregl-ctrl-group {
+            transition:
+                background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }

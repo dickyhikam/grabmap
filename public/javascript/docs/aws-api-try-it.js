@@ -84,15 +84,13 @@
             let first = urls[0]?.textContent?.trim();
             if (!first || !first.startsWith('http')) return null;
 
-            // If user key configured and "use in code snippets" enabled, substitute
+            // Always substitute if user key configured
             const userKey = window.AWSAPI_UserKey;
-            if (userKey && userKey.useInTryIt) {
+            if (userKey && userKey.apiKey) {
                 if (userKey.region) {
                     first = first.replace(/(?:ap|us|eu|sa|af|me|ca|cn)-[a-z]+-\d/g, userKey.region);
                 }
-                if (userKey.apiKey) {
-                    first = first.replace(/key=\.\.\.|key=\*\*\*|key=\{[^}]+\}/g, 'key=' + userKey.apiKey);
-                }
+                first = first.replace(/key=\.\.\.|key=\*\*\*|key=\{[^}]+\}/g, 'key=' + userKey.apiKey);
             }
             return first;
         } catch (_) { return null; }
@@ -271,24 +269,23 @@ print_r($data);`;
         return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    /** Show/hide a "🔑 Using my key" badge on the Send button based on userKey state */
+    /** Show badge state on Send buttons — "🔑 Using: <name>" when key set, "🔒 Set key first" when not */
     function refreshSendBadges() {
         const userKey = window.AWSAPI_UserKey;
-        const useDirect = userKey && userKey.useForSend && userKey.apiKey;
+        const hasKey = !!(userKey && userKey.apiKey);
         document.querySelectorAll('.btn-send').forEach(btn => {
             let badge = btn.querySelector('.tryit-direct-badge');
-            if (useDirect) {
-                if (!badge) {
-                    badge = document.createElement('span');
-                    badge.className = 'tryit-direct-badge';
-                    badge.style.cssText = 'background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:8px;font-size:0.65rem;font-weight:700;margin-left:8px;border:1px solid #fde68a;';
-                    badge.innerHTML = '🔑 ' + (userKey.name || 'My Key');
-                    btn.appendChild(badge);
-                } else {
-                    badge.innerHTML = '🔑 ' + (userKey.name || 'My Key');
-                }
-            } else if (badge) {
-                badge.remove();
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'tryit-direct-badge';
+                btn.appendChild(badge);
+            }
+            if (hasKey) {
+                badge.style.cssText = 'background:#dcfce7;color:#166534;padding:2px 8px;border-radius:8px;font-size:0.65rem;font-weight:700;margin-left:8px;border:1px solid #bbf7d0;';
+                badge.innerHTML = '🔑 ' + (userKey.name || 'My Key');
+            } else {
+                badge.style.cssText = 'background:#fef2f2;color:#991b1b;padding:2px 8px;border-radius:8px;font-size:0.65rem;font-weight:700;margin-left:8px;border:1px solid #fecaca;';
+                badge.innerHTML = '🔒 Set key first';
             }
         });
     }
@@ -361,39 +358,48 @@ print_r($data);`;
                 respEl.className = 'resp-body';
                 respEl.textContent = '⏳ Sending request...';
 
+                // ==== MANDATORY: user's API Key required for Send Request ====
+                // No proxy fallback anymore — env key stays server-side only.
+                const userKey = window.AWSAPI_UserKey;
+                if (!userKey || !userKey.apiKey) {
+                    respEl.className = 'resp-body error';
+                    respEl.innerHTML = '🔒 <b>API Key required</b> — click the <b>🔑 My Key</b> button at the top to configure your AWS Location Service API Key first. Your key stays in this browser only.';
+                    statusEl.textContent = 'KEY REQUIRED';
+                    statusEl.className = 'status-pill bad';
+                    metaEl.textContent = '';
+                    runBtn.disabled = false;
+                    if (spinner) spinner.style.display = 'none';
+                    // Auto-open the modal for convenience
+                    const openBtn = document.getElementById('btnKeyInspector');
+                    if (openBtn) {
+                        openBtn.classList.add('pulse-alert');
+                        setTimeout(() => openBtn.classList.remove('pulse-alert'), 2000);
+                    }
+                    return;
+                }
+
                 const t0 = performance.now();
                 try {
-                    // If user opted in "Use my key for Send Request" → bypass Laravel proxy,
-                    // call AWS endpoint directly with user's API key. Otherwise use proxy.
-                    const userKey = window.AWSAPI_UserKey;
-                    const useDirect = userKey && userKey.useForSend && userKey.apiKey;
-
-                    let targetUrl, targetOpts;
-                    if (useDirect) {
-                        let awsUrl = getAwsUrlRaw(panelId);
-                        if (!awsUrl) {
-                            respEl.className = 'resp-body error';
-                            respEl.textContent = '❌ AWS direct URL not found in this panel. Falling back to proxy.';
-                        }
-                        // Replace placeholders + append key
-                        if (userKey.region) awsUrl = awsUrl.replace(/\{region\}/g, userKey.region);
-                        // Strip any placeholder key
-                        awsUrl = awsUrl.replace(/key=\.\.\.|key=\*\*\*|key=\{[^}]+\}/g, '');
-                        const sep = awsUrl.includes('?') ? '&' : '?';
-                        targetUrl = awsUrl + sep + 'key=' + encodeURIComponent(userKey.apiKey);
-                        targetOpts = {
-                            method: httpMethod,
-                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
-                        };
-                        // Mark Network tab clearly
-                        respEl.classList.add('direct-mode');
-                    } else {
-                        targetUrl = proxy;
-                        targetOpts = {
-                            method: httpMethod,
-                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF }
-                        };
+                    let awsUrl = getAwsUrlRaw(panelId);
+                    if (!awsUrl) {
+                        respEl.className = 'resp-body error';
+                        respEl.textContent = '❌ AWS direct URL not found in this panel.';
+                        statusEl.textContent = 'URL NOT FOUND';
+                        statusEl.className = 'status-pill bad';
+                        runBtn.disabled = false;
+                        if (spinner) spinner.style.display = 'none';
+                        return;
                     }
+                    // Replace placeholders + append user's key
+                    if (userKey.region) awsUrl = awsUrl.replace(/\{region\}/g, userKey.region);
+                    awsUrl = awsUrl.replace(/key=\.\.\.|key=\*\*\*|key=\{[^}]+\}/g, '');
+                    const sep = awsUrl.includes('?') ? '&' : '?';
+                    const targetUrl = awsUrl + sep + 'key=' + encodeURIComponent(userKey.apiKey);
+                    const targetOpts = {
+                        method: httpMethod,
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+                    };
+                    respEl.classList.add('direct-mode');
                     if (httpMethod !== 'GET') targetOpts.body = JSON.stringify(parsed);
 
                     const res = await fetch(targetUrl, targetOpts);

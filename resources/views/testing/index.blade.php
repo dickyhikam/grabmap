@@ -524,10 +524,423 @@
             background: #fce7f3;
             color: #9d174d;
         }
+
+        /* ================================================================
+         * MODERN REDESIGN OVERLAY — enhances existing without breaking JS
+         * ================================================================ */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+
+        :root {
+            --brand-green: #00B14F;
+            --brand-green-dark: #008b3d;
+            --brand-amber: #f59e0b;
+            --brand-purple: #7c3aed;
+            --brand-blue: #2563eb;
+            --surface: rgba(255,255,255,0.85);
+            --surface-solid: #ffffff;
+            --border-soft: rgba(0,0,0,0.06);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif !important;
+            background: #f4f6f8;
+            background-image:
+                radial-gradient(1200px 600px at 10% -10%, rgba(0,177,79,0.10), transparent 60%),
+                radial-gradient(900px 500px at 110% 0%, rgba(245,158,11,0.09), transparent 60%),
+                radial-gradient(700px 400px at 50% 100%, rgba(124,58,237,0.06), transparent 60%);
+            min-height: 100vh;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 20% 40%, rgba(0,177,79,0.06), transparent 45%),
+                radial-gradient(circle at 80% 20%, rgba(245,158,11,0.05), transparent 45%);
+            pointer-events: none;
+            z-index: 0;
+            animation: bgFloat 24s ease-in-out infinite alternate;
+        }
+        @keyframes bgFloat {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(-20px, 20px) scale(1.05); opacity: 0.7; }
+        }
+        body > * { position: relative; z-index: 1; }
+
+        /* Reading progress bar */
+        .tester-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            z-index: 9999;
+            pointer-events: none;
+            background: transparent;
+        }
+        .tester-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--brand-green), #10d966, var(--brand-amber));
+            transition: width 0.1s linear;
+            box-shadow: 0 0 10px rgba(0,177,79,0.5);
+        }
+
+        /* Modern card enhancement */
+        .card-glass {
+            background: rgba(255,255,255,0.75) !important;
+            backdrop-filter: blur(24px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+            border: 1px solid rgba(255,255,255,0.9) !important;
+            border-radius: 20px !important;
+            box-shadow:
+                0 1px 3px rgba(0,0,0,0.04),
+                0 8px 24px rgba(0,0,0,0.06),
+                0 20px 60px rgba(0,0,0,0.04) !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .card-glass::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+        }
+        .card-glass:hover {
+            transform: translateY(-2px);
+            box-shadow:
+                0 4px 8px rgba(0,0,0,0.05),
+                0 16px 32px rgba(0,0,0,0.08),
+                0 32px 80px rgba(0,0,0,0.06) !important;
+        }
+
+        /* Modern header — reveal from top */
+        .container-fluid > .row:first-child {
+            animation: fadeSlideDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .container-fluid > .row:first-child h4 {
+            font-size: 1.35rem !important;
+            font-weight: 800 !important;
+            background: linear-gradient(135deg, #111827 0%, #1f2937 50%, #374151 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+        .container-fluid > .row:first-child small {
+            color: #6b7280 !important;
+            font-weight: 500;
+            font-size: 0.82rem;
+        }
+
+        @keyframes fadeSlideDown {
+            from { opacity: 0; transform: translateY(-16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Header buttons — modern pill */
+        #btnChangeApiKey,
+        .container-fluid > .row:first-child .btn-outline-success {
+            border-radius: 12px !important;
+            padding: 9px 18px !important;
+            font-size: 0.8rem !important;
+            font-weight: 700 !important;
+            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        #btnChangeApiKey {
+            background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+            color: #fff !important;
+            border: 1px solid #6d28d9 !important;
+            box-shadow: 0 4px 14px rgba(124,58,237,0.35) !important;
+        }
+        #btnChangeApiKey:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(124,58,237,0.45) !important;
+        }
+        .container-fluid > .row:first-child .btn-outline-success {
+            border: 1.5px solid var(--brand-green) !important;
+            color: var(--brand-green) !important;
+            background: rgba(255,255,255,0.7);
+        }
+        .container-fluid > .row:first-child .btn-outline-success:hover {
+            background: var(--brand-green) !important;
+            color: #fff !important;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,177,79,0.35) !important;
+        }
+        .container-fluid > .row:first-child a.btn-light {
+            background: rgba(255,255,255,0.9) !important;
+            border: 1px solid var(--border-soft) !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+            transition: all 0.18s !important;
+        }
+        .container-fluid > .row:first-child a.btn-light:hover {
+            transform: translateX(-3px);
+            border-color: var(--brand-green) !important;
+            color: var(--brand-green) !important;
+        }
+
+        /* Scroll-in reveal — for major cards */
+        .reveal-on-scroll {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .reveal-on-scroll.visible { opacity: 1; transform: translateY(0); }
+
+        /* Modern buttons — enhance grab btn */
+        .btn-grab {
+            border-radius: 12px !important;
+            padding: 10px 20px !important;
+            font-weight: 700 !important;
+            font-size: 0.85rem !important;
+            letter-spacing: 0.01em;
+            background: linear-gradient(135deg, #00B14F 0%, #008b3d 100%) !important;
+            box-shadow: 0 6px 18px rgba(0,177,79,0.35) !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-grab::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+            transition: left 0.5s;
+        }
+        .btn-grab:hover::before { left: 100%; }
+        .btn-grab:hover {
+            transform: translateY(-3px) !important;
+            box-shadow: 0 10px 25px rgba(0,177,79,0.45) !important;
+        }
+        .btn-grab:active { transform: translateY(-1px) scale(0.98) !important; }
+
+        /* Form inputs — modern */
+        .coord-input,
+        .form-control {
+            border-radius: 10px !important;
+            border: 1.5px solid #e5e7eb !important;
+            padding: 9px 14px !important;
+            font-size: 0.85rem !important;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            background: rgba(255,255,255,0.9) !important;
+        }
+        .coord-input:focus,
+        .form-control:focus {
+            border-color: var(--brand-green) !important;
+            box-shadow: 0 0 0 4px rgba(0,177,79,0.12) !important;
+            background: #fff !important;
+            transform: translateY(-1px);
+        }
+
+        /* Section titles — more contemporary */
+        .section-title {
+            font-size: 0.7rem !important;
+            font-weight: 800 !important;
+            text-transform: uppercase;
+            letter-spacing: 1px !important;
+            color: #9ca3af !important;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid transparent;
+            background: linear-gradient(90deg, var(--brand-green), var(--brand-amber)) bottom / 30px 2px no-repeat;
+        }
+
+        /* API mode toggle — sleeker */
+        .api-mode-toggle {
+            background: #f3f4f6 !important;
+            padding: 4px !important;
+            border-radius: 14px !important;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .api-mode-btn {
+            border-radius: 10px !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            font-size: 0.78rem !important;
+            padding: 8px 10px !important;
+        }
+        .api-mode-btn.active {
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,177,79,0.1) !important;
+        }
+
+        /* Chips — pop with color */
+        .mode-info-chip {
+            font-size: 0.72rem !important;
+            padding: 6px 14px !important;
+            font-weight: 700 !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+            animation: chipPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes chipPop {
+            0% { transform: scale(0.7); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Log box — richer */
+        .log-box {
+            border-radius: 14px !important;
+            background: #1a1b26 !important;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+            padding: 18px !important;
+        }
+
+        /* History item hover — smooth glide */
+        .history-item {
+            border-radius: 12px !important;
+            border: 1px solid rgba(0,0,0,0.05) !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        .history-item:hover {
+            box-shadow: 0 6px 18px rgba(0,177,79,0.15) !important;
+        }
+
+        /* Result items — modernize */
+        .loc-result-item,
+        .geo-result-item,
+        .trk-result-item {
+            border-radius: 12px !important;
+            border: 1px solid rgba(0,0,0,0.05) !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+
+        /* Map container polish */
+        #miniMap {
+            height: 480px !important;
+            border-radius: 16px !important;
+            box-shadow:
+                0 4px 6px rgba(0,0,0,0.04),
+                0 12px 32px rgba(0,0,0,0.08),
+                inset 0 0 0 1px rgba(255,255,255,0.5) !important;
+        }
+
+        /* Route status bar — pill-shape */
+        .route-status-bar {
+            border-radius: 14px !important;
+            padding: 10px 16px !important;
+            font-size: 0.82rem !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            transition: all 0.2s;
+        }
+        .route-status-bar.loading {
+            animation: pulseGlow 1.5s ease-in-out infinite;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+            50% { box-shadow: 0 4px 20px rgba(37,99,235,0.25); }
+        }
+
+        /* Modal enhancements */
+        .modal-content {
+            border-radius: 20px !important;
+            border: none !important;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25) !important;
+        }
+
+        /* Ripple on click for buttons */
+        .btn-grab, #btnChangeApiKey {
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Skeleton loading state helper */
+        .skel {
+            background: linear-gradient(90deg, #f0f0f0 0%, #f9f9f9 50%, #f0f0f0 100%);
+            background-size: 200% 100%;
+            animation: skelShimmer 1.2s ease-in-out infinite;
+            border-radius: 8px;
+            color: transparent !important;
+        }
+        @keyframes skelShimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Floating action ripple for API key badge */
+        #apiKeyStatusBadge {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.6); }
+            50% { box-shadow: 0 0 0 6px rgba(255,255,255,0); }
+        }
+
+        /* Waypoint / matrix items — micro animation on delete */
+        .waypoint-item,
+        .matrix-dest-item {
+            border-radius: 12px !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(0,0,0,0.06) !important;
+        }
+        .waypoint-item:hover,
+        .matrix-dest-item:hover {
+            transform: translateX(2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+
+        /* Reference card polish */
+        .ref-card {
+            border-radius: 16px !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        .ref-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06) !important;
+        }
+
+        /* Subtle body scroll blur on toolbar */
+        .container-fluid > .row:first-child {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 8px 12px 12px !important;
+            margin: 0 -12px 24px -12px !important;
+            background: rgba(244,246,248,0.75);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 0 0 20px 20px;
+            border: 1px solid rgba(255,255,255,0.5);
+            border-top: none;
+        }
+
+        /* Smooth scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.15);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,177,79,0.4); }
+
+        /* Loading spinner enhancement */
+        .spinner-border-sm {
+            animation-duration: 0.75s !important;
+        }
+
+        /* Mobile responsive tweaks */
+        @media (max-width: 768px) {
+            .container-fluid > .row:first-child h4 { font-size: 1.05rem !important; }
+            .container-fluid > .row:first-child small { display: none; }
+            #btnChangeApiKey span,
+            .container-fluid > .row:first-child .btn-outline-success { font-size: 0.72rem !important; padding: 7px 12px !important; }
+        }
     </style>
 </head>
 
 <body>
+    <!-- Modern scroll progress bar -->
+    <div class="tester-progress"><div class="tester-progress-fill" id="testerProgressFill"></div></div>
+
     <div class="container-fluid py-4">
         <!-- Header -->
         <div class="row mb-4">
@@ -4440,6 +4853,72 @@
                     document.getElementById('geoCircleInputs').style.display = isCircle ? 'block' : 'none';
                     document.getElementById('geoPolygonInputs').style.display = isCircle ? 'none' : 'block';
                 });
+            });
+
+            /* ================= MODERN REDESIGN MOTIONS ================= */
+            // 1. Reading progress bar
+            const testerBar = document.getElementById('testerProgressFill');
+            if (testerBar) {
+                const updateTesterProgress = () => {
+                    const doc = document.documentElement;
+                    const scrollTop = window.scrollY || doc.scrollTop;
+                    const scrollHeight = doc.scrollHeight - doc.clientHeight;
+                    const pct = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+                    testerBar.style.width = pct + '%';
+                };
+                window.addEventListener('scroll', updateTesterProgress, { passive: true });
+                updateTesterProgress();
+            }
+
+            // 2. Scroll-triggered reveal — auto-tag all card-glass panels
+            document.querySelectorAll('.card-glass').forEach((card, idx) => {
+                if (idx === 0) return; // first card visible immediately
+                card.classList.add('reveal-on-scroll');
+                card.style.transitionDelay = Math.min(idx * 40, 200) + 'ms';
+            });
+            const revealObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        revealObserver.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+            document.querySelectorAll('.reveal-on-scroll').forEach(el => revealObserver.observe(el));
+
+            // 3. Button ripple on click
+            document.addEventListener('click', (e) => {
+                const btn = e.target.closest('.btn-grab, #btnChangeApiKey');
+                if (!btn) return;
+                const rect = btn.getBoundingClientRect();
+                const ripple = document.createElement('span');
+                const size = Math.max(rect.width, rect.height);
+                ripple.style.cssText = `
+                    position:absolute;
+                    left:${e.clientX - rect.left - size/2}px;
+                    top:${e.clientY - rect.top - size/2}px;
+                    width:${size}px; height:${size}px;
+                    border-radius:50%;
+                    background:rgba(255,255,255,0.35);
+                    pointer-events:none;
+                    transform:scale(0);
+                    animation:rippleFx 0.55s ease-out;
+                `;
+                btn.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 550);
+            });
+            // ripple keyframe (inject once)
+            if (!document.getElementById('rippleFxKeyframe')) {
+                const st = document.createElement('style');
+                st.id = 'rippleFxKeyframe';
+                st.textContent = '@keyframes rippleFx { to { transform: scale(4); opacity: 0; } }';
+                document.head.appendChild(st);
+            }
+
+            // 4. Focus glow on key inputs — accessibility bonus
+            document.querySelectorAll('.form-control, .coord-input').forEach(inp => {
+                inp.addEventListener('focus', () => inp.parentElement?.classList.add('input-focused'));
+                inp.addEventListener('blur', () => inp.parentElement?.classList.remove('input-focused'));
             });
         });
     </script>
