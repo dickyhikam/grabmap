@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\ClientMapController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\PricingController;
+use App\Http\Controllers\RouteLinkController;
 use App\Http\Controllers\Tools\TransfersToolController;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
@@ -203,6 +204,11 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
         Route::post('/budget', [CostSettingController::class, 'updateBudget'])->name('admin.cost-settings.budget');
     });
 });
+
+// Shareable A→B route links (coordinate link + short links). Must stay above the catch-all.
+Route::get('/route', [RouteLinkController::class, 'show'])->name('route.show');
+Route::get('/r/{code}', [RouteLinkController::class, 'showShort'])->name('route.short');
+Route::post('/api/route-links', [RouteLinkController::class, 'store'])->name('route.store');
 
 // Dynamic company map — must be last (catch-all)
 Route::get('/{slug}', [ClientMapController::class, 'show'])->name('company.map');

@@ -4023,6 +4023,50 @@
         }
 
         // --- MAIN BOOTSTRAP ---
+        /* =========================================
+           Shareable route preset — /route?from=&to= or /r/{code}
+           Auto-places A/B markers, sets travel mode, and runs the
+           existing calculateRoute() so the shared link opens the full
+           home map with the route already drawn.
+           ========================================= */
+        const __routePreset = @json($routePreset ?? null);
+
+        // Resolve a marker label from coords via reverse geocode; fall back to a generic name.
+        // Skips the lookup entirely when the URL already carried an explicit label.
+        async function resolvePresetPlace(coords, explicitLabel, fallbackTitle) {
+            if (explicitLabel) return { title: explicitLabel, address: null };
+            try {
+                const place = await getPlaceNameByCoords(coords);
+                if (place && place.title) return { title: place.title, address: place.address || null };
+            } catch (_) {}
+            return { title: fallbackTitle, address: null };
+        }
+
+        function applyRoutePreset() {
+            const p = __routePreset;
+            if (!p || !p.from || !p.to) return;
+
+            const draw = async () => {
+                // Reverse-geocode endpoints (when unlabeled) so markers show real place
+                // names instead of "Titik A" / "Titik B".
+                const a = await resolvePresetPlace([p.from.lng, p.from.lat], p.fromLabel, 'Titik A');
+                addLocation([p.from.lng, p.from.lat], a.title, a.address);
+
+                const b = await resolvePresetPlace([p.to.lng, p.to.lat], p.toLabel, 'Titik B');
+                addLocation([p.to.lng, p.to.lat], b.title, b.address);
+
+                const radioId = p.mode === 'Scooter' ? 'modeScooter'
+                              : p.mode === 'Pedestrian' ? 'modeWalk' : 'modeCar';
+                const radio = document.getElementById(radioId);
+                if (radio) radio.checked = true;
+
+                setTimeout(() => { try { calculateRoute(); } catch (_) {} }, 200);
+            };
+
+            if (map && map.loaded()) draw();
+            else if (map) map.on('load', draw);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             applyTranslations();
             syncMapStyleButtons();
@@ -4031,6 +4075,7 @@
             scheduleAutoMapStyle();
             updateRouteButtonsByCount(); // Initial state: 0 markers → both disabled
             maybeShowWhatsNew();
+            applyRoutePreset();          // draw shared route if opened via /route or /r/{code}
         });
     </script>
 </body>
