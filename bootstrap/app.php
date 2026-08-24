@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.locale'        => \App\Http\Middleware\AdminLocale::class,
             'admin.only'          => \App\Http\Middleware\AdminOnly::class,
             'feature.maintenance' => \App\Http\Middleware\FeatureMaintenance::class,
+            'permission'          => \App\Http\Middleware\RequirePermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

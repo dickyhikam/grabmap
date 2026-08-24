@@ -1,0 +1,41 @@
+<?php
+
+/** Label untuk katalog di config/permissions.php. */
+return [
+    'groups' => [
+        'dashboard' => 'Dashboard',
+        'companies' => 'Perusahaan',
+        'api_keys' => 'API Key',
+        'aws_accounts' => 'Akun AWS',
+        'cost' => 'Kurs & Pajak',
+        'tools' => 'Alat',
+        'users' => 'Pengguna',
+        'roles' => 'Role',
+    ],
+    'keys' => [
+        'dashboard.view' => 'Lihat dashboard',
+        'companies.view' => 'Lihat perusahaan',
+        'companies.create' => 'Tambah perusahaan',
+        'companies.update' => 'Ubah perusahaan (termasuk aktif/nonaktif)',
+        'api_keys.view' => 'Lihat API key & pemakaiannya',
+        'api_keys.create' => 'Buat API key di AWS',
+        'api_keys.update' => 'Ubah API key',
+        'api_keys.assign' => 'Pasangkan key ke perusahaan',
+        'aws_accounts.view' => 'Lihat akun AWS',
+        'aws_accounts.create' => 'Tambah akun AWS',
+        'aws_accounts.update' => 'Ubah akun (termasuk jadikan default & uji)',
+        'aws_accounts.delete' => 'Hapus akun AWS',
+        'cost_settings.view' => 'Lihat kurs & pajak',
+        'cost_settings.update' => 'Ubah kurs, pajak & budget',
+        'simulator.use' => 'Pakai simulator biaya',
+        'users.view' => 'Lihat pengguna',
+        'users.create' => 'Tambah pengguna',
+        'users.update' => 'Ubah pengguna (termasuk aktif/nonaktif)',
+        'users.delete' => 'Hapus pengguna',
+        'users.credentials' => 'Kirim kredensial & reset kata sandi',
+        'roles.view' => 'Lihat role',
+        'roles.create' => 'Tambah role',
+        'roles.update' => 'Ubah role & izinnya',
+        'roles.delete' => 'Hapus role',
+    ],
+];

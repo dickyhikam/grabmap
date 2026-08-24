@@ -3,17 +3,24 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Company extends Model
 {
-    protected $fillable = ['name', 'slug', 'logo_path', 'is_active', 'aws_api_key', 'aws_api_key_name', 'aws_key_active'];
+    protected $fillable = ['name', 'slug', 'logo_path', 'is_active', 'aws_account_id', 'aws_api_key', 'aws_api_key_name', 'aws_key_active'];
 
     protected $casts = [
         'is_active' => 'boolean',
         'aws_key_active' => 'boolean',
         'aws_api_key' => 'encrypted',
     ];
+
+    /** Akun AWS tempat API key company ini berada (menentukan kredensial CloudWatch). */
+    public function awsAccount(): BelongsTo
+    {
+        return $this->belongsTo(AwsAccount::class, 'aws_account_id');
+    }
 
     public function features(): HasMany
     {

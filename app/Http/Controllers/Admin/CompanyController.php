@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AwsAccount;
 use App\Models\Company;
 use App\Models\ExchangeRate;
 use App\Models\Setting;
@@ -22,7 +23,13 @@ class CompanyController extends Controller
 
     public function create()
     {
-        return view('admin.companies.form');
+        return view('admin.companies.form', ['awsAccounts' => $this->awsAccounts()]);
+    }
+
+    /** Akun AWS aktif untuk dropdown di form company. */
+    private function awsAccounts()
+    {
+        return AwsAccount::query()->active()->orderByDesc('is_default')->orderBy('id')->get();
     }
 
     public function store(Request $request)
@@ -32,6 +39,7 @@ class CompanyController extends Controller
             'slug'         => 'required|string|max:100|unique:companies,slug|regex:/^[a-z0-9\-]+$/',
             'logo'         => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:2048',
             'is_active'    => 'nullable|boolean',
+            'aws_account_id' => 'nullable|exists:aws_accounts,id',
             'aws_api_key'  => 'nullable|string|max:1000',
             'aws_key_active' => 'nullable|boolean',
         ]);
@@ -51,6 +59,7 @@ class CompanyController extends Controller
             'slug'           => $validated['slug'],
             'logo_path'      => $logoPath,
             'is_active'      => $request->boolean('is_active', true),
+            'aws_account_id' => $validated['aws_account_id'] ?? null,
             'aws_api_key'    => $apiKey && $apiKey !== '********' ? $apiKey : null,
             'aws_key_active' => $request->boolean('aws_key_active', true),
         ]);
@@ -72,7 +81,10 @@ class CompanyController extends Controller
     public function edit(Company $company)
     {
         $company->load('features');
-        return view('admin.companies.form', compact('company'));
+        return view('admin.companies.form', [
+            'company'     => $company,
+            'awsAccounts' => $this->awsAccounts(),
+        ]);
     }
 
     public function update(Request $request, Company $company)
@@ -82,6 +94,7 @@ class CompanyController extends Controller
             'slug'         => "required|string|max:100|unique:companies,slug,{$company->id}|regex:/^[a-z0-9\-]+$/",
             'logo'         => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:2048',
             'is_active'    => 'nullable|boolean',
+            'aws_account_id' => 'nullable|exists:aws_accounts,id',
             'aws_api_key'  => 'nullable|string|max:1000',
             'aws_key_active' => 'nullable|boolean',
         ]);
@@ -102,6 +115,7 @@ class CompanyController extends Controller
             'slug'           => $validated['slug'],
             'logo_path'      => $logoPath,
             'is_active'      => $request->boolean('is_active', true),
+            'aws_account_id' => $validated['aws_account_id'] ?? null,
             'aws_key_active' => $request->boolean('aws_key_active', true),
         ];
 
@@ -151,8 +165,9 @@ class CompanyController extends Controller
         $fetchedAt = null;
 
         // Ambil dari CloudWatch (data AWS asli) lewat API key milik company — model manual refresh.
+        // Kredensial diambil dari akun AWS tempat key itu dibuat (CloudWatch tidak lintas akun).
         if ($keyName) {
-            $service  = new AwsLocationService();
+            $service  = AwsLocationService::forAccount($company->awsAccount);
             $snapshot = $service->getCachedUsage($keyName, $startDate, $endDate, null, $refresh);
             $metrics  = $snapshot['metrics'];
             $fetchedAt = !empty($snapshot['fetched_at']) ? \Carbon\Carbon::parse($snapshot['fetched_at']) : null;
@@ -184,7 +199,7 @@ class CompanyController extends Controller
         $fetchedAt = null;
 
         if ($keyName) {
-            $service  = new AwsLocationService();
+            $service  = AwsLocationService::forAccount($company->awsAccount);
             $snapshot = $service->getCachedUsage($keyName, $startDate, $endDate, null, false);
             $metrics  = $snapshot['metrics'];
             $fetchedAt = !empty($snapshot['fetched_at']) ? \Carbon\Carbon::parse($snapshot['fetched_at']) : null;

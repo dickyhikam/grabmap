@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuthLog;
 use App\Models\CredentialSendLog;
+use App\Models\Role;
 use App\Models\User;
 use App\Notifications\AccountCreatedNotification;
 use App\Notifications\SendCredentialsNotification;
@@ -16,6 +17,9 @@ use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
+    /** Pilihan jumlah baris per halaman. */
+    private const PER_PAGE_OPTIONS = [10, 15, 25, 50, 100];
+
     public function index(Request $request)
     {
         $query = User::query();
@@ -28,7 +32,7 @@ class UserController extends Controller
         }
 
         if ($role = $request->query('role')) {
-            $query->where('role', $role);
+            $query->whereHas('role', fn ($q) => $q->where('slug', $role));
         }
 
         if ($request->query('verified') === 'yes') {
@@ -43,18 +47,63 @@ class UserController extends Controller
             $query->where('is_active', false);
         }
 
-        $users = $query->latest()->paginate(15)->appends($request->query());
+        // ---- Urutan & jumlah baris (gaya datatable) ----
+        // Kolom yang boleh diurutkan dibatasi supaya nama kolom dari URL tidak
+        // langsung masuk ke query.
+        $sortable = [
+            'name'       => 'name',
+            'email'      => 'email',
+            'created_at' => 'created_at',
+            'status'     => 'is_active',
+            'verified'   => 'email_verified_at',
+            'role'       => 'role',
+        ];
+
+        $sort = $request->query('sort');
+        $sort = isset($sortable[$sort]) ? $sort : 'created_at';
+        $dir  = $request->query('dir') === 'asc' ? 'asc' : 'desc';
+
+        if ($sort === 'role') {
+            // Urut berdasar nama role, bukan id-nya.
+            $query->orderBy(Role::select('name')->whereColumn('roles.id', 'users.role_id'), $dir);
+        } else {
+            $query->orderBy($sortable[$sort], $dir);
+        }
+
+        $perPage = (int) $request->query('per_page', 15);
+        $perPage = in_array($perPage, self::PER_PAGE_OPTIONS, true) ? $perPage : 15;
+
+        $users = $query->with('role')->paginate($perPage)->appends($request->query());
 
         $stats = [
             'total'      => User::count(),
-            'admins'     => User::where('role', User::ROLE_ADMIN)->count(),
+            'admins'     => User::whereHas('role', fn ($q) => $q->where('slug', User::ROLE_ADMIN))->count(),
             'verified'   => User::whereNotNull('email_verified_at')->count(),
             'unverified' => User::whereNull('email_verified_at')->count(),
             'active'     => User::where('is_active', true)->count(),
             'inactive'   => User::where('is_active', false)->count(),
         ];
 
-        return view('admin.users.index', compact('users', 'stats'));
+        return view('admin.users.index', [
+            'users' => $users,
+            'stats' => $stats,
+            'sort'  => $sort,
+            'dir'   => $dir,
+            'perPage'        => $perPage,
+            'perPageOptions' => self::PER_PAGE_OPTIONS,
+            'roles' => Role::query()->orderByDesc('is_system')->orderBy('name')->get(),
+        ]);
+    }
+
+    /** Formulir tambah — view-nya sama dengan edit, hanya tanpa $user. */
+    public function create()
+    {
+        return view('admin.users.form', [
+            'user'           => null,
+            'recentLogs'     => collect(),
+            'credentialLogs' => collect(),
+            'roles'          => Role::query()->orderByDesc('is_system')->orderBy('name')->get(),
+        ]);
     }
 
     public function store(Request $request)
@@ -63,7 +112,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'ends_with:@grabtaxi.com', Rule::unique('users', 'email')],
             'password' => ['required', 'string', Password::min(8)->letters()->numbers()],
-            'role' => ['required', 'in:admin,user'],
+            'role' => ['required', 'exists:roles,uuid'],
             'notify_email' => ['nullable', 'email', 'max:255'],
             'auto_verify' => ['nullable', 'in:1'],
         ], [
@@ -75,10 +124,16 @@ class UserController extends Controller
             'name' => $validated['name'],
             'email' => strtolower(trim($validated['email'])),
             'password' => Hash::make($validated['password']),
-            'role' => $validated['role'],
+            'role_id' => Role::where('uuid', $validated['role'])->value('id'),
             'is_active' => true,
-            'email_verified_at' => !empty($validated['auto_verify']) ? now() : null,
         ]);
+
+        // email_verified_at sengaja TIDAK ada di $fillable (supaya tidak bisa diisi lewat
+        // mass assignment dari form pendaftaran), jadi centang "verifikasi otomatis"
+        // harus disetel eksplisit di sini.
+        if (!empty($validated['auto_verify'])) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+        }
 
         // Send credentials to notification email (or user email if not specified)
         $notifyEmail = !empty($validated['notify_email']) ? $validated['notify_email'] : $user->email;
@@ -131,7 +186,12 @@ class UserController extends Controller
             ->take(5)
             ->get();
 
-        return view('admin.users.edit', compact('user', 'recentLogs', 'credentialLogs'));
+        return view('admin.users.form', [
+            'user'           => $user,
+            'recentLogs'     => $recentLogs,
+            'credentialLogs' => $credentialLogs,
+            'roles'          => Role::query()->orderByDesc('is_system')->orderBy('name')->get(),
+        ]);
     }
 
     public function update(Request $request, User $user)
@@ -139,13 +199,13 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'role' => ['required', 'in:admin,user'],
+            'role' => ['required', 'exists:roles,uuid'],
             'password' => ['nullable', 'confirmed', Password::min(8)->letters()->numbers()],
         ]);
 
         $user->name = $validated['name'];
         $user->email = strtolower(trim($validated['email']));
-        $user->role = $validated['role'];
+        $user->role_id = Role::where('uuid', $validated['role'])->value('id');
 
         if (!empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);

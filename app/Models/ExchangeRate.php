@@ -29,11 +29,15 @@ class ExchangeRate extends Model
     }
 
     /**
-     * Jadikan kurs ini satu-satunya yang aktif.
+     * Jadikan kurs ini satu-satunya yang aktif. Pelepasan kurs lama dan penetapan
+     * kurs baru dijalankan dalam satu transaksi supaya tabel tidak pernah kehilangan
+     * kurs aktif kalau prosesnya terputus di tengah.
      */
     public function makeActive(): void
     {
-        static::query()->update(['is_active' => false]);
-        $this->update(['is_active' => true]);
+        \Illuminate\Support\Facades\DB::transaction(function () {
+            static::query()->update(['is_active' => false]);
+            $this->update(['is_active' => true]);
+        });
     }
 }

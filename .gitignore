@@ -22,3 +22,7 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+.claude
+# Agent skills installed via `skills` CLI (e.g. caveman)
+.agents

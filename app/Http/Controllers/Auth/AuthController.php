@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\AuthLog;
 use App\Models\User;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -104,7 +106,7 @@ class AuthController extends Controller
             $this->logAuth($request, AuthLog::ACTION_LOGIN, AuthLog::STATUS_SUCCESS,
                 Auth::id(), $credentials['email']);
 
-            return redirect()->intended(route('admin.dashboard'));
+            return redirect()->intended(Auth::user()->homeRoute());
         }
 
         // Failed — increment attempts
@@ -180,10 +182,76 @@ class AuthController extends Controller
 
     // ─── Email Verification ───────────────────────────
 
+    // ─── Forgot / Reset Password ──────────────────────
+
+    public function showForgotPassword()
+    {
+        return view('auth.forgot-password');
+    }
+
+    public function sendResetLink(Request $request)
+    {
+        $request->validate(['email' => ['required', 'email']]);
+
+        $status = PasswordBroker::sendResetLink($request->only('email'));
+
+        $this->logAuth(
+            $request,
+            'forgot_password',
+            $status === PasswordBroker::RESET_LINK_SENT ? 'success' : 'failed',
+            null,
+            $request->input('email'),
+            $status === PasswordBroker::RESET_LINK_SENT ? null : $status,
+        );
+
+        // Generic response — never reveal whether an email is registered (avoids enumeration).
+        return back()->with('status', 'Jika email terdaftar, tautan reset password sudah kami kirim. Cek inbox atau folder spam.');
+    }
+
+    public function showResetPassword(Request $request, string $token)
+    {
+        return view('auth.reset-password', [
+            'token' => $token,
+            'email' => $request->query('email'),
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token'    => ['required'],
+            'email'    => ['required', 'email'],
+            'password' => ['required', 'confirmed', Password::min(8)->letters()->numbers()],
+        ]);
+
+        $status = PasswordBroker::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->forceFill(['password' => Hash::make($password)])->save();
+                event(new PasswordReset($user));
+            }
+        );
+
+        $this->logAuth(
+            $request,
+            'reset_password',
+            $status === PasswordBroker::PASSWORD_RESET ? 'success' : 'failed',
+            null,
+            $request->input('email'),
+            $status === PasswordBroker::PASSWORD_RESET ? null : $status,
+        );
+
+        if ($status === PasswordBroker::PASSWORD_RESET) {
+            return redirect()->route('login')->with('status', 'Password berhasil diubah. Silakan masuk dengan password baru.');
+        }
+
+        return back()->withErrors(['email' => __($status)])->onlyInput('email');
+    }
+
     public function showVerifyNotice(Request $request)
     {
         if ($request->user()->hasVerifiedEmail()) {
-            return redirect()->route('admin.dashboard');
+            return redirect()->to($request->user()->homeRoute());
         }
         return view('auth.verify-email');
     }
@@ -191,7 +259,7 @@ class AuthController extends Controller
     public function verifyEmail(EmailVerificationRequest $request)
     {
         if ($request->user()->hasVerifiedEmail()) {
-            return redirect()->route('admin.dashboard');
+            return redirect()->to($request->user()->homeRoute());
         }
         if ($request->user()->markEmailAsVerified()) {
             event(new \Illuminate\Auth\Events\Verified($request->user()));
@@ -199,13 +267,13 @@ class AuthController extends Controller
             $this->logAuth($request, AuthLog::ACTION_EMAIL_VERIFICATION, AuthLog::STATUS_SUCCESS,
                 $request->user()->id, $request->user()->email);
         }
-        return redirect()->route('admin.dashboard')->with('verified', true);
+        return redirect()->to($request->user()->homeRoute())->with('verified', true);
     }
 
     public function resendVerification(Request $request)
     {
         if ($request->user()->hasVerifiedEmail()) {
-            return redirect()->route('admin.dashboard');
+            return redirect()->to($request->user()->homeRoute());
         }
         $request->user()->sendEmailVerificationNotification();
 

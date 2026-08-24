@@ -1,26 +1,14 @@
-@php
-    $accent = '#f59e0b';
-    $accentDark = '#d97706';
-    $accentTint = 'rgba(245,158,11,0.15)';
-@endphp
-
 @extends('errors.layout')
 
 @section('title', '503 · Service Unavailable')
 
-@section('badge')
-    <div class="badge-status">
-        <span class="dot"></span> 503 · SERVICE UNAVAILABLE
-    </div>
-@endsection
+@section('label', 'Error 503 · Service unavailable')
 
-@section('icon')🔧@endsection
+@section('icon', '🔧')
 
-@section('title-h1')We'll be right back@endsection
+@section('title-h1', 'We\'ll be right back')
 
-@section('lead')
-    Our service is temporarily under maintenance. We're pushing updates to improve performance. Please check back in a few minutes.
-@endsection
+@section('lead', 'Our service is temporarily under maintenance. We\'re pushing updates to improve performance. Please check back in a few minutes.')
 
 @section('actions')
     <a href="javascript:location.reload()" class="btn btn-primary">

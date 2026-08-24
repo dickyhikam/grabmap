@@ -1,294 +1,481 @@
-@extends('layouts.admin')
+@extends('layouts.admin-v2')
 
-@section('title', __('admin.api_keys_title'))
+@section('title', __('apikeys.title'))
 
 @push('styles')
+    /* ---------- Tab penyaring ----------
+       Tab ini sekaligus menggantikan kartu ringkasan: angkanya sama persis,
+       jadi tidak perlu ditampilkan dua kali. Penyaringan terjadi di browser —
+       semua key sudah ada di halaman, jadi tidak perlu menembak AWS lagi. */
+    /* Tab tinggal di topbar, sebelah brand — tingginya disamakan dengan pill lain. */
+    .key-tabs {
+        display: inline-flex; gap: 4px;
+        background: var(--card); border-radius: 999px;
+        padding: 5px; box-shadow: var(--shadow-card);
+        max-width: 100%; overflow-x: auto; scrollbar-width: none;
+    }
+    .key-tabs::-webkit-scrollbar { display: none; }
+
+    .key-tab {
+        display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+        border: none; background: none; cursor: pointer;
+        border-radius: 999px; padding: 9px 16px;
+        font-size: 0.8rem; font-weight: 600; color: var(--muted);
+        transition: background 0.18s, color 0.18s;
+    }
+    .key-tab:hover { color: var(--ink); }
+    .key-tab .count {
+        font-size: 0.68rem; font-weight: 800;
+        background: var(--surface); color: var(--muted);
+        border-radius: 999px; padding: 2px 8px; min-width: 22px;
+        transition: background 0.18s, color 0.18s;
+    }
+    .key-tab.on { background: var(--green); color: #fff; box-shadow: 0 4px 12px rgba(0, 177, 79, 0.3); }
+    .key-tab.on .count { background: rgba(255, 255, 255, 0.22); color: #fff; }
+
+    .key-card[hidden] { display: none; }
+
+    .tone-green  { background: var(--green-soft); color: var(--green-text); }
+    .tone-violet { background: var(--tone-indigo-bg); color: var(--tone-indigo-fg); }
+    .tone-amber  { background: var(--warn-soft); color: var(--warn-fg); }
+    .tone-bad    { background: var(--danger-soft); color: var(--danger-fg); }
+    .tone-slate  { background: var(--surface); color: var(--muted); }
+
+    /* ---------- Kartu key ---------- */
+    .key-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px; }
+    @media (max-width: 520px) { .key-grid { grid-template-columns: 1fr; } }
+
     .key-card {
-        border-radius: 16px;
-        border: 1.5px solid #e2e8f0;
-        background: #fff;
-        padding: 20px;
-        transition: all 0.2s;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        display: flex; flex-direction: column;
+        animation: keyIn 0.34s cubic-bezier(0.34, 1.4, 0.5, 1) backwards;
+        transition: box-shadow 0.18s ease, transform 0.18s ease;
     }
-    .key-card:hover {
-        border-color: var(--grab-green);
-        box-shadow: 0 4px 16px rgba(0, 177, 79, 0.1);
-        transform: translateY(-2px);
+    .key-card:hover { transform: translateY(-2px); box-shadow: 0 6px 26px rgba(20, 27, 24, 0.09); }
+    @keyframes keyIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: none; }
     }
+
+    .key-head { display: flex; align-items: flex-start; gap: 12px; }
     .key-icon {
-        width: 44px; height: 44px; border-radius: 12px;
-        display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+        width: 42px; height: 42px; border-radius: 13px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; flex-shrink: 0;
     }
-    .key-name { font-size: 1rem; font-weight: 700; color: #1a1a2e; letter-spacing: -0.01em; }
-    .key-desc { font-size: 0.8rem; color: #6c757d; margin-top: 2px; }
-    .key-meta { display: flex; gap: 20px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f2f5; }
-    .key-meta-item { display: flex; flex-direction: column; gap: 1px; }
-    .key-meta-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: #adb5bd; font-weight: 600; }
-    .key-meta-value { font-size: 0.82rem; font-weight: 500; color: #495057; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-    .badge-company {
+    .key-name {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-weight: 800; font-size: 0.98rem; letter-spacing: -0.02em;
+        word-break: break-all;
+    }
+    .key-desc { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+    .pill-badge {
         display: inline-flex; align-items: center; gap: 5px;
-        padding: 5px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 500;
-        background: var(--grab-green-light); color: #0a5c2e;
+        font-size: 0.68rem; font-weight: 700;
+        padding: 4px 10px; border-radius: 999px; white-space: nowrap;
     }
-    .badge-unassigned {
-        display: inline-flex; align-items: center; gap: 5px;
-        padding: 5px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 500;
-        background: #f0f2f5; color: #adb5bd;
+    .pill-badge.ok    { background: var(--green-soft); color: var(--green-text); }
+    .pill-badge.bad   { background: var(--danger-soft); color: var(--danger-fg); }
+    .pill-badge.plain { background: var(--surface); color: var(--muted); }
+
+    .key-meta {
+        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px; margin: 14px 0 0; padding-top: 13px;
+        border-top: 1px solid var(--line);
     }
-    .key-actions { display: flex; gap: 6px; margin-top: 14px; }
-    .btn-key {
-        border-radius: 10px; font-size: 0.8rem; font-weight: 500; padding: 6px 14px;
-        border: 1.5px solid #e2e8f0; background: #fff; color: #495057;
-        transition: all 0.15s; text-decoration: none;
-        display: inline-flex; align-items: center; gap: 5px;
+    .key-meta .lb { font-size: 0.63rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+    .key-meta .vl { font-size: 0.79rem; font-weight: 600; margin-top: 2px; }
+
+    .key-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .key-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        border: none; background: var(--surface); color: var(--ink);
+        border-radius: 999px; padding: 8px 14px;
+        font-size: 0.76rem; font-weight: 600; cursor: pointer; text-decoration: none;
+        transition: background 0.15s, color 0.15s, transform 0.12s;
     }
-    .btn-key:hover { border-color: var(--grab-green); color: var(--grab-green); background: var(--grab-green-light); }
-    .btn-key.btn-key-primary { border-color: var(--grab-green); color: var(--grab-green); }
-    .btn-key.btn-key-primary:hover { background: var(--grab-green); color: #fff; }
-    .btn-key.btn-key-danger { border-color: #fde8e8; color: #dc3545; }
-    .btn-key.btn-key-danger:hover { background: #fde8e8; }
-    .stat-mini {
-        display: flex; align-items: center; gap: 12px;
-        padding: 14px 20px; background: rgba(255, 255, 255, 0.08);
-        border-radius: 12px; backdrop-filter: blur(8px);
+    .key-btn:hover { background: var(--green); color: #fff; }
+    .key-btn:active { transform: scale(0.96); }
+    .key-btn.danger:hover { background: #dc2626; color: #fff; }
+
+    /* ---------- Modal ---------- */
+    .gm-modal {
+        position: fixed; inset: 0; z-index: 1250;
+        display: flex; align-items: flex-start; justify-content: center;
+        padding: 10vh 16px 16px;
+        background: rgba(12, 18, 15, 0.45);
+        backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        opacity: 0; visibility: hidden;
+        transition: opacity 0.2s ease, visibility 0.2s;
     }
-    .stat-mini-icon {
-        width: 36px; height: 36px; border-radius: 10px;
-        display: flex; align-items: center; justify-content: center; font-size: 1rem;
-        background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.8);
+    .gm-modal.open { opacity: 1; visibility: visible; }
+    .gm-modal-card {
+        width: 100%; max-width: 430px;
+        background: var(--card); border-radius: 24px;
+        box-shadow: var(--shadow-pop); overflow: visible;
+        transform: translateY(-14px) scale(0.97); opacity: 0;
+        transition: transform 0.3s cubic-bezier(0.34, 1.4, 0.5, 1), opacity 0.2s ease;
     }
-    .stat-mini-value { font-size: 1.25rem; font-weight: 700; color: #fff; }
-    .stat-mini-label { font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); text-transform: uppercase; letter-spacing: 0.05em; }
+    .gm-modal.open .gm-modal-card { transform: none; opacity: 1; }
+    .gm-modal-head { text-align: center; padding: 26px 24px 18px; }
+    .gm-modal-icon {
+        width: 54px; height: 54px; border-radius: 18px;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 1.35rem; margin-bottom: 12px;
+    }
+    .gm-modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.05rem; }
+    .gm-modal-sub { font-size: 0.77rem; color: var(--muted); margin-top: 5px; }
+    .gm-modal-body { padding: 0 24px 24px; }
+
+    .who {
+        display: flex; align-items: center; gap: 11px;
+        background: var(--surface); border-radius: 14px;
+        padding: 11px 14px; margin-bottom: 16px;
+        font-weight: 600; font-size: 0.84rem; word-break: break-all;
+    }
+    .note {
+        display: flex; gap: 9px; align-items: flex-start;
+        border-radius: 14px; padding: 11px 13px; margin: 14px 0 16px;
+        font-size: 0.72rem; line-height: 1.5;
+    }
+    .note.info { background: var(--tone-indigo-bg); color: var(--tone-indigo-fg); }
+    .note.warn { background: var(--warn-soft); color: var(--warn-fg); }
+
+    .form-label-sm { display: block; font-size: 0.72rem; font-weight: 700; color: var(--muted); margin-bottom: 7px; }
+    .btn-row > .btn-soft, .btn-row > .btn-solid { flex: 1; padding-left: 12px; padding-right: 12px; }
 @endpush
 
-@section('header')
-<div class="page-header">
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
-            <div>
-                <h4 class="fw-bold mb-1" style="font-size:1.4rem;">
-                    <i class="bi bi-key-fill me-2" style="opacity:0.7;"></i>{{ __('admin.api_keys_title') }}
-                </h4>
-                <p style="color:rgba(255,255,255,0.5); font-size:0.85rem; margin-bottom:0;">
-                    {{ __('admin.api_keys_subtitle') }}
-                </p>
-            </div>
-            @if($hasCredentials)
-            <a href="{{ route('admin.api-keys.create') }}" class="btn btn-light rounded-pill px-4 shadow-sm"
-                style="font-weight:600;font-size:0.85rem;">
-                <i class="bi bi-plus-lg me-1"></i> Add API Key
-            </a>
-            @endif
-        </div>
+@php
+    // Dihitung di luar section: dipakai oleh tab di topbar sekaligus daftar di bawah.
+    $totalKeys  = count($keys);
+    $activeKeys = collect($keys)->filter(fn ($k) => !($k['expire_time'] && \Carbon\Carbon::parse($k['expire_time'])->isPast()))->count();
+    $keyNames   = collect($keys)->pluck('key_name')->all();
+    $assignedCount   = $accountCompanies->whereNotNull('aws_api_key_name')->whereIn('aws_api_key_name', $keyNames)->count();
+    $expiredCount    = $totalKeys - $activeKeys;
+    $unassignedCount = $totalKeys - $assignedCount;
+    $showTabs        = $hasCredentials && !$error && $totalKeys > 0;
+    $canAssign       = config('features.api_key_assign');
+@endphp
 
-        @if($hasCredentials && !$error && !empty($keys))
-        @php
-            $totalKeys = count($keys);
-            $activeKeys = collect($keys)->filter(fn($k) => !($k['expire_time'] && \Carbon\Carbon::parse($k['expire_time'])->isPast()))->count();
-            $awsKeyNames = collect($keys)->pluck('key_name')->all();
-            $assignedCount = $companies->whereNotNull('aws_api_key_name')
-                ->whereIn('aws_api_key_name', $awsKeyNames)
-                ->count();
-        @endphp
-        <div class="d-flex gap-3 flex-wrap">
-            <div class="stat-mini">
-                <div class="stat-mini-icon"><i class="bi bi-key"></i></div>
-                <div>
-                    <div class="stat-mini-value">{{ $totalKeys }}</div>
-                    <div class="stat-mini-label">{{ __('admin.total_keys') }}</div>
-                </div>
-            </div>
-            <div class="stat-mini">
-                <div class="stat-mini-icon"><i class="bi bi-check-circle"></i></div>
-                <div>
-                    <div class="stat-mini-value">{{ $activeKeys }}</div>
-                    <div class="stat-mini-label">{{ __('admin.active') }}</div>
-                </div>
-            </div>
-            <div class="stat-mini">
-                <div class="stat-mini-icon"><i class="bi bi-link-45deg"></i></div>
-                <div>
-                    <div class="stat-mini-value">{{ $assignedCount }}</div>
-                    <div class="stat-mini-label">{{ __('admin.assigned') }}</div>
-                </div>
-            </div>
-        </div>
-        @endif
+@if($showTabs)
+@section('top-tabs')
+    <div class="key-tabs" id="keyTabs" role="tablist">
+        @foreach([
+            ['k' => 'all',        'l' => __('apikeys.tab_all'),        'n' => $totalKeys],
+            ['k' => 'active',     'l' => __('apikeys.tab_active'),     'n' => $activeKeys],
+            ['k' => 'expired',    'l' => __('apikeys.tab_expired'),    'n' => $expiredCount],
+            ...($canAssign ? [['k' => 'unassigned', 'l' => __('apikeys.tab_unassigned'), 'n' => $unassignedCount]] : []),
+        ] as $tab)
+            <button type="button" class="key-tab {{ $loop->first ? 'on' : '' }}"
+                    data-tab="{{ $tab['k'] }}" role="tab" aria-selected="{{ $loop->first ? 'true' : 'false' }}">
+                {{ $tab['l'] }} <span class="count">{{ $tab['n'] }}</span>
+            </button>
+        @endforeach
     </div>
-</div>
 @endsection
+@endif
 
 @section('content')
-    @if(!$hasCredentials)
-    <div class="card">
-        <div class="card-body empty-state">
-            <div style="width:64px; height:64px; border-radius:16px; background:#fff3e0; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
-                <i class="bi bi-shield-lock" style="font-size:1.5rem; color:#f59e0b;"></i>
+
+<div class="q-page-head">
+    <h1 class="q-title">
+        {{ __('apikeys.title') }}
+        @if($hasCredentials && !$error)<span class="soft">{{ $totalKeys }}</span>@endif
+    </h1>
+
+    {{-- Akun yang sedang dilihat sudah ditampilkan pill di topbar, tidak perlu diulang. --}}
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        @can('api_keys.create')
+            @if($hasCredentials)
+                <a href="{{ route('admin.api-keys.create', ['account' => $account?->id]) }}" class="q-pill q-pill-green">
+                    <i class="bi bi-plus-lg"></i> {{ __('apikeys.add') }}
+                </a>
+            @endif
+        @endcan
+    </div>
+</div>
+
+@if(!$hasCredentials)
+    <div class="q-card">
+        <div class="q-empty">
+            <i class="bi bi-shield-lock"></i>
+            <div style="font-weight:700;color:var(--ink);margin-bottom:6px;">{{ __('apikeys.no_creds_title') }}</div>
+            <div style="max-width:460px;margin:0 auto 16px;">{{ __('apikeys.no_creds_desc') }}</div>
+            @can('aws_accounts.create')
+                <a href="{{ route('admin.aws-accounts.create') }}" class="q-pill q-pill-green">
+                    <i class="bi bi-plus-lg"></i> {{ __('apikeys.add_account') }}
+                </a>
+            @endcan
+            <div style="font-size:0.7rem;margin-top:16px;">
+                {{ __('apikeys.iam_needs') }}: <code>geo:ListKeys</code>, <code>geo:DescribeKey</code>, <code>cloudwatch:GetMetricData</code>
             </div>
-            <h5 class="fw-semibold mb-2">{{ __('admin.no_credentials_title') }}</h5>
-            <p class="text-muted mb-3" style="max-width:450px; margin:0 auto;">
-                {{ __('admin.no_credentials_desc') }}
-            </p>
-            <div class="rounded-3 p-3 mx-auto" style="max-width: 380px; text-align: left; background: #f8f9fa; font-family: monospace; font-size: 0.82rem;">
-                AWS_ACCESS_KEY_ID=your_access_key<br>
-                AWS_SECRET_ACCESS_KEY=your_secret_key
-            </div>
-            <p class="text-muted mt-3 mb-0" style="font-size: 0.8rem;">
-                {{ __('admin.iam_permission') }}: <code>geo:ListKeys</code>, <code>geo:DescribeKey</code>, <code>cloudwatch:GetMetricData</code>
-            </p>
         </div>
     </div>
-    @elseif($error)
-    <div class="card">
-        <div class="card-body empty-state">
-            <div style="width:64px; height:64px; border-radius:16px; background:#fde8e8; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
-                <i class="bi bi-exclamation-triangle" style="font-size:1.5rem; color:#dc3545;"></i>
-            </div>
-            <h5 class="fw-semibold mb-2">{{ __('admin.aws_error_title') }}</h5>
-            <div class="alert alert-danger d-inline-block" style="border-radius:10px;">{{ $error }}</div>
-            <p class="text-muted mt-3 mb-0" style="font-size: 0.8rem;">
-                {{ __('admin.aws_error_desc', ['permission' => 'geo:ListKeys']) }}
-            </p>
+@elseif($error)
+    <div class="q-alert bad">
+        <span class="q-alert-icon"><i class="bi bi-exclamation-triangle-fill"></i></span>
+        <div class="q-alert-body">
+            <strong>{{ __('apikeys.error_title') }}</strong><br>
+            {{ $error }}<br>
+            <span style="opacity:0.8;">{{ __('apikeys.error_desc', ['permission' => 'geo:ListKeys']) }}</span>
+        </div>
+        @can('aws_accounts.view')
+            <a href="{{ route('admin.aws-accounts.index') }}" class="q-alert-action">{{ __('dash.check_account') }}</a>
+        @endcan
+    </div>
+@elseif(empty($keys))
+    <div class="q-card">
+        <div class="q-empty">
+            <i class="bi bi-key"></i>
+            <div style="font-weight:700;color:var(--ink);margin-bottom:6px;">{{ __('apikeys.empty_title') }}</div>
+            <div style="margin-bottom:16px;">{{ __('apikeys.empty_desc', ['region' => $region]) }}</div>
+            @can('api_keys.create')
+                <a href="{{ route('admin.api-keys.create', ['account' => $account?->id]) }}" class="q-pill q-pill-green">
+                    <i class="bi bi-plus-lg"></i> {{ __('apikeys.empty_cta') }}
+                </a>
+            @endcan
         </div>
     </div>
-    @elseif(empty($keys))
-    <div class="card">
-        <div class="card-body empty-state">
-            <div style="width:64px; height:64px; border-radius:16px; background:#f0f2f5; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
-                <i class="bi bi-key" style="font-size:1.5rem; color:#adb5bd;"></i>
-            </div>
-            <h5 class="fw-semibold mb-1">{{ __('admin.no_keys_title') }}</h5>
-            <p class="text-muted mb-3">{{ __('admin.no_keys_desc', ['region' => config('aws.region')]) }}</p>
-            <a href="{{ route('admin.api-keys.create') }}" class="btn btn-grab px-4"
-                style="background:#00B14F;color:#fff;border:none;border-radius:10px;font-weight:600;">
-                <i class="bi bi-plus-circle-fill me-1"></i> Create First API Key
-            </a>
-        </div>
-    </div>
-    @else
-    <div class="row g-3">
+@else
+    {{-- ===== Daftar key ===== --}}
+    <div class="key-grid">
         @foreach($keys as $key)
-        @php
-            $isExpired = $key['expire_time'] && \Carbon\Carbon::parse($key['expire_time'])->isPast();
-            $assignedCompany = $companies->firstWhere('aws_api_key_name', $key['key_name']);
-        @endphp
-        <div class="col-md-6">
-            <div class="key-card">
-                <div class="d-flex align-items-start justify-content-between">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="key-icon" style="background: {{ $isExpired ? '#fde8e8' : 'var(--grab-green-light)' }}; color: {{ $isExpired ? '#dc3545' : 'var(--grab-green)' }};">
-                            <i class="bi bi-key-fill"></i>
-                        </div>
-                        <div>
-                            <div class="key-name">{{ $key['key_name'] }}</div>
-                            <div class="key-desc">{{ $key['description'] ?: __('admin.no_description') }}</div>
-                        </div>
+            @php
+                $expired = $key['expire_time'] && \Carbon\Carbon::parse($key['expire_time'])->isPast();
+                $company = $accountCompanies->firstWhere('aws_api_key_name', $key['key_name']);
+            @endphp
+            <div class="q-card key-card"
+                 data-status="{{ $expired ? 'expired' : 'active' }}"
+                 data-assigned="{{ $company ? '1' : '0' }}"
+                 style="animation-delay: {{ $loop->index * 40 }}ms;">
+                <div class="key-head">
+                    <div class="key-icon {{ $expired ? 'tone-bad' : 'tone-green' }}"><i class="bi bi-key-fill"></i></div>
+                    <div style="flex:1;min-width:0;">
+                        <div class="key-name">{{ $key['key_name'] }}</div>
+                        <div class="key-desc">{{ $key['description'] ?: __('apikeys.no_description') }}</div>
                     </div>
-                    <span class="status-dot" style="background:{{ $isExpired ? '#dc3545' : 'var(--grab-green)' }};" title="{{ $isExpired ? __('admin.expired') : __('admin.active') }}"></span>
+                    <span class="pill-badge {{ $expired ? 'bad' : 'ok' }}">
+                        <i class="bi bi-{{ $expired ? 'x-circle-fill' : 'check-circle-fill' }}"></i>
+                        {{ $expired ? __('apikeys.expired') : __('apikeys.active') }}
+                    </span>
                 </div>
 
-                <div class="mt-3">
-                    @if($assignedCompany)
-                        <span class="badge-company"><i class="bi bi-building"></i> {{ $assignedCompany->name }}</span>
+                <div style="margin-top:12px;">
+                    @if($company)
+                        <span class="pill-badge ok"><i class="bi bi-building"></i> {{ $company->name }}</span>
                     @else
-                        <span class="badge-unassigned"><i class="bi bi-dash-circle"></i> {{ __('admin.not_assigned') }}</span>
+                        <span class="pill-badge plain"><i class="bi bi-dash-circle"></i> {{ __('apikeys.not_assigned') }}</span>
                     @endif
                 </div>
 
                 <div class="key-meta">
-                    <div class="key-meta-item">
-                        <span class="key-meta-label">{{ __('admin.status') }}</span>
-                        <span class="key-meta-value" style="color:{{ $isExpired ? '#dc3545' : 'var(--grab-green)' }};">{{ $isExpired ? __('admin.expired') : __('admin.active') }}</span>
+                    <div>
+                        <div class="lb">{{ __('apikeys.created') }}</div>
+                        <div class="vl">{{ $key['create_time'] ? \Carbon\Carbon::parse($key['create_time'])->translatedFormat('d M Y') : '—' }}</div>
                     </div>
-                    <div class="key-meta-item">
-                        <span class="key-meta-label">{{ __('admin.created') }}</span>
-                        <span class="key-meta-value">{{ $key['create_time'] ? \Carbon\Carbon::parse($key['create_time'])->format('d M Y') : '—' }}</span>
+                    <div>
+                        <div class="lb">{{ __('apikeys.expires') }}</div>
+                        <div class="vl" @if($expired) style="color:var(--danger-fg);" @endif>
+                            {{ $key['expire_time'] ? \Carbon\Carbon::parse($key['expire_time'])->translatedFormat('d M Y') : __('apikeys.never') }}
+                        </div>
                     </div>
-                    <div class="key-meta-item">
-                        <span class="key-meta-label">{{ __('admin.expire') }}</span>
-                        <span class="key-meta-value">{{ $key['expire_time'] ? \Carbon\Carbon::parse($key['expire_time'])->format('d M Y') : '—' }}</span>
-                    </div>
-                    <div class="key-meta-item">
-                        <span class="key-meta-label">{{ __('admin.region') }}</span>
-                        <span class="key-meta-value">{{ config('aws.region') }}</span>
+                    <div>
+                        <div class="lb">{{ __('apikeys.region') }}</div>
+                        <div class="vl">{{ $region }}</div>
                     </div>
                 </div>
 
                 <div class="key-actions">
-                    <a href="{{ route('admin.api-keys.usage', $key['key_name']) }}" class="btn-key"><i class="bi bi-bar-chart"></i> {{ __('admin.usage') }}</a>
-                    <a href="{{ route('admin.api-keys.edit', $key['key_name']) }}" class="btn-key"><i class="bi bi-pencil-square"></i> Edit</a>
-                    @if(!$isExpired)
-                    <button type="button" class="btn-key btn-key-primary" data-bs-toggle="modal" data-bs-target="#assignModal" data-key-name="{{ $key['key_name'] }}">
-                        <i class="bi bi-link-45deg"></i> {{ __('admin.assign') }}
-                    </button>
-                    @endif
-                    @if($assignedCompany)
-                    <form method="POST" action="{{ route('admin.api-keys.unassign') }}" class="d-inline">
-                        @csrf
-                        <input type="hidden" name="company_id" value="{{ $assignedCompany->id }}">
-                        <button type="submit" class="btn-key btn-key-danger"><i class="bi bi-x-lg"></i> {{ __('admin.unassign') }}</button>
-                    </form>
+                    <a href="{{ route('admin.api-keys.usage', ['keyName' => $key['key_name'], 'account' => $account?->id]) }}" class="key-btn">
+                        <i class="bi bi-bar-chart"></i> {{ __('apikeys.usage') }}
+                    </a>
+
+                    @can('api_keys.update')
+                        <a href="{{ route('admin.api-keys.edit', ['keyName' => $key['key_name'], 'account' => $account?->id]) }}" class="key-btn">
+                            <i class="bi bi-pencil"></i> {{ __('apikeys.edit') }}
+                        </a>
+                    @endcan
+
+                    @if($canAssign)
+                        @can('api_keys.assign')
+                            @unless($expired)
+                                <button type="button" class="key-btn" data-assign data-key="{{ $key['key_name'] }}">
+                                    <i class="bi bi-link-45deg"></i> {{ __('apikeys.assign') }}
+                                </button>
+                            @endunless
+
+                            @if($company)
+                                <button type="button" class="key-btn danger"
+                                        data-unassign data-company="{{ $company->id }}" data-name="{{ $company->name }}">
+                                    <i class="bi bi-x-lg"></i> {{ __('apikeys.unassign') }}
+                                </button>
+                            @endif
+                        @endcan
                     @endif
                 </div>
             </div>
-        </div>
         @endforeach
     </div>
 
-    {{-- Assign Modal --}}
-    <div class="modal fade" id="assignModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
+    <div class="q-card" id="tabEmpty" hidden style="margin-top:16px;">
+        <div class="q-empty"><i class="bi bi-funnel"></i>{{ __('apikeys.tab_empty') }}</div>
+    </div>
+
+    {{-- ===================== Modal: pasangkan ke perusahaan ===================== --}}
+    @if($canAssign)
+    @can('api_keys.assign')
+    <div class="gm-modal" id="assignModal" role="dialog" aria-modal="true">
+        <div class="gm-modal-card">
+            <div class="gm-modal-head">
+                <div class="gm-modal-icon tone-green"><i class="bi bi-link-45deg"></i></div>
+                <div class="gm-modal-title">{{ __('apikeys.assign_title') }}</div>
+                <div class="gm-modal-sub">{{ __('apikeys.assign_sub') }}</div>
+            </div>
+            <div class="gm-modal-body">
+                <div class="who"><i class="bi bi-key-fill" style="color:var(--green-text);"></i><span id="asgKey">—</span></div>
+
                 <form method="POST" action="{{ route('admin.api-keys.assign') }}">
                     @csrf
-                    <input type="hidden" name="key_name" id="modalKeyName">
-                    <div class="modal-header border-0 pb-0">
-                        <div>
-                            <h5 class="modal-title fw-bold">{{ __('admin.assign_api_key') }}</h5>
-                            <small class="text-muted">{{ __('admin.select_company') }}</small>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="p-3 rounded-3 mb-3" style="background:#f8f9fa;">
-                            <div class="d-flex align-items-center gap-2">
-                                <i class="bi bi-key-fill" style="color:var(--grab-green);"></i>
-                                <span class="fw-semibold" id="modalKeyNameDisplay"></span>
-                            </div>
-                        </div>
-                        <label class="form-label fw-medium">Company</label>
-                        <select name="company_id" class="form-select" required>
-                            <option value="">{{ __('admin.choose_company') }}</option>
-                            @foreach($companies as $company)
+                    <input type="hidden" name="key_name" id="asgKeyInput">
+                    <input type="hidden" name="account" value="{{ $account?->id }}">
+
+                    <label class="form-label-sm">{{ __('apikeys.company') }}</label>
+                    <select name="company_id" class="select" required style="width:100%;padding-left:16px;">
+                        <option value="">{{ __('apikeys.choose') }}</option>
+                        @foreach($companies as $company)
                             <option value="{{ $company->id }}">
-                                {{ $company->name }}
-                                @if($company->aws_api_key_name) ({{ __('admin.has_key', ['name' => $company->aws_api_key_name]) }}) @endif
+                                {{ $company->name }}@if($company->aws_api_key_name) — {{ __('apikeys.has_key', ['name' => $company->aws_api_key_name]) }}@endif
                             </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="modal-footer border-0 pt-0">
-                        <button type="button" class="btn btn-outline-secondary" style="border-radius:10px;" data-bs-dismiss="modal">{{ __('admin.cancel') }}</button>
-                        <button type="submit" class="btn btn-grab px-4"><i class="bi bi-link-45deg me-1"></i>{{ __('admin.assign_key') }}</button>
+                        @endforeach
+                    </select>
+
+                    @if($account)
+                        <div class="note info">
+                            <i class="bi bi-info-circle-fill"></i>
+                            <span>{{ __('apikeys.assign_note', ['name' => $account->name]) }}</span>
+                        </div>
+                    @endif
+
+                    <div class="btn-row">
+                        <button type="button" class="btn-soft" data-close>{{ __('ui.cancel') }}</button>
+                        <button type="submit" class="btn-solid"><i class="bi bi-link-45deg"></i> {{ __('apikeys.assign_btn') }}</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
+    {{-- ===================== Modal: lepas key ===================== --}}
+    <div class="gm-modal" id="unassignModal" role="dialog" aria-modal="true">
+        <div class="gm-modal-card" style="max-width:400px;">
+            <div class="gm-modal-head">
+                <div class="gm-modal-icon tone-bad"><i class="bi bi-x-circle-fill"></i></div>
+                <div class="gm-modal-title">{{ __('apikeys.unassign_title') }}</div>
+                <div class="gm-modal-sub">{{ __('apikeys.unassign_sub') }}</div>
+            </div>
+            <div class="gm-modal-body">
+                <div class="who"><i class="bi bi-building" style="color:var(--muted);"></i><span id="unName">—</span></div>
+                <div class="note warn"><i class="bi bi-exclamation-triangle-fill"></i><span>{{ __('apikeys.unassign_note') }}</span></div>
+
+                <form method="POST" action="{{ route('admin.api-keys.unassign') }}">
+                    @csrf
+                    <input type="hidden" name="account" value="{{ $account?->id }}">
+                    <input type="hidden" name="company_id" id="unCompany">
+                    <div class="btn-row">
+                        <button type="button" class="btn-soft" data-close>{{ __('ui.cancel') }}</button>
+                        <button type="submit" class="btn-solid danger"><i class="bi bi-x-lg"></i> {{ __('apikeys.unassign') }}</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endcan
     @endif
+@endif
 @endsection
 
 @push('scripts')
 <script>
-    const assignModal = document.getElementById('assignModal');
-    if (assignModal) {
-        assignModal.addEventListener('show.bs.modal', function(event) {
-            const keyName = event.relatedTarget.getAttribute('data-key-name');
-            document.getElementById('modalKeyName').value = keyName;
-            document.getElementById('modalKeyNameDisplay').textContent = keyName;
+    (function () {
+        const assign = document.getElementById('assignModal');
+        const unassign = document.getElementById('unassignModal');
+        if (!assign && !unassign) return;
+
+        const closeAll = () => [assign, unassign].forEach(m => m?.classList.remove('open'));
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('[data-close]') || e.target === assign || e.target === unassign) {
+                closeAll();
+                return;
+            }
+
+            const asg = e.target.closest('[data-assign]');
+            if (asg) {
+                document.getElementById('asgKey').textContent = asg.dataset.key;
+                document.getElementById('asgKeyInput').value = asg.dataset.key;
+                assign.classList.add('open');
+                return;
+            }
+
+            const una = e.target.closest('[data-unassign]');
+            if (una) {
+                document.getElementById('unName').textContent = una.dataset.name;
+                document.getElementById('unCompany').value = una.dataset.company;
+                unassign.classList.add('open');
+            }
         });
-    }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeAll();
+        });
+    })();
+
+    // ---------- Tab penyaring ----------
+    (function () {
+        const tabs = document.getElementById('keyTabs');
+        if (!tabs) return;
+
+        const cards = [...document.querySelectorAll('.key-card')];
+        const empty = document.getElementById('tabEmpty');
+
+        const matches = (card, tab) => ({
+            all:        true,
+            active:     card.dataset.status === 'active',
+            expired:    card.dataset.status === 'expired',
+            unassigned: card.dataset.assigned === '0',
+        })[tab] ?? true;
+
+        function apply(tab, push) {
+            let shown = 0;
+            cards.forEach((card) => {
+                const ok = matches(card, tab);
+                card.hidden = !ok;
+                if (ok) shown++;
+            });
+
+            empty.hidden = shown > 0;
+
+            tabs.querySelectorAll('.key-tab').forEach((btn) => {
+                const on = btn.dataset.tab === tab;
+                btn.classList.toggle('on', on);
+                btn.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+
+            // URL ikut menyimpan tab supaya bisa dibagikan / bertahan saat refresh.
+            if (push) {
+                const url = new URL(window.location.href);
+                tab === 'all' ? url.searchParams.delete('status') : url.searchParams.set('status', tab);
+                history.replaceState(null, '', url);
+            }
+        }
+
+        tabs.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-tab]');
+            if (btn) apply(btn.dataset.tab, true);
+        });
+
+        const initial = new URL(window.location.href).searchParams.get('status');
+        if (initial) apply(initial, false);
+    })();
 </script>
 @endpush

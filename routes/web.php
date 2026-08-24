@@ -1,9 +1,12 @@
 <?php
 
 use App\Http\Controllers\Admin\ApiKeyController;
+use App\Http\Controllers\UsageReportController;
+use App\Http\Controllers\Admin\AwsAccountController;
 use App\Http\Controllers\Admin\CostSettingController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\SimulatorController;
 use App\Http\Controllers\ClientMapController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\PricingController;
@@ -128,6 +131,14 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [\App\Http\Controllers\Auth\AuthController::class, 'login']);
     Route::get('/register', [\App\Http\Controllers\Auth\AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [\App\Http\Controllers\Auth\AuthController::class, 'register']);
+
+    // Forgot / reset password (Laravel password broker)
+    Route::get('/forgot-password', [\App\Http\Controllers\Auth\AuthController::class, 'showForgotPassword'])->name('password.request');
+    Route::post('/forgot-password', [\App\Http\Controllers\Auth\AuthController::class, 'sendResetLink'])
+        ->middleware('throttle:6,1')->name('password.email');
+    Route::get('/reset-password/{token}', [\App\Http\Controllers\Auth\AuthController::class, 'showResetPassword'])->name('password.reset');
+    Route::post('/reset-password', [\App\Http\Controllers\Auth\AuthController::class, 'resetPassword'])
+        ->middleware('throttle:6,1')->name('password.update');
 });
 Route::post('/logout', [\App\Http\Controllers\Auth\AuthController::class, 'logout'])
     ->middleware('auth')->name('logout');
@@ -155,60 +166,184 @@ Route::get('/admin/language/{lang}', function (string $lang) {
 // All admin routes — auth + verified email + locale middleware
 Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
     // Dashboard
-    Route::get('/admin', [DashboardController::class, 'index'])->name('admin.dashboard');
+    Route::get('/admin', [DashboardController::class, 'index'])
+        ->middleware('permission:dashboard.view')
+        ->name('admin.dashboard');
+
+    // Cakupan akun AWS yang sedang dilihat (kosong = semua akun digabung).
+    // Ini murni tampilan; akun DEFAULT untuk kelola API key diatur di halaman Akun AWS.
+    Route::get('/admin/aws-scope/{awsAccount?}', function (?\App\Models\AwsAccount $awsAccount = null) {
+        session(['admin_aws_scope' => $awsAccount?->id]);
+
+        return back();
+    })->name('admin.aws-scope');
 
     // API Key Management
     Route::prefix('admin/api-keys')->group(function () {
-        Route::get('/', [ApiKeyController::class, 'index'])->name('admin.api-keys.index');
-        Route::get('/create', [ApiKeyController::class, 'create'])->name('admin.api-keys.create');
-        Route::post('/', [ApiKeyController::class, 'store'])->name('admin.api-keys.store');
-        Route::post('/assign', [ApiKeyController::class, 'assign'])->name('admin.api-keys.assign');
-        Route::post('/unassign', [ApiKeyController::class, 'unassign'])->name('admin.api-keys.unassign');
-        Route::get('/{keyName}/edit', [ApiKeyController::class, 'edit'])->name('admin.api-keys.edit');
-        Route::put('/{keyName}', [ApiKeyController::class, 'update'])->name('admin.api-keys.update');
-        Route::get('/{keyName}/usage', [ApiKeyController::class, 'usage'])->name('admin.api-keys.usage');
-        Route::get('/{keyName}/invoice', [ApiKeyController::class, 'invoice'])->name('admin.api-keys.invoice');
+        Route::middleware('permission:api_keys.view')->group(function () {
+            Route::get('/', [ApiKeyController::class, 'index'])->name('admin.api-keys.index');
+            Route::get('/{keyName}/usage', [ApiKeyController::class, 'usage'])->name('admin.api-keys.usage');
+            Route::get('/{keyName}/invoice', [ApiKeyController::class, 'invoice'])->name('admin.api-keys.invoice');
+        });
+
+        Route::middleware('permission:api_keys.create')->group(function () {
+            Route::get('/create', [ApiKeyController::class, 'create'])->name('admin.api-keys.create');
+            Route::post('/', [ApiKeyController::class, 'store'])->name('admin.api-keys.store');
+        });
+
+        // Fitur assign masih ditahan — lihat config/features.php. Endpoint-nya sengaja
+        // tidak didaftarkan supaya benar-benar tertutup, bukan cuma tombolnya disembunyikan.
+        if (config('features.api_key_assign')) {
+            Route::middleware('permission:api_keys.assign')->group(function () {
+                Route::post('/assign', [ApiKeyController::class, 'assign'])->name('admin.api-keys.assign');
+                Route::post('/unassign', [ApiKeyController::class, 'unassign'])->name('admin.api-keys.unassign');
+            });
+        }
+
+        Route::middleware('permission:api_keys.update')->group(function () {
+            Route::get('/{keyName}/edit', [ApiKeyController::class, 'edit'])->name('admin.api-keys.edit');
+            Route::put('/{keyName}', [ApiKeyController::class, 'update'])->name('admin.api-keys.update');
+            Route::post('/{keyName}/share/enable', [ApiKeyController::class, 'enableShare'])->name('admin.api-keys.share.enable');
+            Route::post('/{keyName}/share/disable', [ApiKeyController::class, 'disableShare'])->name('admin.api-keys.share.disable');
+            Route::post('/{keyName}/share/regenerate', [ApiKeyController::class, 'regenerateShare'])->name('admin.api-keys.share.regenerate');
+        });
     });
 
-    // User Management (admin only)
-    Route::middleware('admin.only')->prefix('admin/users')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('admin.users.index');
-        Route::post('/', [\App\Http\Controllers\Admin\UserController::class, 'store'])->name('admin.users.store');
-        Route::get('/{user}/edit', [\App\Http\Controllers\Admin\UserController::class, 'edit'])->name('admin.users.edit');
-        Route::put('/{user}', [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('admin.users.update');
-        Route::patch('/{user}/toggle-status', [\App\Http\Controllers\Admin\UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
-        Route::post('/{user}/resend-verification', [\App\Http\Controllers\Admin\UserController::class, 'resendVerification'])->name('admin.users.resend-verification');
-        Route::post('/{user}/reset-send', [\App\Http\Controllers\Admin\UserController::class, 'resetAndSend'])->name('admin.users.reset-send');
-        Route::post('/{user}/send-credentials', [\App\Http\Controllers\Admin\UserController::class, 'sendCredentials'])->name('admin.users.send-credentials');
-        Route::delete('/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('admin.users.destroy');
+    // AWS Account Management (kredensial IAM per akun — mendukung >1 akun AWS)
+    Route::prefix('admin/aws-accounts')->group(function () {
+        Route::middleware('permission:aws_accounts.view')->group(function () {
+            Route::get('/', [AwsAccountController::class, 'index'])->name('admin.aws-accounts.index');
+        });
+
+        Route::middleware('permission:aws_accounts.create')->group(function () {
+            Route::get('/create', [AwsAccountController::class, 'create'])->name('admin.aws-accounts.create');
+            Route::post('/', [AwsAccountController::class, 'store'])->name('admin.aws-accounts.store');
+        });
+
+        Route::middleware('permission:aws_accounts.update')->group(function () {
+            Route::get('/{awsAccount}/edit', [AwsAccountController::class, 'edit'])->name('admin.aws-accounts.edit');
+            Route::put('/{awsAccount}', [AwsAccountController::class, 'update'])->name('admin.aws-accounts.update');
+            Route::post('/{awsAccount}/default', [AwsAccountController::class, 'setDefault'])->name('admin.aws-accounts.default');
+            Route::post('/{awsAccount}/test', [AwsAccountController::class, 'test'])->name('admin.aws-accounts.test');
+        });
+
+        Route::middleware('permission:aws_accounts.delete')->group(function () {
+            Route::delete('/{awsAccount}', [AwsAccountController::class, 'destroy'])->name('admin.aws-accounts.destroy');
+        });
+    });
+
+    // Role & akses — izinnya dipecah per aksi
+    Route::prefix('admin/roles')->group(function () {
+        Route::middleware('permission:roles.view')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\RoleController::class, 'index'])->name('admin.roles.index');
+        });
+
+        Route::middleware('permission:roles.create')->group(function () {
+            Route::get('/create', [\App\Http\Controllers\Admin\RoleController::class, 'create'])->name('admin.roles.create');
+            Route::post('/', [\App\Http\Controllers\Admin\RoleController::class, 'store'])->name('admin.roles.store');
+        });
+
+        Route::middleware('permission:roles.update')->group(function () {
+            Route::get('/{role}/edit', [\App\Http\Controllers\Admin\RoleController::class, 'edit'])->name('admin.roles.edit');
+            Route::put('/{role}', [\App\Http\Controllers\Admin\RoleController::class, 'update'])->name('admin.roles.update');
+        });
+
+        Route::middleware('permission:roles.delete')->group(function () {
+            Route::delete('/{role}', [\App\Http\Controllers\Admin\RoleController::class, 'destroy'])->name('admin.roles.destroy');
+        });
+    });
+
+    // User Management — izinnya dipecah per aksi
+    // Profil sendiri — tanpa penjagaan izin: semua yang sudah masuk boleh
+    // membuka dan mengubah datanya sendiri.
+    Route::get('/admin/profile', [\App\Http\Controllers\Admin\ProfileController::class, 'edit'])->name('admin.profile');
+    Route::put('/admin/profile', [\App\Http\Controllers\Admin\ProfileController::class, 'update'])->name('admin.profile.update');
+    Route::put('/admin/profile/password', [\App\Http\Controllers\Admin\ProfileController::class, 'updatePassword'])->name('admin.profile.password');
+
+    Route::prefix('admin/users')->group(function () {
+        Route::middleware('permission:users.view')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('admin.users.index');
+        });
+
+        Route::middleware('permission:users.create')->group(function () {
+            Route::get('/create', [\App\Http\Controllers\Admin\UserController::class, 'create'])->name('admin.users.create');
+            Route::post('/', [\App\Http\Controllers\Admin\UserController::class, 'store'])->name('admin.users.store');
+        });
+
+        Route::middleware('permission:users.update')->group(function () {
+            Route::get('/{user}/edit', [\App\Http\Controllers\Admin\UserController::class, 'edit'])->name('admin.users.edit');
+            Route::put('/{user}', [\App\Http\Controllers\Admin\UserController::class, 'update'])->name('admin.users.update');
+            Route::patch('/{user}/toggle-status', [\App\Http\Controllers\Admin\UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
+            Route::post('/{user}/resend-verification', [\App\Http\Controllers\Admin\UserController::class, 'resendVerification'])->name('admin.users.resend-verification');
+        });
+
+        // Kirim kredensial = menyetel ulang kata sandi orang lain, jadi izinnya terpisah.
+        Route::middleware('permission:users.credentials')->group(function () {
+            Route::post('/{user}/reset-send', [\App\Http\Controllers\Admin\UserController::class, 'resetAndSend'])->name('admin.users.reset-send');
+            Route::post('/{user}/send-credentials', [\App\Http\Controllers\Admin\UserController::class, 'sendCredentials'])->name('admin.users.send-credentials');
+        });
+
+        Route::middleware('permission:users.delete')->group(function () {
+            Route::delete('/{user}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('admin.users.destroy');
+        });
     });
 
     // Company Management
     Route::prefix('admin/companies')->group(function () {
-        Route::get('/', [CompanyController::class, 'index'])->name('admin.companies.index');
-        Route::get('/create', [CompanyController::class, 'create'])->name('admin.companies.create');
-        Route::post('/', [CompanyController::class, 'store'])->name('admin.companies.store');
-        Route::get('/{company}/edit', [CompanyController::class, 'edit'])->name('admin.companies.edit');
-        Route::put('/{company}', [CompanyController::class, 'update'])->name('admin.companies.update');
-        Route::patch('/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])->name('admin.companies.toggle-status');
-        Route::get('/{company}/usage', [CompanyController::class, 'usage'])->name('admin.companies.usage');
-        Route::get('/{company}/invoice', [CompanyController::class, 'invoice'])->name('admin.companies.invoice');
+        Route::middleware('permission:companies.view')->group(function () {
+            Route::get('/', [CompanyController::class, 'index'])->name('admin.companies.index');
+            Route::get('/{company}/usage', [CompanyController::class, 'usage'])->name('admin.companies.usage');
+            Route::get('/{company}/invoice', [CompanyController::class, 'invoice'])->name('admin.companies.invoice');
+        });
+
+        Route::middleware('permission:companies.create')->group(function () {
+            Route::get('/create', [CompanyController::class, 'create'])->name('admin.companies.create');
+            Route::post('/', [CompanyController::class, 'store'])->name('admin.companies.store');
+        });
+
+        Route::middleware('permission:companies.update')->group(function () {
+            Route::get('/{company}/edit', [CompanyController::class, 'edit'])->name('admin.companies.edit');
+            Route::put('/{company}', [CompanyController::class, 'update'])->name('admin.companies.update');
+            Route::patch('/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])->name('admin.companies.toggle-status');
+        });
     });
+
+    // Simulator biaya — pakai API key yang diketik user, hitung request langsung di browser
+    Route::get('/admin/simulator', [SimulatorController::class, 'index'])
+        ->middleware('permission:simulator.use')
+        ->name('admin.simulator');
 
     // Pengaturan Biaya: Kurs (history + bukti) & Pajak
     Route::prefix('admin/cost-settings')->group(function () {
-        Route::get('/', [CostSettingController::class, 'index'])->name('admin.cost-settings.index');
-        Route::post('/rate', [CostSettingController::class, 'storeRate'])->name('admin.cost-settings.rate.store');
-        Route::post('/rate/{rate}/activate', [CostSettingController::class, 'activate'])->name('admin.cost-settings.rate.activate');
-        Route::post('/tax', [CostSettingController::class, 'updateTax'])->name('admin.cost-settings.tax');
-        Route::post('/budget', [CostSettingController::class, 'updateBudget'])->name('admin.cost-settings.budget');
+        Route::middleware('permission:cost_settings.view')->group(function () {
+            Route::get('/', [CostSettingController::class, 'index'])->name('admin.cost-settings.index');
+        });
+
+        Route::middleware('permission:cost_settings.update')->group(function () {
+            Route::post('/rate', [CostSettingController::class, 'storeRate'])->name('admin.cost-settings.rate.store');
+            Route::post('/rate/{rate}/activate', [CostSettingController::class, 'activate'])->name('admin.cost-settings.rate.activate');
+            Route::post('/tax', [CostSettingController::class, 'updateTax'])->name('admin.cost-settings.tax');
+            Route::post('/budget', [CostSettingController::class, 'updateBudget'])->name('admin.cost-settings.budget');
+        });
     });
 });
+
+// Laporan pemakaian publik (read-only, token rahasia). Harus di atas catch-all /{slug}.
+Route::get('/usage-report/{token}', [UsageReportController::class, 'show'])
+    ->middleware('throttle:30,1')
+    ->name('usage-report.show');
 
 // Shareable A→B route links (coordinate link + short links). Must stay above the catch-all.
 Route::get('/route', [RouteLinkController::class, 'show'])->name('route.show');
 Route::get('/r/{code}', [RouteLinkController::class, 'showShort'])->name('route.short');
 Route::post('/api/route-links', [RouteLinkController::class, 'store'])->name('route.store');
+
+// GrabMaps Playground — peta + Places/Routes API resmi GrabMaps.
+// API key diinput user lewat popup dan dipakai langsung dari browser ke maps.grab.com,
+// jadi tidak ada kredensial yang menyentuh server ini.
+Route::get('/grab-maps', function () {
+    return view('grabmaps.index');
+})->name('grabmaps');
 
 // Dynamic company map — must be last (catch-all)
 Route::get('/{slug}', [ClientMapController::class, 'show'])->name('company.map');

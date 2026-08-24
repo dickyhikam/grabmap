@@ -619,9 +619,17 @@
                     class="nav-tab-item {{ request()->routeIs('admin.api-keys.*') ? 'active' : '' }}">
                     <i class="bi bi-key"></i> {{ __('admin.api_keys') }}
                 </a>
+                <a href="{{ route('admin.aws-accounts.index') }}"
+                    class="nav-tab-item {{ request()->routeIs('admin.aws-accounts.*') ? 'active' : '' }}">
+                    <i class="bi bi-cloud"></i> Akun AWS
+                </a>
                 <a href="{{ route('admin.cost-settings.index') }}"
                     class="nav-tab-item {{ request()->routeIs('admin.cost-settings.*') ? 'active' : '' }}">
                     <i class="bi bi-cash-coin"></i> Kurs &amp; Pajak
+                </a>
+                <a href="{{ route('admin.simulator') }}"
+                    class="nav-tab-item {{ request()->routeIs('admin.simulator') ? 'active' : '' }}">
+                    <i class="bi bi-speedometer2"></i> Simulator
                 </a>
                 @if(auth()->user()?->isAdmin())
                 <a href="{{ route('admin.users.index') }}"

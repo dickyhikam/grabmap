@@ -1,0 +1,41 @@
+<?php
+
+/** Label untuk katalog di config/permissions.php. */
+return [
+    'groups' => [
+        'dashboard' => 'Dashboard',
+        'companies' => 'Companies',
+        'api_keys' => 'API Keys',
+        'aws_accounts' => 'AWS Accounts',
+        'cost' => 'Rates & Tax',
+        'tools' => 'Tools',
+        'users' => 'Users',
+        'roles' => 'Roles',
+    ],
+    'keys' => [
+        'dashboard.view' => 'View dashboard',
+        'companies.view' => 'View companies',
+        'companies.create' => 'Add a company',
+        'companies.update' => 'Edit a company (incl. activate/deactivate)',
+        'api_keys.view' => 'View API keys & usage',
+        'api_keys.create' => 'Create an API key on AWS',
+        'api_keys.update' => 'Edit an API key',
+        'api_keys.assign' => 'Assign a key to a company',
+        'aws_accounts.view' => 'View AWS accounts',
+        'aws_accounts.create' => 'Add an AWS account',
+        'aws_accounts.update' => 'Edit an account (incl. set default & test)',
+        'aws_accounts.delete' => 'Delete an AWS account',
+        'cost_settings.view' => 'View exchange rate & tax',
+        'cost_settings.update' => 'Change exchange rate, tax & budget',
+        'simulator.use' => 'Use the cost simulator',
+        'users.view' => 'View users',
+        'users.create' => 'Add a user',
+        'users.update' => 'Edit a user (incl. activate/deactivate)',
+        'users.delete' => 'Delete a user',
+        'users.credentials' => 'Send credentials & reset password',
+        'roles.view' => 'View roles',
+        'roles.create' => 'Add a role',
+        'roles.update' => 'Edit a role & its permissions',
+        'roles.delete' => 'Delete a role',
+    ],
+];

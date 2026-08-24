@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ApiKeyBudget;
+use App\Models\AwsAccount;
 use App\Models\Company;
 use App\Models\ExchangeRate;
 use App\Models\Setting;
@@ -19,6 +21,53 @@ class DashboardController extends Controller
         'routes' => ['CalculateRoutes', 'CalculateRouteMatrix'],
     ];
 
+    /** Rentang terpanjang yang boleh diminta sekali jalan — penjaga biaya CloudWatch. */
+    private const MAX_RANGE_DAYS = 92;
+
+    /**
+     * Baca ?start=&end= lalu jepit ke rentang yang masuk akal:
+     * tidak melewati hari ini, tidak melampaui retensi CloudWatch (15 bulan),
+     * dan tidak lebih panjang dari MAX_RANGE_DAYS. Input ngawur → kembali ke default.
+     *
+     * @return array{0: string, 1: string} [startDate, endDate] format Y-m-d
+     */
+    private function resolveRange(Request $request): array
+    {
+        $parse = function (?string $value): ?\Carbon\Carbon {
+            if (!$value) {
+                return null;
+            }
+            try {
+                return \Carbon\Carbon::createFromFormat('Y-m-d', $value)->startOfDay();
+            } catch (\Throwable) {
+                return null;
+            }
+        };
+
+        $today  = now()->startOfDay();
+        $oldest = $today->copy()->subMonths(15);
+
+        $start = $parse($request->query('start'));
+        $end   = $parse($request->query('end'));
+
+        if (!$start || !$end) {
+            return [now()->startOfMonth()->format('Y-m-d'), $today->format('Y-m-d')];
+        }
+
+        if ($start->gt($end)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        $end   = $end->min($today)->max($oldest);
+        $start = $start->min($end)->max($oldest);
+
+        if ($start->diffInDays($end) + 1 > self::MAX_RANGE_DAYS) {
+            $start = $end->copy()->subDays(self::MAX_RANGE_DAYS - 1);
+        }
+
+        return [$start->format('Y-m-d'), $end->format('Y-m-d')];
+    }
+
     public function index(Request $request)
     {
         // Statistik company
@@ -26,29 +75,62 @@ class DashboardController extends Controller
         $activeCompanies  = Company::where('is_active', true)->count();
         $companiesWithKey = Company::whereNotNull('aws_api_key_name')->count();
 
-        // Rentang: bulan berjalan (selaras siklus tagihan AWS).
-        $refresh   = $request->query('refresh') === '1';
-        $startDate = now()->startOfMonth()->format('Y-m-d');
-        $endDate   = now()->format('Y-m-d');
+        // Rentang: default bulan berjalan (selaras siklus tagihan AWS), bisa diatur
+        // lewat ?start=&end= dari pemilih tanggal.
+        $refresh = $request->query('refresh') === '1';
+        [$startDate, $endDate] = $this->resolveRange($request);
+
+        // Dashboard menampilkan SATU akun AWS, tidak pernah menggabungkan beberapa akun.
+        // Pilihannya dari pill di topbar (disimpan di sesi); kalau belum memilih, pakai
+        // akun default. Null hanya terjadi kalau memang belum ada akun tersimpan —
+        // saat itu service jatuh ke kredensial .env.
+        $scopeAccount = null;
+        if ($scopeId = session('admin_aws_scope')) {
+            $scopeAccount = AwsAccount::query()->active()->find($scopeId);
+            if (!$scopeAccount) {
+                session()->forget('admin_aws_scope');   // akunnya dihapus/dinonaktifkan
+            }
+        }
+        $scopeAccount = $scopeAccount ?: AwsAccount::defaultAccount();
 
         $apiKeysData = ['total' => 0, 'active' => 0];
         $cw          = ['total' => 0, 'operations' => [], 'by_key' => [], 'daily' => [], 'error' => null];
         $fetchedAt   = null;
 
-        if (AwsLocationService::hasCredentials()) {
-            $service = new AwsLocationService();
+        if (AwsLocationService::hasCredentials($scopeAccount)) {
+            $keysCacheKey = 'dashboard_api_keys:' . ($scopeAccount?->id ?? 'all');
 
-            // Jumlah API key (murah, boleh cache otomatis).
-            $apiKeysData = Cache::remember('dashboard_api_keys', 30 * 60, function () use ($service) {
-                $keys = $service->listApiKeys()['keys'] ?? [];
-                $active = collect($keys)
-                    ->filter(fn ($k) => !($k['expire_time'] && \Carbon\Carbon::parse($k['expire_time'])->isPast()))
-                    ->count();
-                return ['total' => count($keys), 'active' => $active];
+            if ($refresh) {
+                Cache::forget($keysCacheKey);
+            }
+
+            // Jumlah API key pada akun yang sedang dilihat (murah, boleh cache otomatis).
+            $apiKeysData = Cache::remember($keysCacheKey, 30 * 60, function () use ($scopeAccount) {
+                $accounts = $scopeAccount
+                    ? collect([$scopeAccount])
+                    : AwsAccount::query()->active()->get();
+                $accounts = $accounts->filter->hasCredentials();
+
+                $services = $accounts->isEmpty()
+                    ? collect([new AwsLocationService()])           // belum ada akun tersimpan → kredensial .env
+                    : $accounts->map(fn ($a) => AwsLocationService::forAccount($a));
+
+                $total = 0;
+                $active = 0;
+                foreach ($services as $service) {
+                    $keys = $service->listApiKeys()['keys'] ?? [];
+                    $total += count($keys);
+                    $active += collect($keys)
+                        ->filter(fn ($k) => !($k['expire_time'] && \Carbon\Carbon::parse($k['expire_time'])->isPast()))
+                        ->count();
+                }
+
+                return ['total' => $total, 'active' => $active];
             });
 
             // Usage agregat — model manual refresh (TIDAK menembak AWS tiap load).
-            $snapshot  = $service->getCachedAggregateUsage($startDate, $endDate, $refresh);
+            // Tanpa cakupan, semua akun aktif dijumlahkan; dengan cakupan, hanya satu akun.
+            $snapshot  = AwsLocationService::aggregateAcrossAccounts($startDate, $endDate, $refresh, $scopeAccount);
             $cw        = $snapshot['data'];
             $fetchedAt = !empty($snapshot['fetched_at']) ? \Carbon\Carbon::parse($snapshot['fetched_at']) : null;
         }
@@ -83,11 +165,23 @@ class DashboardController extends Controller
         // Peta API key -> company (untuk label "paling banyak dipakai").
         $companyByKey = Company::whereNotNull('aws_api_key_name')->get()->keyBy('aws_api_key_name');
 
+        // Batas biaya per API key (peringatan sisi aplikasi, bukan AWS Budgets).
+        // Rincian per key sudah ikut di snapshot, jadi tidak ada panggilan AWS tambahan.
+        $keyBudgets = ApiKeyBudget::evaluate($cw['by_key_ops'] ?? [])
+            ->filter(fn ($row) => $row['state'] !== 'ok')
+            ->values();
+
+        // Rincian per akun AWS — hanya relevan kalau memang ada lebih dari satu akun.
+        $byAccount    = $cw['by_account'] ?? [];
+        $awsAccounts  = AwsAccount::query()->active()->orderByDesc('is_default')->orderBy('id')->get();
+
         return view('admin.dashboard', compact(
             'totalCompanies', 'activeCompanies', 'companiesWithKey',
             'apiKeysData', 'fetchedAt', 'cw', 'operations', 'totalRequests',
             'totalCost', 'tax', 'grandCost', 'catCount', 'catCost',
-            'activeRate', 'idrRate', 'taxRate', 'budgetAlert', 'companyByKey', 'startDate', 'endDate'
+            'activeRate', 'idrRate', 'taxRate', 'budgetAlert', 'companyByKey',
+            'startDate', 'endDate', 'byAccount', 'awsAccounts', 'scopeAccount', 'keyBudgets'
         ));
     }
+
 }

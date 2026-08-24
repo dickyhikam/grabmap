@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AwsAccount;
 use Aws\CloudWatch\CloudWatchClient;
 use Aws\LocationService\LocationServiceClient;
 use Aws\Exception\AwsException;
@@ -12,20 +13,85 @@ class AwsLocationService
 {
     private LocationServiceClient $client;
 
-    public function __construct()
+    /** Akun AWS yang dipakai instance ini. Null = jatuh ke kredensial .env (mode lama). */
+    private ?AwsAccount $account;
+
+    private string $region;
+
+    private array $credentials;
+
+    public function __construct(?AwsAccount $account = null)
     {
-        $this->client = new LocationServiceClient([
-            'region'      => config('aws.region'),
-            'version'     => config('aws.version', 'latest'),
-            'credentials' => config('aws.credentials'),
-        ]);
+        $this->account = $account ?? AwsAccount::defaultAccount();
+
+        $this->region = $this->account?->region ?: (string) config('aws.region', 'ap-southeast-1');
+        $this->credentials = $this->account
+            ? $this->account->credentials()
+            : (array) config('aws.credentials');
+
+        $this->client = new LocationServiceClient($this->clientConfig());
+    }
+
+    public static function forAccount(?AwsAccount $account): self
+    {
+        return new self($account);
+    }
+
+    public function account(): ?AwsAccount
+    {
+        return $this->account;
+    }
+
+    public function region(): string
+    {
+        return $this->region;
     }
 
     /**
-     * Check if AWS credentials are configured.
+     * Konfigurasi client. Kalau kredensial kosong, jangan kirim key 'credentials' sama sekali —
+     * AWS SDK akan melempar exception untuk credentials null, sedangkan default provider chain
+     * (env / IAM role instance) masih mungkin berhasil.
      */
-    public static function hasCredentials(): bool
+    private function clientConfig(): array
     {
+        $config = [
+            'region'  => $this->region,
+            'version' => config('aws.version', 'latest'),
+        ];
+
+        if (!empty($this->credentials['key']) && !empty($this->credentials['secret'])) {
+            $config['credentials'] = $this->credentials;
+        }
+
+        return $config;
+    }
+
+    /**
+     * Namespace cache per akun — dua akun bisa punya API key dengan nama sama,
+     * tanpa ini snapshot usage-nya akan saling menimpa.
+     */
+    public function cacheScope(): string
+    {
+        return $this->account ? 'acct' . $this->account->id : 'env';
+    }
+
+    /** Cache key ber-namespace akun, untuk dipakai controller (mis. cache detail key). */
+    public function cacheKey(string $suffix): string
+    {
+        return $this->cacheScope() . ':' . $suffix;
+    }
+
+    /**
+     * Apakah kredensial tersedia? Tanpa argumen: cek akun default (atau .env kalau belum ada akun).
+     */
+    public static function hasCredentials(?AwsAccount $account = null): bool
+    {
+        $account = $account ?: AwsAccount::defaultAccount();
+
+        if ($account) {
+            return $account->hasCredentials();
+        }
+
         return !empty(config('aws.credentials.key')) && !empty(config('aws.credentials.secret'));
     }
 
@@ -230,7 +296,7 @@ class AwsLocationService
      */
     public function getCachedUsage(string $keyName, string $startDate, string $endDate, ?string $filterOperation, bool $forceRefresh = false): array
     {
-        $cacheKey = "aws_usage_snapshot:{$keyName}:{$startDate}:{$endDate}:" . ($filterOperation ?? 'all');
+        $cacheKey = "aws_usage_snapshot:{$this->cacheScope()}:{$keyName}:{$startDate}:{$endDate}:" . ($filterOperation ?? 'all');
 
         if ($forceRefresh) {
             Cache::forget($cacheKey);
@@ -253,7 +319,7 @@ class AwsLocationService
      */
     public function getCachedAggregateUsage(string $startDate, string $endDate, bool $forceRefresh = false): array
     {
-        $cacheKey = "aws_usage_aggregate:{$startDate}:{$endDate}";
+        $cacheKey = "aws_usage_aggregate:{$this->cacheScope()}:{$startDate}:{$endDate}";
 
         if ($forceRefresh) {
             Cache::forget($cacheKey);
@@ -268,12 +334,131 @@ class AwsLocationService
         return $snapshot;
     }
 
+    /**
+     * Agregat usage LINTAS AKUN (untuk dashboard). CloudWatch tidak bisa lintas akun,
+     * jadi tiap akun aktif ditembak dengan kredensialnya sendiri lalu hasilnya dijumlahkan.
+     * Return: ['data' => [...seperti getCachedAggregateUsage + 'by_account'], 'fetched_at' => ISO8601|null]
+     */
+    public static function aggregateAcrossAccounts(
+        string $startDate,
+        string $endDate,
+        bool $forceRefresh = false,
+        ?AwsAccount $only = null
+    ): array {
+        $accounts = AwsAccount::query()->active()->orderByDesc('is_default')->orderBy('id')->get();
+        $noAccountsAtAll = $accounts->isEmpty();
+
+        // Dibatasi ke satu akun (pilihan cakupan di topbar).
+        if ($only) {
+            $accounts = $accounts->where('id', $only->id)->values();
+        }
+
+        // Belum ada akun tersimpan: pakai kredensial .env (perilaku lama).
+        if ($noAccountsAtAll) {
+            $snapshot = (new self())->getCachedAggregateUsage($startDate, $endDate, $forceRefresh);
+            $snapshot['data']['by_account'] = [];
+
+            // Tanpa akun tersimpan, kuncinya berawalan kosong — sepadan dengan
+            // aws_account_id null di tabel batas biaya.
+            $keyed = [];
+            foreach ($snapshot['data']['by_key_ops'] ?? [] as $name => $ops) {
+                $keyed['|' . $name] = $ops;
+            }
+            $snapshot['data']['by_key_ops'] = $keyed;
+
+            return $snapshot;
+        }
+
+        $total = 0;
+        $operations = [];
+        $byKey = [];
+        $byKeyOps = [];
+        $byAccount = [];
+        $daily = [];
+        $errors = [];
+        $fetchedAt = null;
+
+        foreach ($accounts as $account) {
+            if (!$account->hasCredentials()) {
+                continue;
+            }
+
+            $snapshot = self::forAccount($account)->getCachedAggregateUsage($startDate, $endDate, $forceRefresh);
+            $data = $snapshot['data'];
+
+            if (!empty($data['error'])) {
+                $errors[] = "{$account->name}: {$data['error']}";
+            }
+
+            $total += $data['total'] ?? 0;
+            $byAccount[$account->name] = $data['total'] ?? 0;
+
+            foreach ($data['operations'] ?? [] as $op => $count) {
+                $operations[$op] = ($operations[$op] ?? 0) + $count;
+            }
+            foreach ($data['daily'] ?? [] as $date => $count) {
+                $daily[$date] = ($daily[$date] ?? 0) + $count;
+            }
+            // Nama key hanya unik dalam satu akun — beri prefiks nama akun kalau bentrok.
+            foreach ($data['by_key'] ?? [] as $name => $count) {
+                $label = isset($byKey[$name]) ? "{$name} ({$account->name})" : $name;
+                $byKey[$label] = ($byKey[$label] ?? 0) + $count;
+            }
+
+            // Rincian per key dikunci "akunId|namaKey" — batas biaya per key dicari
+            // dengan pasangan itu, bukan dengan label tampilan yang bisa berubah.
+            foreach ($data['by_key_ops'] ?? [] as $name => $ops) {
+                $byKeyOps[$account->id . '|' . $name] = $ops;
+            }
+
+            // Tampilkan waktu pengambilan tertua supaya tidak terkesan lebih segar dari kenyataan.
+            if (!empty($snapshot['fetched_at']) && ($fetchedAt === null || $snapshot['fetched_at'] < $fetchedAt)) {
+                $fetchedAt = $snapshot['fetched_at'];
+            }
+        }
+
+        arsort($operations);
+        arsort($byKey);
+        arsort($byAccount);
+        ksort($daily);
+
+        return [
+            'data' => [
+                'total'      => $total,
+                'operations' => $operations,
+                'by_key'     => $byKey,
+                'by_key_ops' => $byKeyOps,
+                'by_account' => $byAccount,
+                'daily'      => $daily,
+                'error'      => $errors ? implode(' | ', $errors) : null,
+            ],
+            'fetched_at' => $fetchedAt,
+        ];
+    }
+
+    /**
+     * Uji kredensial akun dengan satu panggilan murah (ListKeys).
+     *
+     * @return array{ok: bool, keys: int, error: string|null}
+     */
+    public function testConnection(): array
+    {
+        $result = $this->listApiKeys();
+
+        return [
+            'ok'    => $result['error'] === null,
+            'keys'  => count($result['keys']),
+            'error' => $result['error'],
+        ];
+    }
+
     /** Jumlahkan metrik CloudWatch dari seluruh API key menjadi satu agregat. */
     private function aggregateAllKeys(string $startDate, string $endDate): array
     {
         $total = 0;
         $operations = [];
         $byKey = [];
+        $byKeyOps = [];
         $daily = [];
         $error = null;
 
@@ -291,6 +476,9 @@ class AwsLocationService
                 $total += $m['total'];
                 if ($m['total'] > 0) {
                     $byKey[$name] = $m['total'];
+                    // Rincian per operasi ikut disimpan supaya biaya per key bisa
+                    // dihitung tanpa menembak CloudWatch lagi (harga tiap operasi beda).
+                    $byKeyOps[$name] = $m['operations'] ?? [];
                 }
                 foreach ($m['daily'] ?? [] as $d => $c) {
                     $daily[$d] = ($daily[$d] ?? 0) + $c;
@@ -306,17 +494,20 @@ class AwsLocationService
             $error = $e->getMessage();
         }
 
-        return ['total' => $total, 'operations' => $operations, 'by_key' => $byKey, 'daily' => $daily, 'error' => $error];
+        return [
+            'total'       => $total,
+            'operations'  => $operations,
+            'by_key'      => $byKey,
+            'by_key_ops'  => $byKeyOps,
+            'daily'       => $daily,
+            'error'       => $error,
+        ];
     }
 
     public function getKeyUsageMetrics(string $keyName, string $startDate, string $endDate, ?string $filterOperation = null): array
     {
         try {
-            $cloudwatch = new CloudWatchClient([
-                'region'      => config('aws.region'),
-                'version'     => 'latest',
-                'credentials' => config('aws.credentials'),
-            ]);
+            $cloudwatch = new CloudWatchClient($this->clientConfig());
 
             $startTime = \Carbon\Carbon::parse($startDate)->startOfDay();
             $endTime = \Carbon\Carbon::parse($endDate)->endOfDay();

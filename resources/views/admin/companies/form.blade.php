@@ -152,6 +152,23 @@
                         <span class="text-muted"><i class="bi bi-info-circle me-1"></i>{{ __('admin.key_assign_after') }}</span>
                     </div>
                 @endif
+
+                @if(($awsAccounts ?? collect())->isNotEmpty())
+                <div class="mb-3">
+                    <label class="form-label fw-medium" for="aws_account_id">Akun AWS</label>
+                    <select name="aws_account_id" id="aws_account_id" class="form-select">
+                        <option value="">— Belum ditentukan —</option>
+                        @foreach($awsAccounts as $awsAccount)
+                        <option value="{{ $awsAccount->id }}"
+                            {{ (int) old('aws_account_id', $company->aws_account_id ?? 0) === $awsAccount->id ? 'selected' : '' }}>
+                            {{ $awsAccount->name }} ({{ $awsAccount->region }})
+                        </option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted">Menentukan kredensial mana yang dipakai untuk menarik usage &amp; tagihan company ini dari CloudWatch. Terisi otomatis saat API key di-assign.</small>
+                </div>
+                @endif
+
                 <a href="{{ route('admin.api-keys.index') }}" class="btn btn-sm btn-outline-grab"><i class="bi bi-key me-1"></i>{{ __('admin.manage_keys') }}</a>
             </div>
         </div>
