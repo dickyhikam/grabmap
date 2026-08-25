@@ -388,17 +388,17 @@
                     </div>
                     <div class="kv">
                         <span class="k">{{ __('awsaccounts.verified') }}</span>
-                        <span class="v">{{ $account->last_verified_at?->translatedFormat('d M Y H:i') ?? __('awsaccounts.never_tested') }}</span>
+                        <span class="v">{{ $account->last_verified_at?->wib()->translatedFormat('d M Y H:i') ?? __('awsaccounts.never_tested') }}</span>
                     </div>
                     <div class="kv">
                         <span class="k">{{ __('awsaccounts.added') }}</span>
-                        <span class="v">{{ $account->created_at?->translatedFormat('d M Y') ?? '—' }}</span>
+                        <span class="v">{{ $account->created_at?->wib()->translatedFormat('d M Y') ?? '—' }}</span>
                     </div>
 
                     <div class="form-hint" style="margin-top:14px;">{{ __('awsaccounts.test_hint') }}</div>
 
                     @can('api_keys.view')
-                        <a href="{{ route('admin.api-keys.index', ['account' => $account->id]) }}"
+                        <a href="{{ route('admin.api-keys.index', ['account' => $account->getRouteKey()]) }}"
                            class="btn-soft" style="width:100%;margin-top:12px;">
                             <i class="bi bi-key"></i> {{ __('awsaccounts.api_keys') }}
                         </a>

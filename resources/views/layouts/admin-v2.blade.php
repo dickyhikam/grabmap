@@ -920,6 +920,16 @@
             to   { opacity: 1; transform: none; }
         }
 
+        .gm-select-group {
+            padding: 8px 12px 4px;
+            font-size: 0.64rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--faint);
+        }
+        .gm-select-group + .gm-select-opt { margin-top: 0; }
+
         .gm-select-opt:hover, .gm-select-opt.cursor { background: var(--surface); }
         .gm-select-opt.sel { color: var(--green-text); font-weight: 700; }
         .gm-select-opt[disabled] { opacity: 0.45; cursor: default; }
@@ -1004,9 +1014,7 @@
         // Menu disaring per izin: yang tidak boleh dibuka tidak usah ditampilkan.
         $menu = collect([
             ['route' => 'admin.dashboard',           'match' => 'admin.dashboard*',      'icon' => 'bi-grid-1x2-fill', 'label' => __('admin.dashboard'),    'can' => 'dashboard.view'],
-            // Perusahaan disembunyikan dulu (belum dipakai). Rute & halamannya tetap ada —
-            // cukup buka komentar baris ini untuk memunculkannya lagi.
-            // ['route' => 'admin.companies.index',     'match' => 'admin.companies.*',     'icon' => 'bi-building',      'label' => __('admin.companies'),    'can' => 'companies.view'],
+            ['route' => 'admin.companies.index',     'match' => 'admin.companies.*',     'icon' => 'bi-building',      'label' => __('admin.companies'),    'can' => 'companies.view'],
             ['route' => 'admin.api-keys.index',      'match' => 'admin.api-keys.*',      'icon' => 'bi-key-fill',      'label' => __('admin.api_keys'),     'can' => 'api_keys.view'],
             ['route' => 'admin.aws-accounts.index',  'match' => 'admin.aws-accounts.*',  'icon' => 'bi-cloud-fill',    'label' => __('ui.aws_accounts'),    'can' => 'aws_accounts.view'],
             ['route' => 'admin.cost-settings.index', 'match' => 'admin.cost-settings.*', 'icon' => 'bi-cash-coin',     'label' => __('ui.cost_settings'),   'can' => 'cost_settings.view'],
@@ -1242,7 +1250,20 @@
                 panel.className = 'gm-select-panel';
                 panel.setAttribute('role', 'listbox');
 
+                // Judul <optgroup> ikut dirender sebagai pemisah — dipakai mis. saat
+                // memilih API key yang bisa berasal dari beberapa akun AWS.
+                let lastGroup = null;
+
                 Array.from(select.options).forEach((opt, i) => {
+                    const group = opt.parentElement?.tagName === 'OPTGROUP' ? opt.parentElement.label : null;
+                    if (group && group !== lastGroup) {
+                        const head = document.createElement('div');
+                        head.className = 'gm-select-group';
+                        head.textContent = group;
+                        panel.appendChild(head);
+                    }
+                    lastGroup = group;
+
                     const row = document.createElement('button');
                     row.type = 'button';
                     row.className = 'gm-select-opt';

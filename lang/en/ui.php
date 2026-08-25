@@ -16,6 +16,8 @@ return [
     'api_tester'        => 'API Tester',
     'sign_out'          => 'Sign out',
     'homepage'          => 'Homepage',
+    'language'          => 'Language',
+    'theme'             => 'Theme',
     'theme_light'       => 'Light mode',
     'theme_dark'        => 'Dark mode',
     'theme_system'      => 'Follow system',

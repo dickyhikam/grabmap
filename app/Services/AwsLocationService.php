@@ -294,9 +294,27 @@ class AwsLocationService
      * - Hanya menembak AWS lagi kalau $forceRefresh = true (tombol Refresh) atau belum ada snapshot.
      * Return: ['metrics' => [...], 'fetched_at' => ISO8601 string]
      */
+    /** Kunci cache snapshot satu key — dipakai bersama oleh pembaca & penulisnya. */
+    public function usageCacheKey(string $keyName, string $startDate, string $endDate, ?string $filterOperation = null): string
+    {
+        return "aws_usage_snapshot:{$this->cacheScope()}:{$keyName}:{$startDate}:{$endDate}:" . ($filterOperation ?? 'all');
+    }
+
+    /**
+     * Baca snapshot yang SUDAH ada tanpa pernah menembak AWS; null kalau belum ada.
+     * Dipakai halaman publik: pengunjung anonim tidak boleh memicu panggilan
+     * CloudWatch, apalagi untuk laporan perusahaan yang isinya banyak key.
+     */
+    public function peekCachedUsage(string $keyName, string $startDate, string $endDate): ?array
+    {
+        $snapshot = Cache::get($this->usageCacheKey($keyName, $startDate, $endDate));
+
+        return $snapshot && isset($snapshot['metrics']) ? $snapshot : null;
+    }
+
     public function getCachedUsage(string $keyName, string $startDate, string $endDate, ?string $filterOperation, bool $forceRefresh = false): array
     {
-        $cacheKey = "aws_usage_snapshot:{$this->cacheScope()}:{$keyName}:{$startDate}:{$endDate}:" . ($filterOperation ?? 'all');
+        $cacheKey = $this->usageCacheKey($keyName, $startDate, $endDate, $filterOperation);
 
         if ($forceRefresh) {
             Cache::forget($cacheKey);
@@ -437,6 +455,82 @@ class AwsLocationService
     }
 
     /**
+     * Gabungkan pemakaian beberapa API key jadi satu laporan (dipakai link share
+     * tingkat perusahaan). HANYA membaca snapshot yang sudah ada — key yang belum
+     * pernah diambil dihitung sebagai "belum ada data", bukan nol yang menyesatkan.
+     *
+     * @param  iterable<\App\Models\CompanyApiKey>  $keys
+     * @return array{
+     *     total: int, operations: array<string, int>, daily: array<string, int>,
+     *     per_key: array<int, array{name: string, label: ?string, account: ?string,
+     *                               total: int, cost: float, has_data: bool}>,
+     *     missing: int, fetched_at: ?string
+     * }
+     */
+    public static function aggregateForKeys(iterable $keys, string $startDate, string $endDate): array
+    {
+        $total = 0;
+        $operations = [];
+        $daily = [];
+        $perKey = [];
+        $missing = 0;
+        $fetchedAt = null;
+
+        foreach ($keys as $key) {
+            $account = $key->awsAccount;
+            $metrics = null;
+
+            if (self::hasCredentials($account)) {
+                $snapshot = self::forAccount($account)->peekCachedUsage($key->key_name, $startDate, $endDate);
+                $metrics  = $snapshot['metrics'] ?? null;
+
+                // Waktu pengambilan tertua yang dipakai — laporan tidak boleh
+                // terkesan lebih segar daripada bagian datanya yang paling basi.
+                if ($metrics && !empty($snapshot['fetched_at'])
+                    && ($fetchedAt === null || $snapshot['fetched_at'] < $fetchedAt)) {
+                    $fetchedAt = $snapshot['fetched_at'];
+                }
+            }
+
+            if (!$metrics) {
+                $missing++;
+                $perKey[] = [
+                    'name' => $key->key_name, 'label' => $key->label,
+                    'account' => $account?->name, 'total' => 0, 'cost' => 0.0, 'has_data' => false,
+                ];
+                continue;
+            }
+
+            $keyOps = $metrics['operations'] ?? [];
+            $total += $metrics['total'] ?? 0;
+
+            foreach ($keyOps as $op => $count) {
+                $operations[$op] = ($operations[$op] ?? 0) + $count;
+            }
+            foreach ($metrics['daily'] ?? [] as $date => $count) {
+                $daily[$date] = ($daily[$date] ?? 0) + $count;
+            }
+
+            $perKey[] = [
+                'name' => $key->key_name, 'label' => $key->label,
+                'account' => $account?->name,
+                'total' => $metrics['total'] ?? 0,
+                'cost' => self::estimateCost($keyOps),
+                'has_data' => true,
+            ];
+        }
+
+        arsort($operations);
+        ksort($daily);
+        usort($perKey, fn ($a, $b) => $b['cost'] <=> $a['cost']);
+
+        return [
+            'total' => $total, 'operations' => $operations, 'daily' => $daily,
+            'per_key' => $perKey, 'missing' => $missing, 'fetched_at' => $fetchedAt,
+        ];
+    }
+
+    /**
      * Uji kredensial akun dengan satu panggilan murah (ListKeys).
      *
      * @return array{ok: bool, keys: int, error: string|null}
@@ -544,6 +638,7 @@ class AwsLocationService
             $daily = [];
             $total = 0;
             $operations = [];
+            $matrix = [];               // [tanggal][operasi] => jumlah
 
             foreach ($result['MetricDataResults'] ?? [] as $metricResult) {
                 $idx = (int) str_replace('op_', '', $metricResult['Id']);
@@ -557,6 +652,7 @@ class AwsLocationService
                     $date = $timestamps[$i]->format('Y-m-d');
                     $count = (int) ($values[$i] ?? 0);
                     $daily[$date] = ($daily[$date] ?? 0) + $count;
+                    $matrix[$date][$opName] = ($matrix[$date][$opName] ?? 0) + $count;
                     $total += $count;
                     $opTotal += $count;
                 }
@@ -568,6 +664,13 @@ class AwsLocationService
 
             ksort($daily);
             arsort($operations);
+
+            // Disimpan permanen supaya rentang lain (mis. yang dibuka klien di
+            // halaman laporan) bisa dijawab tanpa menembak CloudWatch lagi.
+            // Hanya saat menarik seluruh operasi — hasil terfilter tidak utuh.
+            if (!$filterOperation) {
+                \App\Models\ApiKeyUsageDaily::store($this->account?->id, $keyName, $matrix);
+            }
 
             return [
                 'total'      => $total,

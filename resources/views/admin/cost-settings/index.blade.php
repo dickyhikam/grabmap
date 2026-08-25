@@ -316,7 +316,7 @@
                 Rp {{ number_format((float) $activeRate->rate, 0, ',', '.') }}<span class="unit">{{ __('costs.per_usd') }}</span>
             </div>
             <div class="rate-chips">
-                <span class="rate-chip"><i class="bi bi-calendar3"></i> {{ $activeRate->rate_date->translatedFormat('d M Y') }}</span>
+                <span class="rate-chip"><i class="bi bi-calendar3"></i> {{ $activeRate->rate_date->wib()->translatedFormat('d M Y') }}</span>
                 <span class="rate-chip"><i class="bi bi-bank"></i> {{ $activeRate->source }}</span>
                 @if($activeRate->reference)
                     <span class="rate-chip"><i class="bi bi-paperclip"></i> {{ \Illuminate\Support\Str::limit($activeRate->reference, 24) }}</span>
@@ -524,7 +524,7 @@
             </div>
             <div class="kv">
                 <span class="k">{{ __('costs.k_date') }}</span>
-                <span class="v">{{ $activeRate->rate_date->translatedFormat('d M Y') }}</span>
+                <span class="v">{{ $activeRate->rate_date->wib()->translatedFormat('d M Y') }}</span>
             </div>
             <div class="kv">
                 <span class="k">{{ __('costs.k_source') }}</span>
@@ -544,7 +544,7 @@
                 <span class="k">{{ __('costs.k_by') }}</span>
                 <span class="v">
                     {{ $activeRate->created_by }}
-                    <span class="sub">{{ $activeRate->created_at?->translatedFormat('d M Y H:i') }}</span>
+                    <span class="sub">{{ $activeRate->created_at?->wib()->translatedFormat('d M Y H:i') }}</span>
                 </span>
             </div>
         @else
@@ -614,11 +614,11 @@
                             <td class="num" style="text-align:right;">${{ rtrim(rtrim(number_format((float) $kb->limit_usd, 2), '0'), '.') }}</td>
                             <td class="dim" style="white-space:nowrap;">
                                 {{ $kb->updated_by ?: '—' }}
-                                <span style="display:block;">{{ $kb->updated_at?->translatedFormat('d M Y H:i') }}</span>
+                                <span style="display:block;">{{ $kb->updated_at?->wib()->translatedFormat('d M Y H:i') }}</span>
                             </td>
                             <td style="text-align:right;">
                                 @can('api_keys.view')
-                                    <a href="{{ route('admin.api-keys.usage', array_filter(['keyName' => $kb->key_name, 'account' => $kb->aws_account_id])) }}"
+                                    <a href="{{ route('admin.api-keys.usage', array_filter(['keyName' => $kb->key_name, 'account' => $kb->awsAccount?->getRouteKey()])) }}"
                                        class="q-ghost-btn" title="{{ __('costs.keyb_open') }}"><i class="bi bi-box-arrow-up-right"></i></a>
                                 @endcan
                             </td>
@@ -663,7 +663,7 @@
                 <tbody>
                     @foreach($rates as $r)
                         <tr class="{{ $r->is_active ? 'on' : '' }}" style="animation-delay: {{ $loop->index * 26 }}ms;">
-                            <td style="font-weight:600;white-space:nowrap;">{{ $r->rate_date->translatedFormat('d M Y') }}</td>
+                            <td style="font-weight:600;white-space:nowrap;">{{ $r->rate_date->wib()->translatedFormat('d M Y') }}</td>
                             <td class="num" style="text-align:right;">{{ number_format((float) $r->rate, 0, ',', '.') }}</td>
                             <td>{{ $r->source }}</td>
                             <td class="dim">
@@ -672,7 +672,7 @@
                             </td>
                             <td class="dim" style="white-space:nowrap;">
                                 {{ $r->created_by }}
-                                <span style="display:block;">{{ $r->created_at?->translatedFormat('d M Y H:i') }}</span>
+                                <span style="display:block;">{{ $r->created_at?->wib()->translatedFormat('d M Y H:i') }}</span>
                             </td>
                             <td style="text-align:center;">
                                 @if($r->is_active)
@@ -690,7 +690,7 @@
                                             <button type="button" class="q-ghost-btn" title="{{ __('costs.activate') }}"
                                                     data-activate data-form="act-{{ $r->id }}"
                                                     data-rate="Rp {{ number_format((float) $r->rate, 0, ',', '.') }}"
-                                                    data-meta="{{ $r->rate_date->translatedFormat('d M Y') }} · {{ $r->source }}">
+                                                    data-meta="{{ $r->rate_date->wib()->translatedFormat('d M Y') }} · {{ $r->source }}">
                                                 <i class="bi bi-check2-circle"></i>
                                             </button>
                                         </form>
@@ -749,7 +749,7 @@
                             <span class="swap-ic"><i class="bi bi-cash-stack"></i></span>
                             <span class="swap-tx">
                                 <span class="nm">Rp {{ number_format((float) $activeRate->rate, 0, ',', '.') }}</span>
-                                <span class="rg">{{ $activeRate->rate_date->translatedFormat('d M Y') }} · {{ $activeRate->source }}</span>
+                                <span class="rg">{{ $activeRate->rate_date->wib()->translatedFormat('d M Y') }} · {{ $activeRate->source }}</span>
                             </span>
                             <span class="swap-tag">{{ __('costs.swap_from') }}</span>
                         </div>

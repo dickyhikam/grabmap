@@ -1,288 +1,387 @@
-@extends('layouts.admin')
+@extends('layouts.admin-v2')
 
-@section('title', isset($company) ? 'Edit ' . $company->name : 'Tambah Company')
+@php
+    $isEdit = isset($company);
+@endphp
+
+@section('title', $isEdit ? __('companies.form_edit') : __('companies.form_add'))
 
 @push('styles')
-    .logo-preview-wrap {
-        width: 80px; height: 80px;
-        border: 2px dashed #dee2e6; border-radius: 12px;
+    .co-single { max-width: 720px; }
+
+    .back-pill {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-size: 0.78rem; font-weight: 600; color: var(--muted);
+        text-decoration: none; margin-bottom: 6px;
+        transition: color 0.15s, transform 0.15s;
+    }
+    .back-pill:hover { color: var(--ink); transform: translateX(-2px); }
+
+    .f-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+    @media (max-width: 620px) { .f-row { grid-template-columns: 1fr; } }
+
+    .form-field { margin-bottom: 18px; }
+    .form-label-sm { display: block; font-size: 0.72rem; font-weight: 700; color: var(--muted); margin-bottom: 7px; }
+    .form-label-sm .opt { font-weight: 600; color: var(--faint); }
+    .req { color: var(--danger-fg); margin-left: 3px; font-weight: 700; }
+    .form-input {
+        width: 100%; height: 46px;
+        border-radius: 14px; border: 1px solid var(--line);
+        background: var(--surface); color: var(--ink);
+        padding: 0 14px; font-size: 0.85rem; outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+    .form-input:focus { border-color: var(--green); background: var(--card); box-shadow: 0 0 0 4px var(--green-soft); }
+    .form-input.is-invalid { border-color: var(--danger-fg); background: var(--danger-soft); }
+    .form-input.mono { font-family: ui-monospace, monospace; }
+    .form-error { display: flex; gap: 6px; font-size: 0.72rem; color: var(--danger-fg); margin-top: 6px; }
+    .form-hint { font-size: 0.68rem; color: var(--muted); margin-top: 6px; }
+
+    /* ---------- Dropzone logo ---------- */
+    .drop {
+        display: flex; align-items: center; gap: 13px;
+        background: var(--surface); border: 1.5px dashed var(--line);
+        border-radius: 18px; padding: 14px; cursor: pointer;
+        transition: border-color 0.18s, background 0.18s, transform 0.18s;
+    }
+    .drop:hover { border-color: var(--green); }
+    .drop.over {
+        border-color: var(--green); background: var(--green-soft);
+        transform: scale(1.01);
+    }
+    .drop.has { border-style: solid; }
+
+    .drop-prev {
+        width: 52px; height: 52px; border-radius: 15px; flex-shrink: 0;
+        background: var(--card); color: var(--faint);
         display: flex; align-items: center; justify-content: center;
-        background: #fff; overflow: hidden;
+        font-size: 1.1rem; overflow: hidden;
+        transition: transform 0.28s cubic-bezier(0.34, 1.5, 0.5, 1);
     }
-    .logo-preview-wrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
-    .feature-card {
-        border: 1.5px solid #e2e8f0; border-radius: 12px;
-        padding: 12px 16px; transition: all 0.15s;
+    .drop.has .drop-prev { color: var(--green-text); }
+    .drop-prev img { width: 100%; height: 100%; object-fit: contain; animation: prevIn 0.34s cubic-bezier(0.34, 1.5, 0.5, 1); }
+    .drop:hover .drop-prev { transform: scale(1.06) rotate(-2deg); }
+
+    @keyframes prevIn {
+        from { opacity: 0; transform: scale(0.7); }
+        to   { opacity: 1; transform: none; }
     }
-    .feature-card:has(input[type=checkbox]:checked) { border-color: var(--grab-green); background: var(--grab-green-light); }
-    .feature-sub { font-size: 0.875rem; }
-    .url-preview {
-        font-family: monospace; font-size: 0.9rem;
-        background: #f0f2f5; border-radius: 8px;
-        padding: 6px 12px; color: #495057;
+
+    .drop-tx { flex: 1; min-width: 0; }
+    .drop-tx .t { display: block; font-size: 0.82rem; font-weight: 600; word-break: break-all; }
+    .drop-tx .d { display: block; font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+
+    .drop-act {
+        width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--card); color: var(--muted); font-size: 0.72rem;
+        transition: background 0.15s, color 0.15s;
     }
+    .drop-act:hover { background: var(--danger-soft); color: var(--danger-fg); }
+    .drop-act[hidden] { display: none; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .drop, .drop-prev, .drop-prev img { transition: none; animation: none; }
+    }
+
+    /* Sakelar */
+    .sw-row {
+        display: flex; align-items: center; gap: 13px;
+        padding: 13px 15px; border-radius: 16px; position: relative;
+        background: var(--surface); margin-bottom: 10px;
+        cursor: pointer;
+    }
+    .sw-row input { position: absolute; opacity: 0; pointer-events: none; }
+    .sw-row .tx { flex: 1; min-width: 0; }
+    .sw-row .nm { font-weight: 600; font-size: 0.84rem; }
+    .sw-row .ds { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+    .sw {
+        width: 42px; height: 24px; border-radius: 999px; flex-shrink: 0; position: relative;
+        background: var(--line); transition: background 0.22s cubic-bezier(0.34, 1.4, 0.5, 1);
+    }
+    .sw::after {
+        content: ''; position: absolute; top: 3px; left: 3px;
+        width: 18px; height: 18px; border-radius: 50%; background: #fff;
+        transition: transform 0.22s cubic-bezier(0.34, 1.4, 0.5, 1);
+    }
+    .sw-row input:checked ~ .sw { background: var(--green); }
+    .sw-row input:checked ~ .sw::after { transform: translateX(18px); }
+    .sw-row input:focus-visible ~ .sw { box-shadow: 0 0 0 4px var(--green-soft); }
+
+
+    /* Daftar API key */
+    .key-row {
+        display: flex; align-items: center; gap: 11px;
+        padding: 11px 0; border-bottom: 1px solid var(--line);
+    }
+    .key-row:last-of-type { border-bottom: none; }
+    .key-ic {
+        width: 34px; height: 34px; border-radius: 11px; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--surface); color: var(--muted); font-size: 0.8rem;
+    }
+    .key-row.primary .key-ic { background: var(--green-soft); color: var(--green-text); }
+    .key-nm { font-weight: 600; font-size: 0.82rem; font-family: ui-monospace, monospace; word-break: break-all; }
+    .key-lb { font-size: 0.69rem; color: var(--muted); margin-top: 1px; }
+    .key-act { display: flex; gap: 6px; flex-shrink: 0; }
+
+    /* Link share */
+    .link-box {
+        display: flex; align-items: center; gap: 8px;
+        background: var(--surface); border-radius: 14px; padding: 10px 12px;
+        margin-bottom: 12px;
+    }
+    .link-box input {
+        flex: 1; min-width: 0; border: none; background: none; outline: none;
+        font-family: ui-monospace, monospace; font-size: 0.74rem; color: var(--ink);
+    }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-row.end { justify-content: flex-end; }
 @endpush
 
 @section('content')
-<div style="max-width: 680px; margin: 0 auto;">
-    <div class="mb-4">
-        <a href="{{ route('admin.companies.index') }}" class="text-decoration-none text-muted">
-            <i class="bi bi-arrow-left me-1"></i>{{ __('admin.back') }}
-        </a>
-        <h4 class="fw-bold mt-2 mb-0">{{ isset($company) ? __('admin.edit_company') : __('admin.add_new_company') }}</h4>
-        @isset($company)
-        <small class="text-muted">{{ $company->name }}</small>
-        @endisset
-    </div>
-
-    @if($errors->any())
-    <div class="alert alert-danger">
-        <ul class="mb-0 ps-3">
-            @foreach($errors->all() as $error)
-            <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-    @endif
-
-    @php
-    $isEdit = isset($company);
+@php
     $action = $isEdit ? route('admin.companies.update', $company) : route('admin.companies.store');
-    $features = ['search', 'route', 'reverse_geocode', 'route_matrix'];
-    $featureInfo = [
-        'search' => ['icon' => 'bi-search', 'label' => 'Search / Autocomplete', 'desc' => 'Pencarian tempat dengan autocomplete', 'sub' => 'language'],
-        'route' => ['icon' => 'bi-sign-turn-right', 'label' => 'Route Calculation', 'desc' => 'Hitung rute antara dua titik', 'sub' => 'modes'],
-        'reverse_geocode' => ['icon' => 'bi-geo-alt', 'label' => 'Reverse Geocode', 'desc' => 'Klik peta untuk mendapatkan alamat', 'sub' => 'language'],
-        'route_matrix' => ['icon' => 'bi-grid-3x3', 'label' => 'Route Matrix', 'desc' => 'Multi-destinasi routing', 'sub' => 'modes'],
-    ];
-    $travelModes = [
-        'Car' => ['icon' => 'bi-car-front-fill', 'label' => 'Car'],
-        'Motorcycle' => ['icon' => 'bi-bicycle', 'label' => 'Motorcycle'],
-        'Walking' => ['icon' => 'bi-person-walking', 'label' => 'Walking'],
-    ];
-    $enabledFeatures = old('features', $isEdit ? $company->features->where('is_enabled', true)->pluck('feature_key')->toArray() : $features);
-    $defaultSettings = [
-        'search' => ['language' => 'id'], 'route' => ['modes' => ['Car', 'Motorcycle']],
-        'reverse_geocode' => ['language' => 'id'], 'route_matrix' => ['modes' => ['Car', 'Motorcycle']],
-    ];
-    $savedSettings = $isEdit ? $company->features->mapWithKeys(fn($f) => [$f->feature_key => $f->settings ?? []])->toArray() : [];
-    $featureSettings = old('feature_settings', array_merge($defaultSettings, $savedSettings));
-    @endphp
 
-    <form method="POST" action="{{ $action }}" enctype="multipart/form-data">
-        @csrf
-        @if($isEdit) @method('PUT') @endif
+@endphp
 
-        <div class="card mb-3">
-            <div class="card-body">
-                <h6 class="fw-semibold mb-3">{{ __('admin.company_info') }}</h6>
-                <div class="mb-3">
-                    <label class="form-label fw-medium">{{ __('admin.company_name') }} <span class="text-danger">*</span></label>
-                    <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror"
-                        value="{{ old('name', $isEdit ? $company->name : '') }}" placeholder="e.g. TransJakarta" required>
-                    @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-medium">{{ __('admin.slug_url') }} <span class="text-danger">*</span></label>
-                    <input type="text" name="slug" id="slug" class="form-control @error('slug') is-invalid @enderror"
-                        value="{{ old('slug', $isEdit ? $company->slug : '') }}" placeholder="e.g. transjakarta" required
-                        pattern="[a-z0-9\-]+" title="Hanya huruf kecil, angka, dan tanda hubung">
-                    @error('slug') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    <div class="mt-2">
-                        <small class="text-muted">URL: </small>
-                        <span class="url-preview">{{ url('/') }}/<span id="slugDisplay">{{ old('slug', $isEdit ? $company->slug : 'slug-company') }}</span></span>
-                    </div>
-                </div>
-                <div class="mb-1">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" name="is_active" id="is_active" value="1"
-                            {{ old('is_active', $isEdit ? $company->is_active : true) ? 'checked' : '' }}>
-                        <label class="form-check-label" for="is_active">{{ __('admin.status_active_desc') }}</label>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="q-page-head">
+    <div>
+        <a href="{{ route('admin.companies.index') }}" class="back-pill">
+            <i class="bi bi-arrow-left"></i> {{ __('companies.back') }}
+        </a>
+        <h1 class="q-title">
+            @if($isEdit)
+                {{ __('companies.form_edit') }} <span class="soft">{{ $company->name }}</span>
+            @else
+                {{ __('companies.form_add') }} <span class="soft">{{ __('companies.word') }}</span>
+            @endif
+        </h1>
+    </div>
+</div>
 
-        <div class="card mb-3">
-            <div class="card-body">
-                <h6 class="fw-semibold mb-1">{{ __('admin.company_logo') }}</h6>
-                <small class="text-muted d-block mb-3">{{ __('admin.logo_format') }}</small>
-                <div class="d-flex align-items-center gap-3">
-                    <div class="logo-preview-wrap">
-                        @if($isEdit && $company->logo_path)
-                        <img id="logoPreviewImg" src="{{ asset($company->logo_path) }}" alt="{{ $company->name }}">
-                        <i class="bi bi-image text-muted fs-4" id="logoPlaceholder" style="display:none;"></i>
-                        @else
-                        <i class="bi bi-image text-muted fs-4" id="logoPlaceholder"></i>
-                        <img id="logoPreviewImg" src="" alt="Preview" style="display:none;">
-                        @endif
-                    </div>
-                    <div>
-                        <input type="file" name="logo" id="logo" class="form-control @error('logo') is-invalid @enderror"
-                            accept="image/png,image/jpeg,image/svg+xml,image/webp" style="max-width:280px;">
-                        @error('logo') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="co-single">
+        <form method="POST" action="{{ $action }}" enctype="multipart/form-data" data-validate id="coForm">
+            @csrf
+            @if($isEdit) @method('PUT') @endif
 
-        <div class="card mb-3">
-            <div class="card-body">
-                <h6 class="fw-semibold mb-1">{{ __('admin.aws_api_key') }}</h6>
-                <small class="text-muted d-block mb-3">{{ __('admin.aws_key_desc') }}</small>
-                @if($isEdit && $company->aws_api_key_name)
-                    <div class="d-flex align-items-center justify-content-between p-3 rounded-3 mb-3" style="background: var(--grab-green-light); border: 1px solid #a3cfbb;">
+            <div class="q-card" style="padding:24px;">
+                <div class="q-card-head">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="q-icon-box"><i class="bi bi-buildings"></i></div>
                         <div>
-                            <div class="fw-medium" style="color:var(--grab-green-dark);"><i class="bi bi-key-fill me-1"></i>{{ $company->aws_api_key_name }}</div>
-                            <small class="text-muted">{{ __('admin.api_key_from_aws') }}</small>
+                            <div class="q-card-title">{{ __('companies.identity') }}</div>
+                            <div class="q-card-sub">{{ __('companies.identity_sub') }}</div>
                         </div>
-                        <span class="badge {{ $company->aws_key_active ? 'bg-success' : 'bg-secondary' }}">{{ $company->aws_key_active ? __('admin.key_active') : __('admin.key_inactive') }}</span>
                     </div>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" name="aws_key_active" id="aws_key_active" value="1"
-                            {{ old('aws_key_active', $company->aws_key_active) ? 'checked' : '' }}>
-                        <label class="form-check-label" for="aws_key_active">API Key Aktif</label>
-                    </div>
-                @elseif($isEdit)
-                    <div class="p-3 rounded-3 mb-3" style="background: #f8f9fa; border: 1.5px dashed #e2e8f0;">
-                        <span class="text-muted"><i class="bi bi-dash-circle me-1"></i>{{ __('admin.key_not_assigned') }}</span>
-                    </div>
-                @else
-                    <div class="p-3 rounded-3 mb-3" style="background: #f8f9fa; border: 1.5px dashed #e2e8f0;">
-                        <span class="text-muted"><i class="bi bi-info-circle me-1"></i>{{ __('admin.key_assign_after') }}</span>
-                    </div>
-                @endif
+                </div>
 
-                @if(($awsAccounts ?? collect())->isNotEmpty())
-                <div class="mb-3">
-                    <label class="form-label fw-medium" for="aws_account_id">Akun AWS</label>
-                    <select name="aws_account_id" id="aws_account_id" class="form-select">
-                        <option value="">— Belum ditentukan —</option>
-                        @foreach($awsAccounts as $awsAccount)
-                        <option value="{{ $awsAccount->id }}"
-                            {{ (int) old('aws_account_id', $company->aws_account_id ?? 0) === $awsAccount->id ? 'selected' : '' }}>
-                            {{ $awsAccount->name }} ({{ $awsAccount->region }})
-                        </option>
+                <div class="f-row">
+                    <div class="form-field">
+                        <label class="form-label-sm">{{ __('companies.name') }}<span class="req">*</span></label>
+                        <input type="text" name="name" id="coName" maxlength="255" required
+                               class="form-input @error('name') is-invalid @enderror"
+                               placeholder="{{ __('companies.name_ph') }}"
+                               value="{{ old('name', $company->name ?? '') }}">
+                        @error('name')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
+                    </div>
+
+                    <div class="form-field">
+                        <label class="form-label-sm">{{ __('companies.slug') }}<span class="req">*</span></label>
+                        <input type="text" name="slug" id="coSlug" maxlength="100" required
+                               class="form-input mono @error('slug') is-invalid @enderror"
+                               data-v-pattern="^[a-z0-9\-]+$" data-v-msg="{{ __('companies.slug_err') }}"
+                               placeholder="transjakarta"
+                               value="{{ old('slug', $company->slug ?? '') }}">
+                        <div class="form-hint">{{ __('companies.slug_hint') }}</div>
+                        @error('slug')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label class="form-label-sm">
+                        {{ __('companies.logo') }} <span class="opt">{{ __('companies.optional') }}</span>
+                    </label>
+                    {{-- Seret berkas ke area ini atau klik; pratinjaunya langsung
+                         berganti tanpa menunggu simpan. --}}
+                    <label class="drop {{ $isEdit && $company->logo_path ? 'has' : '' }}" id="logoDrop">
+                        <input type="file" name="logo" accept=".png,.jpg,.jpeg,.svg,.webp" hidden>
+
+                        <span class="drop-prev" id="logoPrev">
+                            @if($isEdit && $company->logo_path)
+                                <img src="{{ asset($company->logo_path) }}" alt="{{ $company->name }}">
+                            @else
+                                <i class="bi bi-image"></i>
+                            @endif
+                        </span>
+
+                        <span class="drop-tx">
+                            <span class="t" id="logoName">{{ __('companies.logo_cta') }}</span>
+                            <span class="d">{{ __('companies.logo_hint') }}</span>
+                        </span>
+
+                        <span class="drop-act" id="logoClear" role="button" title="{{ __('companies.logo_clear') }}" hidden>
+                            <i class="bi bi-x-lg"></i>
+                        </span>
+                    </label>
+                    @error('logo')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
+                </div>
+
+                <div class="form-field">
+                    <label class="form-label-sm">{{ __('companies.account') }}</label>
+                    <select name="aws_account_id" class="form-input">
+                        <option value="">—</option>
+                        @foreach($awsAccounts as $account)
+                            <option value="{{ $account->id }}"
+                                @selected((string) old('aws_account_id', $company->aws_account_id ?? '') === (string) $account->id)>
+                                {{ $account->name }} · {{ $account->region }}
+                            </option>
                         @endforeach
                     </select>
-                    <small class="text-muted">Menentukan kredensial mana yang dipakai untuk menarik usage &amp; tagihan company ini dari CloudWatch. Terisi otomatis saat API key di-assign.</small>
+                    <div class="form-hint">{{ __('companies.account_hint') }}</div>
                 </div>
-                @endif
 
-                <a href="{{ route('admin.api-keys.index') }}" class="btn btn-sm btn-outline-grab"><i class="bi bi-key me-1"></i>{{ __('admin.manage_keys') }}</a>
-            </div>
-        </div>
+                <div class="form-field">
+                    <label class="form-label-sm">
+                        {{ __('companies.map_key') }} <span class="opt">{{ __('companies.optional') }}</span>
+                    </label>
+                    <input type="text" name="aws_api_key" maxlength="1000"
+                           class="form-input mono @error('aws_api_key') is-invalid @enderror"
+                           placeholder="v1.public.…"
+                           value="{{ old('aws_api_key', ($isEdit && $company->aws_api_key) ? '********' : '') }}">
+                    <div class="form-hint">{{ __('companies.map_key_hint') }}</div>
+                    @error('aws_api_key')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
+                </div>
 
-        <div class="card mb-4">
-            <div class="card-body">
-                <h6 class="fw-semibold mb-1">{{ __('admin.map_features') }}</h6>
-                <small class="text-muted d-block mb-3">{{ __('admin.map_features_desc') }}</small>
-                <div class="d-flex flex-column gap-2">
-                    @foreach($features as $key)
-                    @php
-                    $isChecked = in_array($key, $enabledFeatures);
-                    $subType = $featureInfo[$key]['sub'];
-                    $settings = $featureSettings[$key] ?? $defaultSettings[$key];
-                    @endphp
-                    <div class="feature-card">
-                        <label class="d-flex align-items-start gap-3 w-100 mb-0" style="cursor:pointer;">
-                            <input type="checkbox" name="features[]" value="{{ $key }}" {{ $isChecked ? 'checked' : '' }}
-                                class="form-check-input mt-1 flex-shrink-0" onchange="toggleSub('{{ $key }}', this.checked)">
-                            <div class="flex-grow-1">
-                                <div class="fw-medium d-flex align-items-center gap-2">
-                                    <i class="bi {{ $featureInfo[$key]['icon'] }}" style="color:var(--grab-green);"></i>
-                                    {{ $featureInfo[$key]['label'] }}
-                                </div>
-                                <small class="text-muted">{{ $featureInfo[$key]['desc'] }}</small>
-                            </div>
-                        </label>
-                        <div class="feature-sub" id="sub-{{ $key }}" style="{{ $isChecked ? '' : 'display:none;' }}">
-                            <div class="pt-2 mt-2 border-top">
-                                @if($subType === 'modes')
-                                <small class="fw-semibold text-dark d-block mb-2">{{ __('admin.travel_mode') }}</small>
-                                <div class="d-flex gap-3 flex-wrap">
-                                    @foreach($travelModes as $mode => $modeInfo)
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="feature_settings[{{ $key }}][modes][]"
-                                            value="{{ $mode }}" id="{{ $key }}_mode_{{ strtolower($mode) }}"
-                                            {{ in_array($mode, $settings['modes'] ?? []) ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="{{ $key }}_mode_{{ strtolower($mode) }}">
-                                            <i class="bi {{ $modeInfo['icon'] }} me-1" style="color:var(--grab-green);"></i>{{ $modeInfo['label'] }}
-                                        </label>
-                                    </div>
-                                    @endforeach
-                                </div>
-                                @elseif($subType === 'language')
-                                <small class="fw-semibold text-dark d-block mb-2">{{ __('admin.result_language') }}</small>
-                                <div class="d-flex gap-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="feature_settings[{{ $key }}][language]"
-                                            value="id" id="{{ $key }}_lang_id" {{ ($settings['language'] ?? 'id') === 'id' ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="{{ $key }}_lang_id">Indonesia</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="feature_settings[{{ $key }}][language]"
-                                            value="en" id="{{ $key }}_lang_en" {{ ($settings['language'] ?? 'id') === 'en' ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="{{ $key }}_lang_en">English</label>
-                                    </div>
-                                </div>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                    @endforeach
+                <label class="sw-row">
+                    <input type="hidden" name="is_active" value="0">
+                    <input type="checkbox" name="is_active" value="1"
+                           @checked(old('is_active', $company->is_active ?? true))>
+                    <span class="tx">
+                        <span class="nm d-block">{{ __('companies.is_active') }}</span>
+                        <span class="ds">{{ __('companies.is_active_d') }}</span>
+                    </span>
+                    <span class="sw"></span>
+                </label>
+
+                <label class="sw-row">
+                    <input type="hidden" name="aws_key_active" value="0">
+                    <input type="checkbox" name="aws_key_active" value="1"
+                           @checked(old('aws_key_active', $company->aws_key_active ?? true))>
+                    <span class="tx">
+                        <span class="nm d-block">{{ __('companies.map_key_active') }}</span>
+                    </span>
+                    <span class="sw"></span>
+                </label>
+
+                <div class="btn-row end" style="margin-top:18px;">
+                    <a href="{{ route('admin.companies.index') }}" class="btn-soft"><i class="bi bi-x-lg"></i> {{ __('ui.cancel') }}</a>
+                    <button type="submit" class="btn-solid">
+                        <i class="bi bi-{{ $isEdit ? 'check-lg' : 'plus-lg' }}"></i>
+                        {{ $isEdit ? __('companies.save') : __('companies.create') }}
+                    </button>
                 </div>
             </div>
-        </div>
-
-        <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-grab px-4"><i class="bi bi-check-lg me-1"></i>{{ $isEdit ? __('admin.save_changes') : __('admin.save_company') }}</button>
-            <a href="{{ route('admin.companies.index') }}" class="btn btn-outline-secondary" style="border-radius:10px;">{{ __('admin.cancel') }}</a>
-        </div>
-    </form>
+        </form>
 </div>
+
+@include('admin.partials.form-validate')
 @endsection
 
 @push('scripts')
 <script>
-    const slugInput = document.getElementById('slug');
-    const slugDisplay = document.getElementById('slugDisplay');
+    // Slug mengikuti nama perusahaan sampai orangnya mengetik slug sendiri —
+    // setelah itu tidak pernah ditimpa lagi.
+    (function () {
+        const name = document.getElementById('coName');
+        const slug = document.getElementById('coSlug');
+        if (!name || !slug) return;
 
-    @if(!isset($company))
-    let slugManuallyEdited = false;
-    document.getElementById('name').addEventListener('input', function() {
-        if (!slugManuallyEdited) {
-            const slug = this.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-            slugInput.value = slug;
-            slugDisplay.textContent = slug || 'slug-company';
+        let locked = slug.value.trim() !== '';
+
+        const slugify = (value) => value
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 100);
+
+        slug.addEventListener('input', () => { locked = slug.value.trim() !== ''; });
+
+        name.addEventListener('input', () => {
+            if (locked) return;
+            slug.value = slugify(name.value);
+            slug.dispatchEvent(new Event('input', { bubbles: true }));
+            locked = false;                       // tetap ikut selama slug belum disentuh
+        });
+    })();
+
+    // Dropzone logo: seret-lepas, klik, pratinjau langsung, dan tombol hapus.
+    (function () {
+        const drop = document.getElementById('logoDrop');
+        if (!drop) return;
+
+        const input = drop.querySelector('input[type="file"]');
+        const prev  = document.getElementById('logoPrev');
+        const label = document.getElementById('logoName');
+        const clear = document.getElementById('logoClear');
+        const idle  = label.textContent;
+
+        function show(file) {
+            if (!file) return;
+
+            label.textContent = file.name;
+            drop.classList.add('has');
+            clear.hidden = false;
+
+            if (!file.type.startsWith('image/')) return;
+            const url = URL.createObjectURL(file);
+            prev.innerHTML = '<img alt="">';
+            prev.querySelector('img').src = url;
         }
-    });
-    slugInput.addEventListener('input', function() {
-        slugManuallyEdited = true;
-        slugDisplay.textContent = this.value || 'slug-company';
-    });
-    @else
-    slugInput.addEventListener('input', function() {
-        slugDisplay.textContent = this.value || 'slug-company';
-    });
-    @endif
 
-    function toggleSub(key, visible) {
-        const sub = document.getElementById('sub-' + key);
-        if (sub) sub.style.display = visible ? '' : 'none';
-    }
+        input.addEventListener('change', () => show(input.files[0]));
 
-    document.getElementById('logo').addEventListener('change', function() {
-        const file = this.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = e => {
-                document.getElementById('logoPreviewImg').src = e.target.result;
-                document.getElementById('logoPreviewImg').style.display = 'block';
-                document.getElementById('logoPlaceholder').style.display = 'none';
-            };
-            reader.readAsDataURL(file);
-        }
-    });
+        ['dragenter', 'dragover'].forEach((type) => drop.addEventListener(type, (e) => {
+            e.preventDefault();
+            drop.classList.add('over');
+        }));
+        ['dragleave', 'drop'].forEach((type) => drop.addEventListener(type, (e) => {
+            e.preventDefault();
+            drop.classList.remove('over');
+        }));
+
+        drop.addEventListener('drop', (e) => {
+            const file = e.dataTransfer?.files?.[0];
+            if (!file) return;
+            input.files = e.dataTransfer.files;
+            show(file);
+        });
+
+        clear.addEventListener('click', (e) => {
+            // Label membungkus input file, jadi kliknya jangan diteruskan.
+            e.preventDefault();
+            e.stopPropagation();
+
+            input.value = '';
+            prev.innerHTML = '<i class="bi bi-image"></i>';
+            label.textContent = idle;
+            drop.classList.remove('has');
+            clear.hidden = true;
+        });
+    })();
+    // Salin link laporan.
+    (function () {
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-copy]');
+            if (!btn) return;
+
+            const input = document.getElementById(btn.dataset.copy);
+            navigator.clipboard.writeText(input.value).then(() => {
+                window.gmToast?.(@json(__('companies.copied')), 'ok');
+                btn.querySelector('i').className = 'bi bi-check-lg';
+                setTimeout(() => { btn.querySelector('i').className = 'bi bi-clipboard'; }, 1600);
+            });
+        });
+    })();
 </script>
 @endpush

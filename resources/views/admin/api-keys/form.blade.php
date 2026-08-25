@@ -166,8 +166,12 @@
     // Mode masa berlaku: default "selamanya" untuk key baru, ikut keadaan key saat mengubah.
     $mode = old('expiry_mode', $isNew ? 'never' : ($key['expire_time'] ? 'date' : 'never'));
     $presets = [30, 90, 180, 365];
-    $expireValue = old('expire_date', $key['expire_time'] ?? now()->addDays(90)->format('Y-m-d H:i'));
-    $expireValue = \Carbon\Carbon::parse($expireValue)->format('Y-m-d H:i');
+    // Pemilih tanggal bekerja dengan waktu Jakarta: nilai dari AWS (UTC) diubah
+    // dulu, dan controller menafsirkan kiriman baliknya sebagai WIB juga —
+    // supaya jam yang diketik sama dengan jam yang tersimpan.
+    $expireValue = old('expire_date', isset($key['expire_time'])
+        ? \Carbon\Carbon::parse($key['expire_time'])->wib()->format('Y-m-d H:i')
+        : now()->wib()->addDays(90)->format('Y-m-d H:i'));
 @endphp
 
 <div class="q-page-head">
@@ -398,11 +402,11 @@
                     </div>
                     <div class="kv">
                         <span class="k">{{ __('apikeys.created') }}</span>
-                        <span class="v">{{ $key['create_time'] ? \Carbon\Carbon::parse($key['create_time'])->translatedFormat('d M Y H:i') : '—' }}</span>
+                        <span class="v">{{ $key['create_time'] ? \Carbon\Carbon::parse($key['create_time'])->wib()->translatedFormat('d M Y H:i') : '—' }}</span>
                     </div>
                     <div class="kv">
                         <span class="k">{{ __('apikeys.expires') }}</span>
-                        <span class="v">{{ $key['expire_time'] ? \Carbon\Carbon::parse($key['expire_time'])->translatedFormat('d M Y H:i') : __('apikeys.never') }}</span>
+                        <span class="v">{{ $key['expire_time'] ? \Carbon\Carbon::parse($key['expire_time'])->wib()->translatedFormat('d M Y H:i') : __('apikeys.never') }}</span>
                     </div>
                     <div class="kv">
                         <span class="k">{{ __('apikeys.account') }}</span>
@@ -413,7 +417,7 @@
                         <span class="v">{{ $region }}</span>
                     </div>
 
-                    <a href="{{ route('admin.api-keys.usage', ['keyName' => $keyName, 'account' => $account?->id]) }}"
+                    <a href="{{ route('admin.api-keys.usage', ['keyName' => $keyName, 'account' => $account?->getRouteKey()]) }}"
                        class="btn-soft" style="width:100%;margin-top:16px;">
                         <i class="bi bi-bar-chart"></i> {{ __('apikeys.usage') }}
                     </a>

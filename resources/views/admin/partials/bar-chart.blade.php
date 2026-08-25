@@ -120,7 +120,7 @@
                 @foreach($bcData as $date => $count)
                     <div class="q-bar-col">
                         <div class="q-bar" style="height: {{ max(($count / $bcAxis) * 100, 1.5) }}%;"
-                             data-label="{{ \Carbon\Carbon::parse($date)->translatedFormat('D, d M') }}">
+                             data-label="{{ \Carbon\Carbon::parse($date)->wib()->translatedFormat('D, d M') }}">
                             <span class="q-bar-badge">{{ number_format($count) }}</span>
                             <span class="q-knob"></span>
                         </div>

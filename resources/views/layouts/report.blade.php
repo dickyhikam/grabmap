@@ -103,45 +103,144 @@
 
         .display-font { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; letter-spacing: -0.02em; }
 
+        /* Kerangkanya mengikuti panel admin v2: topbar mengambang berisi pil
+           brand di kiri dan kendali di kanan, lalu isi halaman di bawahnya. */
         .report-wrap {
-            max-width: 1100px;
+            max-width: 1460px;
             margin: 0 auto;
-            padding: 22px 20px 40px;
+            padding: 18px 22px 34px;
+        }
+
+        @media (max-width: 860px) {
+            .report-wrap { padding: 12px 12px 26px; }
         }
 
         .report-top {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 16px;
+            gap: 12px;
             flex-wrap: wrap;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
 
         .report-brand {
             display: inline-flex;
             align-items: center;
             gap: 10px;
+            background: var(--card);
+            border-radius: 999px;
+            padding: 9px 22px 9px 10px;
             text-decoration: none;
-            color: var(--ink);
+            box-shadow: var(--shadow-card);
         }
 
-        .report-brand img { width: 36px; height: 36px; border-radius: 10px; }
+        .report-brand img { width: 30px; height: 30px; object-fit: contain; }
         .report-brand span {
             font-family: 'Plus Jakarta Sans', sans-serif;
             font-weight: 800;
-            font-size: 1rem;
-            letter-spacing: -0.02em;
+            font-size: 1.05rem;
+            letter-spacing: -0.03em;
+            color: var(--ink);
         }
 
+        .report-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+
+        /* Tab pemilih key — bentuknya sama dengan tab di panel admin. */
+        .rp-tabs {
+            display: inline-flex; gap: 4px;
+            background: var(--card); border-radius: 999px;
+            padding: 5px; box-shadow: var(--shadow-card);
+            max-width: 100%; overflow-x: auto; scrollbar-width: none;
+        }
+        .rp-tabs::-webkit-scrollbar { display: none; }
+
+        .rp-tab {
+            display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+            border: none; background: none; cursor: pointer; text-decoration: none;
+            border-radius: 999px; padding: 9px 16px;
+            font-size: 0.8rem; font-weight: 600; color: var(--muted);
+            transition: background 0.18s, color 0.18s;
+        }
+        .rp-tab:hover { color: var(--ink); }
+        .rp-tab.on { background: var(--green); color: #fff; box-shadow: 0 4px 12px rgba(0, 177, 79, 0.3); }
+
+        @media (max-width: 1000px) {
+            .rp-tabs { order: 3; width: 100%; }
+        }
+
+        @media print { .rp-tabs { display: none !important; } }
+
+        .lang-pick {
+            display: inline-flex;
+            gap: 2px;
+            background: var(--card);
+            border-radius: 999px;
+            padding: 4px;
+            box-shadow: var(--shadow-card);
+        }
+
+        .lang-pick a {
+            min-width: 38px;
+            height: 32px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: var(--muted);
+            transition: background 0.16s, color 0.16s;
+        }
+
+        .lang-pick a:hover { color: var(--ink); }
+        .lang-pick a.on { background: var(--green); color: #fff; }
+
+        /* Pemilih tema — pembaca laporan ini bukan pengguna panel, jadi
+           pilihannya cukup disimpan di browsernya sendiri. */
+        .theme-pick {
+            display: inline-flex;
+            gap: 2px;
+            background: var(--card);
+            border-radius: 999px;
+            padding: 4px;
+            box-shadow: var(--shadow-card);
+        }
+
+        .theme-pick button {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 50%;
+            background: none;
+            color: var(--muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.16s, color 0.16s, transform 0.16s cubic-bezier(0.34, 1.5, 0.5, 1);
+        }
+
+        .theme-pick button:hover { color: var(--ink); transform: scale(1.08); }
+        .theme-pick button.on { background: var(--green); color: #fff; }
+
         .report-foot {
-            margin-top: 28px;
-            padding-top: 16px;
-            border-top: 1px solid var(--line);
+            margin-top: 22px;
+            background: var(--card);
+            border-radius: var(--r-card);
+            box-shadow: var(--shadow-card);
+            padding: 14px 18px;
             font-size: 0.72rem;
             color: var(--muted);
             text-align: center;
-            line-height: 1.5;
+            line-height: 1.6;
+        }
+
+        @media print {
+            .report-actions, .theme-pick, .lang-pick { display: none !important; }
+            .report-brand, .report-foot { box-shadow: none; }
         }
 
         .q-card {
@@ -223,7 +322,27 @@
                 <img src="{{ asset('logo2.png') }}" alt="GrabMaps">
                 <span>GrabMaps</span>
             </a>
-            @yield('header-actions')
+
+            @yield('top-tabs')
+
+            <div class="report-actions">
+                @yield('header-actions')
+
+                {{-- Bahasa: tautan biasa supaya tetap jalan tanpa JS, dan
+                     parameter lain (rentang tanggal, key) ikut terbawa. --}}
+                <div class="lang-pick" role="group" aria-label="{{ __('ui.language') }}">
+                    @foreach(['en' => 'EN', 'id' => 'ID'] as $code => $label)
+                        <a href="{{ request()->fullUrlWithQuery(['lang' => $code]) }}"
+                           class="{{ app()->getLocale() === $code ? 'on' : '' }}" data-no-loader>{{ $label }}</a>
+                    @endforeach
+                </div>
+
+                <div class="theme-pick" role="group" aria-label="{{ __('ui.theme') }}">
+                    <button type="button" data-theme-pick="light" title="{{ __('ui.theme_light') }}"><i class="bi bi-sun-fill"></i></button>
+                    <button type="button" data-theme-pick="dark" title="{{ __('ui.theme_dark') }}"><i class="bi bi-moon-stars-fill"></i></button>
+                    <button type="button" data-theme-pick="system" title="{{ __('ui.theme_system') }}"><i class="bi bi-circle-half"></i></button>
+                </div>
+            </div>
         </header>
 
         @yield('content')
@@ -232,6 +351,29 @@
             @yield('footer-note', __('apikeys.share_disclaimer'))
         </footer>
     </div>
+
+    <script>
+        // Pemilih tema: disimpan dengan kunci yang sama seperti panel admin.
+        (function () {
+            const root = document.documentElement;
+            const buttons = document.querySelectorAll('[data-theme-pick]');
+
+            function paint(mode) {
+                buttons.forEach((b) => b.classList.toggle('on', b.dataset.themePick === mode));
+            }
+
+            let current = 'system';
+            try { current = localStorage.getItem('gm-theme') || 'system'; } catch (e) {}
+            paint(current);
+
+            buttons.forEach((btn) => btn.addEventListener('click', () => {
+                const mode = btn.dataset.themePick;
+                root.setAttribute('data-theme', mode);
+                try { localStorage.setItem('gm-theme', mode); } catch (e) {}
+                paint(mode);
+            }));
+        })();
+    </script>
 
     @stack('scripts')
 </body>

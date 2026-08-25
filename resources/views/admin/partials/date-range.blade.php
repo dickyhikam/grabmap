@@ -7,7 +7,7 @@
 @php
     $drStart = \Carbon\Carbon::parse($startDate);
     $drEnd   = \Carbon\Carbon::parse($endDate);
-    $drDays  = $drStart->diffInDays($drEnd) + 1;
+    $drDays  = (int) floor($drStart->diffInDays($drEnd)) + 1;
 
     // Nama hari & bulan diambil dari Carbon supaya ikut locale aplikasi,
     // bukan daftar yang ditulis tangan di JS.
@@ -200,7 +200,7 @@
     <button type="button" class="q-pill" data-dr-toggle>
         <i class="bi bi-calendar3"></i>
         <span id="drLabel">
-            {{ $drStart->translatedFormat('d M Y') }} &ndash; {{ $drEnd->translatedFormat('d M Y') }}
+            {{ $drStart->wib()->translatedFormat('d M Y') }} &ndash; {{ $drEnd->wib()->translatedFormat('d M Y') }}
         </span>
         <i class="bi bi-chevron-down" style="font-size:0.65rem;"></i>
     </button>

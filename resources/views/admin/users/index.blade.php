@@ -420,7 +420,7 @@
                                 @if($user->hasVerifiedEmail())
                                     <span class="pill-badge ok"><i class="bi bi-patch-check-fill"></i> {{ __('users.verified') }}</span>
                                     <div style="font-size:0.66rem;color:var(--muted);margin-top:3px;">
-                                        {{ $user->email_verified_at->translatedFormat('d M Y') }}
+                                        {{ $user->email_verified_at->wib()->translatedFormat('d M Y') }}
                                     </div>
                                 @else
                                     <div class="d-flex align-items-center gap-2">
@@ -439,7 +439,7 @@
                             </td>
 
                             <td>
-                                <div>{{ $user->created_at?->translatedFormat('d M Y') }}</div>
+                                <div>{{ $user->created_at?->wib()->translatedFormat('d M Y') }}</div>
                                 <div style="font-size:0.68rem;color:var(--muted);">{{ $user->created_at?->diffForHumans() }}</div>
                             </td>
 

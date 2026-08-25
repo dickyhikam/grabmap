@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class AwsAccount extends Model
 {
+    use \App\Models\Concerns\HasUuidRouteKey;
+
     protected $fillable = [
         'name', 'account_number', 'access_key_id', 'secret_access_key',
         'region', 'is_active', 'is_default', 'notes', 'last_verified_at',
@@ -41,10 +43,18 @@ class AwsAccount extends Model
         return static::query()->active()->orderByDesc('is_default')->orderBy('id')->first();
     }
 
-    /** Cari akun by id, jatuh ke akun default kalau id kosong/tidak ketemu. */
-    public static function resolve(int|string|null $id): ?self
+    /**
+     * Cari akun lewat UUID (dipakai di URL) atau id (sesi & data lama), jatuh ke
+     * akun default kalau kosong/tidak ketemu.
+     */
+    public static function resolve(int|string|null $key): ?self
     {
-        $account = $id ? static::find($id) : null;
+        if (!$key) {
+            return static::defaultAccount();
+        }
+
+        $account = static::query()->where('uuid', $key)->first()
+            ?: (is_numeric($key) ? static::find($key) : null);
 
         return $account ?: static::defaultAccount();
     }

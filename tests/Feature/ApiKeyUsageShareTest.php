@@ -45,18 +45,12 @@ class ApiKeyUsageShareTest extends TestCase
         $this->assertTrue($share->share_enabled);
         $this->assertNotNull($share->share_expires_at);
 
-        $start = now()->subDays(29)->format('Y-m-d');
-        $end = now()->format('Y-m-d');
-        $cacheKey = 'aws_usage_snapshot:acct' . $account->id . ':' . $keyName . ':' . $start . ':' . $end . ':all';
-
-        Cache::put(
-            $cacheKey,
-            [
-                'metrics' => ['total' => 42, 'daily' => [], 'operations' => ['GetMapTile' => 42], 'error' => null],
-                'fetched_at' => now()->toIso8601String(),
-            ],
-            now()->addHour()
-        );
+        // Angka laporan publik sekarang dibaca dari pemakaian harian yang
+        // tersimpan, bukan snapshot cache per rentang — supaya rentang apa pun
+        // bisa dijawab, bukan cuma yang kebetulan pernah dibuka admin.
+        \App\Models\ApiKeyUsageDaily::store($account->id, $keyName, [
+            now()->subDay()->format('Y-m-d') => ['GetMapTile' => 42],
+        ]);
 
         $this->get($share->publicUrl())
             ->assertOk()

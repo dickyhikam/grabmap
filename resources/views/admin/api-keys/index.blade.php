@@ -36,6 +36,7 @@
     .key-card[hidden] { display: none; }
 
     .tone-green  { background: var(--green-soft); color: var(--green-text); }
+    .tone-plain  { background: var(--surface); color: var(--muted); }
     .tone-violet { background: var(--tone-indigo-bg); color: var(--tone-indigo-fg); }
     .tone-amber  { background: var(--warn-soft); color: var(--warn-fg); }
     .tone-bad    { background: var(--danger-soft); color: var(--danger-fg); }
@@ -151,7 +152,9 @@
     $activeKeys = collect($keys)->filter(fn ($k) => !($k['expire_time'] && \Carbon\Carbon::parse($k['expire_time'])->isPast()))->count();
     $keyNames   = collect($keys)->pluck('key_name')->all();
     $assignedCount   = $accountCompanies->whereNotNull('aws_api_key_name')->whereIn('aws_api_key_name', $keyNames)->count();
-    $expiredCount    = $totalKeys - $activeKeys;
+    $offNames        = collect($keys)->pluck('key_name')->filter(fn ($n) => isset($disabled[$n]));
+    $inactiveCount   = $offNames->count();
+    $expiredCount    = $totalKeys - $activeKeys - $inactiveCount;
     $unassignedCount = $totalKeys - $assignedCount;
     $showTabs        = $hasCredentials && !$error && $totalKeys > 0;
     $canAssign       = config('features.api_key_assign');
@@ -163,6 +166,7 @@
         @foreach([
             ['k' => 'all',        'l' => __('apikeys.tab_all'),        'n' => $totalKeys],
             ['k' => 'active',     'l' => __('apikeys.tab_active'),     'n' => $activeKeys],
+            ['k' => 'inactive',   'l' => __('apikeys.tab_inactive'),   'n' => $inactiveCount],
             ['k' => 'expired',    'l' => __('apikeys.tab_expired'),    'n' => $expiredCount],
             ...($canAssign ? [['k' => 'unassigned', 'l' => __('apikeys.tab_unassigned'), 'n' => $unassignedCount]] : []),
         ] as $tab)
@@ -187,7 +191,7 @@
     <div class="d-flex align-items-center gap-2 flex-wrap">
         @can('api_keys.create')
             @if($hasCredentials)
-                <a href="{{ route('admin.api-keys.create', ['account' => $account?->id]) }}" class="q-pill q-pill-green">
+                <a href="{{ route('admin.api-keys.create', ['account' => $account?->getRouteKey()]) }}" class="q-pill q-pill-green">
                     <i class="bi bi-plus-lg"></i> {{ __('apikeys.add') }}
                 </a>
             @endif
@@ -230,7 +234,7 @@
             <div style="font-weight:700;color:var(--ink);margin-bottom:6px;">{{ __('apikeys.empty_title') }}</div>
             <div style="margin-bottom:16px;">{{ __('apikeys.empty_desc', ['region' => $region]) }}</div>
             @can('api_keys.create')
-                <a href="{{ route('admin.api-keys.create', ['account' => $account?->id]) }}" class="q-pill q-pill-green">
+                <a href="{{ route('admin.api-keys.create', ['account' => $account?->getRouteKey()]) }}" class="q-pill q-pill-green">
                     <i class="bi bi-plus-lg"></i> {{ __('apikeys.empty_cta') }}
                 </a>
             @endcan
@@ -243,21 +247,32 @@
             @php
                 $expired = $key['expire_time'] && \Carbon\Carbon::parse($key['expire_time'])->isPast();
                 $company = $accountCompanies->firstWhere('aws_api_key_name', $key['key_name']);
+                // AWS tidak punya status aktif/nonaktif; key yang dimatikan dari
+                // panel dikenali dari catatan lokal, bukan dari AWS.
+                $off = $disabled[$key['key_name']] ?? null;
             @endphp
             <div class="q-card key-card"
-                 data-status="{{ $expired ? 'expired' : 'active' }}"
+                 data-status="{{ $off ? 'inactive' : ($expired ? 'expired' : 'active') }}"
                  data-assigned="{{ $company ? '1' : '0' }}"
                  style="animation-delay: {{ $loop->index * 40 }}ms;">
                 <div class="key-head">
-                    <div class="key-icon {{ $expired ? 'tone-bad' : 'tone-green' }}"><i class="bi bi-key-fill"></i></div>
+                    <div class="key-icon {{ $off ? 'tone-plain' : ($expired ? 'tone-bad' : 'tone-green') }}">
+                        <i class="bi bi-{{ $off ? 'pause-fill' : 'key-fill' }}"></i>
+                    </div>
                     <div style="flex:1;min-width:0;">
                         <div class="key-name">{{ $key['key_name'] }}</div>
                         <div class="key-desc">{{ $key['description'] ?: __('apikeys.no_description') }}</div>
                     </div>
-                    <span class="pill-badge {{ $expired ? 'bad' : 'ok' }}">
-                        <i class="bi bi-{{ $expired ? 'x-circle-fill' : 'check-circle-fill' }}"></i>
-                        {{ $expired ? __('apikeys.expired') : __('apikeys.active') }}
-                    </span>
+                    @if($off)
+                        <span class="pill-badge plain">
+                            <i class="bi bi-pause-circle-fill"></i> {{ __('apikeys.inactive') }}
+                        </span>
+                    @else
+                        <span class="pill-badge {{ $expired ? 'bad' : 'ok' }}">
+                            <i class="bi bi-{{ $expired ? 'x-circle-fill' : 'check-circle-fill' }}"></i>
+                            {{ $expired ? __('apikeys.expired') : __('apikeys.active') }}
+                        </span>
+                    @endif
                 </div>
 
                 <div style="margin-top:12px;">
@@ -271,12 +286,12 @@
                 <div class="key-meta">
                     <div>
                         <div class="lb">{{ __('apikeys.created') }}</div>
-                        <div class="vl">{{ $key['create_time'] ? \Carbon\Carbon::parse($key['create_time'])->translatedFormat('d M Y') : '—' }}</div>
+                        <div class="vl">{{ $key['create_time'] ? \Carbon\Carbon::parse($key['create_time'])->wib()->translatedFormat('d M Y') : '—' }}</div>
                     </div>
                     <div>
                         <div class="lb">{{ __('apikeys.expires') }}</div>
                         <div class="vl" @if($expired) style="color:var(--danger-fg);" @endif>
-                            {{ $key['expire_time'] ? \Carbon\Carbon::parse($key['expire_time'])->translatedFormat('d M Y') : __('apikeys.never') }}
+                            {{ $key['expire_time'] ? \Carbon\Carbon::parse($key['expire_time'])->wib()->translatedFormat('d M Y') : __('apikeys.never') }}
                         </div>
                     </div>
                     <div>
@@ -286,14 +301,27 @@
                 </div>
 
                 <div class="key-actions">
-                    <a href="{{ route('admin.api-keys.usage', ['keyName' => $key['key_name'], 'account' => $account?->id]) }}" class="key-btn">
+                    <a href="{{ route('admin.api-keys.usage', ['keyName' => $key['key_name'], 'account' => $account?->getRouteKey()]) }}" class="key-btn">
                         <i class="bi bi-bar-chart"></i> {{ __('apikeys.usage') }}
                     </a>
 
                     @can('api_keys.update')
-                        <a href="{{ route('admin.api-keys.edit', ['keyName' => $key['key_name'], 'account' => $account?->id]) }}" class="key-btn">
+                        <a href="{{ route('admin.api-keys.edit', ['keyName' => $key['key_name'], 'account' => $account?->getRouteKey()]) }}" class="key-btn">
                             <i class="bi bi-pencil"></i> {{ __('apikeys.edit') }}
                         </a>
+                    @endcan
+
+                    @can('api_keys.update')
+                        @if($off)
+                            <form method="POST" action="{{ route('admin.api-keys.enable', ['keyName' => $key['key_name'], 'account' => $account?->getRouteKey()]) }}" style="margin:0;">
+                                @csrf
+                                <button type="submit" class="key-btn"><i class="bi bi-play-fill"></i> {{ __('apikeys.enable') }}</button>
+                            </form>
+                        @elseif(!$expired)
+                            <button type="button" class="key-btn" data-disable data-key="{{ $key['key_name'] }}">
+                                <i class="bi bi-pause-fill"></i> {{ __('apikeys.disable') }}
+                            </button>
+                        @endif
                     @endcan
 
                     @if($canAssign)
@@ -316,6 +344,31 @@
             </div>
         @endforeach
     </div>
+
+    @can('api_keys.update')
+        <div class="gm-modal" id="disableModal" role="dialog" aria-modal="true">
+            <div class="gm-modal-card">
+                <div class="gm-modal-head">
+                    <div class="gm-modal-icon"><i class="bi bi-pause-fill"></i></div>
+                    <div class="gm-modal-title">{{ __('apikeys.disable_title') }}</div>
+                    <div class="gm-modal-sub">{{ __('apikeys.disable_sub') }}</div>
+                </div>
+                <div class="gm-modal-body">
+                    <div class="who"><i class="bi bi-key-fill" style="color:var(--muted);"></i><span id="offName">—</span></div>
+
+                    <div class="note"><i class="bi bi-info-circle-fill"></i><span>{{ __('apikeys.disable_note') }}</span></div>
+
+                    <form method="POST" id="offForm">
+                        @csrf
+                        <div class="btn-row">
+                            <button type="button" class="btn-soft" data-close>{{ __('ui.cancel') }}</button>
+                            <button type="submit" class="btn-solid"><i class="bi bi-pause-fill"></i> {{ __('apikeys.disable') }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endcan
 
     <div class="q-card" id="tabEmpty" hidden style="margin-top:16px;">
         <div class="q-empty"><i class="bi bi-funnel"></i>{{ __('apikeys.tab_empty') }}</div>
@@ -430,6 +483,33 @@
         });
     })();
 
+    // ---------- Konfirmasi nonaktifkan key ----------
+    (function () {
+        const modal = document.getElementById('disableModal');
+        if (!modal) return;
+
+        const BASE  = @json(url('/admin/api-keys'));
+        const QUERY = @json($account ? '?account=' . $account->getRouteKey() : '');
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('[data-close]') || e.target === modal) {
+                modal.classList.remove('open');
+                return;
+            }
+
+            const off = e.target.closest('[data-disable]');
+            if (!off) return;
+
+            document.getElementById('offName').textContent = off.dataset.key;
+            document.getElementById('offForm').action = BASE + '/' + encodeURIComponent(off.dataset.key) + '/disable' + QUERY;
+            modal.classList.add('open');
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') modal.classList.remove('open');
+        });
+    })();
+
     // ---------- Tab penyaring ----------
     (function () {
         const tabs = document.getElementById('keyTabs');
@@ -441,6 +521,7 @@
         const matches = (card, tab) => ({
             all:        true,
             active:     card.dataset.status === 'active',
+            inactive:   card.dataset.status === 'inactive',
             expired:    card.dataset.status === 'expired',
             unassigned: card.dataset.assigned === '0',
         })[tab] ?? true;

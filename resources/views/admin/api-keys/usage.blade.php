@@ -137,20 +137,6 @@
     .gm-modal-sub { font-size: 0.77rem; color: var(--muted); margin-top: 5px; }
     .gm-modal-body { padding: 0 24px 24px; }
 
-    .share-link-wrap { display: flex; gap: 8px; margin-bottom: 12px; }
-    .share-link-input {
-        flex: 1; min-width: 0; border: none; background: var(--surface);
-        border-radius: 14px; padding: 11px 14px; font-size: 0.72rem; color: var(--ink);
-    }
-    .share-meta {
-        display: flex; flex-direction: column; gap: 6px;
-        font-size: 0.72rem; color: var(--muted); margin-bottom: 14px;
-    }
-    .share-meta i { margin-right: 4px; }
-    .share-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .share-actions form { flex: 1; min-width: 140px; }
-    .share-actions button { width: 100%; }
-    .share-label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
 
     .note {
         display: flex; align-items: flex-start; gap: 8px;
@@ -165,7 +151,7 @@
 
     $rangeStart = \Carbon\Carbon::parse($startDate);
     $rangeEnd   = \Carbon\Carbon::parse($endDate);
-    $rangeLabel = $rangeStart->translatedFormat('d M') . ' – ' . $rangeEnd->translatedFormat('d M Y');
+    $rangeLabel = $rangeStart->wib()->translatedFormat('d M') . ' – ' . $rangeEnd->wib()->translatedFormat('d M Y');
 
     // Deret harian selalu penuh sepanjang rentang, supaya hari kosong tetap terlihat.
     $daily = collect();
@@ -214,21 +200,16 @@
     <div class="d-flex align-items-center gap-2 flex-wrap">
         @include('admin.partials.date-range')
 
-        <a href="{{ route('admin.api-keys.usage', array_filter(['keyName' => $keyName, 'start' => $startDate, 'end' => $endDate, 'operation' => $filterOperation, 'account' => $account?->id, 'refresh' => 1])) }}"
+        <a href="{{ route('admin.api-keys.usage', array_filter(['keyName' => $keyName, 'start' => $startDate, 'end' => $endDate, 'operation' => $filterOperation, 'account' => $account?->getRouteKey(), 'refresh' => 1])) }}"
            class="q-pill q-pill-green" data-spin title="{{ __('dash.refresh_hint') }}">
             <i class="bi bi-arrow-clockwise"></i> {{ __('apikeys.refresh') }}
         </a>
 
-        <a href="{{ route('admin.api-keys.invoice', ['keyName' => $keyName, 'start' => $startDate, 'end' => $endDate, 'account' => $account?->id]) }}"
+        <a href="{{ route('admin.api-keys.invoice', ['keyName' => $keyName, 'start' => $startDate, 'end' => $endDate, 'account' => $account?->getRouteKey()]) }}"
            target="_blank" class="q-pill" data-no-loader>
             <i class="bi bi-file-earmark-pdf"></i> {{ __('apikeys.invoice') }}
         </a>
 
-        @can('api_keys.update')
-            <button type="button" class="q-pill" id="shareOpenBtn">
-                <i class="bi bi-share"></i> {{ __('apikeys.share') }}
-            </button>
-        @endcan
     </div>
 </div>
 
@@ -244,7 +225,7 @@
             ({{ number_format($budgetRatio * 100, 0) }}%) · {{ $rangeLabel }}
         </div>
         @can('api_keys.update')
-            <a href="{{ route('admin.api-keys.edit', ['keyName' => $keyName, 'account' => $account?->id]) }}" class="q-alert-action">
+            <a href="{{ route('admin.api-keys.edit', ['keyName' => $keyName, 'account' => $account?->getRouteKey()]) }}" class="q-alert-action">
                 {{ __('apikeys.edit') }}
             </a>
         @endcan
@@ -310,7 +291,7 @@
                 @if($fetchedAt)
                     @php $stale = $fetchedAt->lt(now()->subDay()); @endphp
                     <span @if($stale) style="color:var(--warn-fg);" @endif>
-                        {{ __('apikeys.fetched', ['time' => $fetchedAt->timezone('Asia/Jakarta')->format('d M H:i')]) }}{{ $stale ? ' — ' . __('apikeys.stale') : '' }}
+                        {{ __('apikeys.fetched', ['time' => $fetchedAt->wib()->format('d M H:i')]) }}{{ $stale ? ' — ' . __('apikeys.stale') : '' }}
                     </span>
                 @else
                     {{ __('apikeys.no_snapshot') }}
@@ -439,7 +420,7 @@
                     </div>
                 </div>
                 @can('api_keys.update')
-                    <a href="{{ route('admin.api-keys.edit', ['keyName' => $keyName, 'account' => $account?->id]) }}"
+                    <a href="{{ route('admin.api-keys.edit', ['keyName' => $keyName, 'account' => $account?->getRouteKey()]) }}"
                        class="q-ghost-btn" title="{{ __('apikeys.edit') }}"><i class="bi bi-pencil"></i></a>
                 @endcan
             </div>
@@ -450,12 +431,12 @@
             </div>
             <div class="kv">
                 <span class="k">{{ __('apikeys.created') }}</span>
-                <span class="v">{{ $keyInfo && $keyInfo['create_time'] ? \Carbon\Carbon::parse($keyInfo['create_time'])->translatedFormat('d M Y') : '—' }}</span>
+                <span class="v">{{ $keyInfo && $keyInfo['create_time'] ? \Carbon\Carbon::parse($keyInfo['create_time'])->wib()->translatedFormat('d M Y') : '—' }}</span>
             </div>
             <div class="kv">
                 <span class="k">{{ __('apikeys.expires') }}</span>
                 <span class="v" @if($expired) style="color:var(--danger-fg);" @endif>
-                    {{ $keyInfo && $keyInfo['expire_time'] ? \Carbon\Carbon::parse($keyInfo['expire_time'])->translatedFormat('d M Y') : __('apikeys.never') }}
+                    {{ $keyInfo && $keyInfo['expire_time'] ? \Carbon\Carbon::parse($keyInfo['expire_time'])->wib()->translatedFormat('d M Y') : __('apikeys.never') }}
                 </span>
             </div>
             <div class="kv">
@@ -505,7 +486,7 @@
                     <i class="bi bi-bell-slash"></i>{{ __('apikeys.budget_none') }}
                 </div>
                 @can('api_keys.update')
-                    <a href="{{ route('admin.api-keys.edit', ['keyName' => $keyName, 'account' => $account?->id]) }}"
+                    <a href="{{ route('admin.api-keys.edit', ['keyName' => $keyName, 'account' => $account?->getRouteKey()]) }}"
                        class="btn-soft" style="width:100%;">
                         <i class="bi bi-sliders"></i> {{ __('apikeys.budget_set') }}
                     </a>
@@ -548,74 +529,6 @@
     </div>
 </div>
 
-@can('api_keys.update')
-    @php
-        $shareActive = $share && $share->isActive();
-        $shareUrl = $shareActive
-            ? $share->publicUrl(['start' => $startDate, 'end' => $endDate])
-            : '';
-    @endphp
-
-    <div class="gm-modal" id="shareModal" role="dialog" aria-modal="true">
-        <div class="gm-modal-card" style="max-width:520px;">
-            <div class="gm-modal-head">
-                <div class="gm-modal-icon tone-green"><i class="bi bi-share"></i></div>
-                <div class="gm-modal-title">{{ __('apikeys.share_title') }}</div>
-                <div class="gm-modal-sub">{{ __('apikeys.share_sub') }}</div>
-            </div>
-            <div class="gm-modal-body">
-                @if($shareActive)
-                    <div class="share-link-wrap">
-                        <input type="text" class="share-link-input" id="shareLinkInput" readonly value="{{ $shareUrl }}">
-                        <button type="button" class="btn-solid" id="shareCopyBtn" data-copied="{{ __('apikeys.share_copied') }}">
-                            <i class="bi bi-clipboard"></i> {{ __('apikeys.share_copy') }}
-                        </button>
-                    </div>
-
-                    <div class="share-meta">
-                        @if($share->share_last_accessed_at)
-                            <span><i class="bi bi-eye"></i> {{ __('apikeys.share_last_viewed', ['time' => $share->share_last_accessed_at->timezone('Asia/Jakarta')->format('d M Y H:i')]) }}</span>
-                        @endif
-                        @if($share->share_expires_at)
-                            <span><i class="bi bi-hourglass-split"></i> {{ __('apikeys.share_expires', ['date' => $share->share_expires_at->translatedFormat('d M Y')]) }}</span>
-                        @endif
-                    </div>
-
-                    <div class="share-actions">
-                        <form method="POST" action="{{ route('admin.api-keys.share.regenerate', ['keyName' => $keyName, 'account' => $account?->id]) }}">
-                            @csrf
-                            <button type="submit" class="btn-soft"><i class="bi bi-arrow-repeat"></i> {{ __('apikeys.share_regenerate') }}</button>
-                        </form>
-                        <form method="POST" action="{{ route('admin.api-keys.share.disable', ['keyName' => $keyName, 'account' => $account?->id]) }}">
-                            @csrf
-                            <button type="submit" class="btn-solid danger"><i class="bi bi-x-lg"></i> {{ __('apikeys.share_disable') }}</button>
-                        </form>
-                    </div>
-                @else
-                    <form method="POST" action="{{ route('admin.api-keys.share.enable', ['keyName' => $keyName, 'account' => $account?->id]) }}">
-                        @csrf
-                        <label class="share-label" for="expires_days">{{ __('apikeys.share_expiry_lbl') }}</label>
-                        <select name="expires_days" id="expires_days" class="select" style="width:100%;margin-bottom:14px;">
-                            <option value="">{{ __('apikeys.share_expiry_never') }}</option>
-                            <option value="30">{{ __('apikeys.exp_days', ['count' => 30]) }}</option>
-                            <option value="90">{{ __('apikeys.exp_days', ['count' => 90]) }}</option>
-                            <option value="180">{{ __('apikeys.exp_days', ['count' => 180]) }}</option>
-                            <option value="365">{{ __('apikeys.exp_days', ['count' => 365]) }}</option>
-                        </select>
-                        <div class="note info" style="margin-bottom:14px;">
-                            <i class="bi bi-shield-check"></i>
-                            <span>{{ __('apikeys.share_security_note') }}</span>
-                        </div>
-                        <div class="btn-row">
-                            <button type="button" class="btn-soft" data-share-close>{{ __('ui.cancel') }}</button>
-                            <button type="submit" class="btn-solid"><i class="bi bi-link-45deg"></i> {{ __('apikeys.share_enable') }}</button>
-                        </div>
-                    </form>
-                @endif
-            </div>
-        </div>
-    </div>
-@endcan
 @endsection
 
 @push('scripts')
@@ -624,36 +537,5 @@
         sel.addEventListener('change', () => document.getElementById('opForm').submit());
     });
 
-    (function () {
-        const modal = document.getElementById('shareModal');
-        const openBtn = document.getElementById('shareOpenBtn');
-        if (!modal || !openBtn) return;
-
-        const close = () => modal.classList.remove('open');
-
-        openBtn.addEventListener('click', () => modal.classList.add('open'));
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal || e.target.closest('[data-share-close]')) close();
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') close();
-        });
-
-        const copyBtn = document.getElementById('shareCopyBtn');
-        const linkInput = document.getElementById('shareLinkInput');
-        if (copyBtn && linkInput) {
-            copyBtn.addEventListener('click', async () => {
-                try {
-                    await navigator.clipboard.writeText(linkInput.value);
-                    const orig = copyBtn.innerHTML;
-                    copyBtn.innerHTML = '<i class="bi bi-check2"></i> ' + copyBtn.dataset.copied;
-                    setTimeout(() => { copyBtn.innerHTML = orig; }, 2000);
-                } catch (e) {
-                    linkInput.select();
-                    document.execCommand('copy');
-                }
-            });
-        }
-    })();
 </script>
 @endpush

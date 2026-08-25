@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class ExchangeRate extends Model
 {
+    use \App\Models\Concerns\HasUuidRouteKey;
+
     public $timestamps = false;
 
     protected $fillable = [

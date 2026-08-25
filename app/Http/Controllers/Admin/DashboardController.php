@@ -61,7 +61,7 @@ class DashboardController extends Controller
         $end   = $end->min($today)->max($oldest);
         $start = $start->min($end)->max($oldest);
 
-        if ($start->diffInDays($end) + 1 > self::MAX_RANGE_DAYS) {
+        if ((int) floor($start->diffInDays($end)) + 1 > self::MAX_RANGE_DAYS) {
             $start = $end->copy()->subDays(self::MAX_RANGE_DAYS - 1);
         }
 

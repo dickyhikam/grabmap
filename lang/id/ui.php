@@ -16,6 +16,8 @@ return [
     'api_tester'        => 'API Tester',
     'sign_out'          => 'Keluar',
     'homepage'          => 'Homepage',
+    'language'          => 'Bahasa',
+    'theme'             => 'Tema',
     'theme_light'       => 'Mode terang',
     'theme_dark'        => 'Mode gelap',
     'theme_system'      => 'Ikut sistem',

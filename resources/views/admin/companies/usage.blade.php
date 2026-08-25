@@ -42,7 +42,7 @@
                 @if($fetchedAt)
                     @php $stale = $fetchedAt->lt(now()->subDay()); @endphp
                     <span class="{{ $stale ? 'text-warning fw-semibold' : 'text-muted' }}" style="font-size:0.75rem;" title="Waktu data terakhir diambil dari AWS (tidak real-time)">
-                        <i class="bi bi-clock-history"></i> Data per {{ $fetchedAt->timezone('Asia/Jakarta')->format('d M Y H:i') }} WIB{{ $stale ? ' — klik Refresh' : '' }}
+                        <i class="bi bi-clock-history"></i> Data per {{ $fetchedAt->wib()->format('d M Y H:i') }} WIB{{ $stale ? ' — klik Refresh' : '' }}
                     </span>
                 @endif
                 @if($keyName)
@@ -90,7 +90,7 @@
         <div class="col-md-4">
             <div class="card stat-card"><div class="card-body d-flex align-items-center gap-3">
                 <div class="stat-icon" style="background: #eef2ff; color: #6366f1;"><i class="bi bi-calendar-range"></i></div>
-                <div><div class="stat-label">Periode</div><div class="stat-value" style="font-size:1rem;">{{ \Carbon\Carbon::parse($startDate)->format('d M') }} – {{ \Carbon\Carbon::parse($endDate)->format('d M Y') }}</div></div>
+                <div><div class="stat-label">Periode</div><div class="stat-value" style="font-size:1rem;">{{ \Carbon\Carbon::parse($startDate)->wib()->format('d M') }} – {{ \Carbon\Carbon::parse($endDate)->wib()->format('d M Y') }}</div></div>
             </div></div>
         </div>
     </div>
@@ -150,7 +150,7 @@
                 <span class="text-muted">Kurs dipakai:</span>
                 <span class="fw-semibold">Rp {{ number_format($idrRate, 0, ',', '.') }}/USD</span>
                 @if(!empty($activeRate))
-                    <span class="text-muted">&mdash; {{ $activeRate->source }} per {{ $activeRate->rate_date->format('d M Y') }}@if($activeRate->reference) ({{ $activeRate->reference }})@endif</span>
+                    <span class="text-muted">&mdash; {{ $activeRate->source }} per {{ $activeRate->rate_date->wib()->format('d M Y') }}@if($activeRate->reference) ({{ $activeRate->reference }})@endif</span>
                 @endif
                 <a href="{{ route('admin.cost-settings.index') }}" class="btn btn-sm btn-outline-grab ms-auto"><i class="bi bi-pencil me-1"></i>Ubah kurs / pajak</a>
             </div>
@@ -177,14 +177,14 @@
             @endphp
             <div class="d-flex align-items-end gap-1" style="height:160px;">
                 @foreach($allDays as $date => $count)
-                    <div class="flex-fill d-flex flex-column justify-content-end" style="min-width:2px;" title="{{ \Carbon\Carbon::parse($date)->format('d M Y') }}: {{ number_format($count) }} request">
+                    <div class="flex-fill d-flex flex-column justify-content-end" style="min-width:2px;" title="{{ \Carbon\Carbon::parse($date)->wib()->format('d M Y') }}: {{ number_format($count) }} request">
                         <div style="height: {{ max(($count / $maxCount) * 100, 1.5) }}%; background: var(--grab-green); border-radius:3px 3px 0 0;"></div>
                     </div>
                 @endforeach
             </div>
             <div class="d-flex justify-content-between mt-2">
-                <small class="text-muted" style="font-size:0.72rem;">{{ \Carbon\Carbon::parse($startDate)->format('d M Y') }}</small>
-                <small class="text-muted" style="font-size:0.72rem;">{{ \Carbon\Carbon::parse($endDate)->format('d M Y') }}</small>
+                <small class="text-muted" style="font-size:0.72rem;">{{ \Carbon\Carbon::parse($startDate)->wib()->format('d M Y') }}</small>
+                <small class="text-muted" style="font-size:0.72rem;">{{ \Carbon\Carbon::parse($endDate)->wib()->format('d M Y') }}</small>
             </div>
         </div>
     </div>

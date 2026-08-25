@@ -258,11 +258,11 @@
             </div>
             <div class="kv">
                 <span class="k">{{ __('profile.joined') }}</span>
-                <span class="v">{{ $user->created_at?->translatedFormat('d M Y') ?? __('profile.never') }}</span>
+                <span class="v">{{ $user->created_at?->wib()->translatedFormat('d M Y') ?? __('profile.never') }}</span>
             </div>
             <div class="kv">
                 <span class="k">{{ __('profile.last_login') }}</span>
-                <span class="v">{{ $lastLogin?->created_at?->translatedFormat('d M Y H:i') ?? __('profile.never') }}</span>
+                <span class="v">{{ $lastLogin?->created_at?->wib()->translatedFormat('d M Y H:i') ?? __('profile.never') }}</span>
             </div>
         </div>
 

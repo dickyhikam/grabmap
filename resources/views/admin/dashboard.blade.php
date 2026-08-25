@@ -137,7 +137,7 @@
         && $endDate === now()->format('Y-m-d');
     $rangeLabel = $isCurrentMonth
         ? __('dash.this_month')
-        : $rangeStart->translatedFormat('d M') . ' – ' . $rangeEnd->translatedFormat('d M Y');
+        : $rangeStart->wib()->translatedFormat('d M') . ' – ' . $rangeEnd->wib()->translatedFormat('d M Y');
 
     // ---- Tren: paruh akhir vs paruh awal rentang (selalu terdefinisi, data asli) ----
     $half     = intdiv($rangeCount, 2);
@@ -284,7 +284,7 @@
         @can('api_keys.view')
             <a href="{{ route('admin.api-keys.usage', array_filter([
                     'keyName' => $kb['key_name'],
-                    'account' => $kb['budget']->aws_account_id,
+                    'account' => $kb['budget']->awsAccount?->getRouteKey(),
                     'start'   => $startDate,
                     'end'     => $endDate,
                ])) }}" class="q-alert-action">{{ __('dash.key_budget_open') }}</a>
@@ -369,6 +369,44 @@
                 <a href="{{ route('admin.api-keys.index') }}" class="q-ghost-btn"><i class="bi bi-arrow-up-right"></i></a>
             </div>
         </div>
+
+        {{-- Biaya per kategori --}}
+        @if($totalRequests > 0)
+        <div class="q-card">
+            <div class="q-card-head">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="q-icon-box"><i class="bi bi-wallet2"></i></div>
+                    <div>
+                        <div class="q-card-title">{{ __('dash.cat_title') }}</div>
+                        <div class="q-card-sub">{{ __('dash.cat_sub') }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-baseline gap-2 mb-2">
+                <div class="q-num" style="font-size:1.7rem;">${{ $sub['int'] }}<span class="cents">.{{ $sub['cents'] }}</span></div>
+                <span class="q-delta">{{ number_format($totalCost > 0 ? ($catCost['places'] / $totalCost) * 100 : 0, 1) }}% Places</span>
+            </div>
+
+            @foreach($catData as $cat)
+                @php $share = $totalCost > 0 ? ($catCost[$cat['key']] / $totalCost) * 100 : 0; @endphp
+                <div class="q-row">
+                    <div class="q-icon-box" style="width:32px;height:32px;border-radius:10px;color:{{ $cat['color'] }};">
+                        <i class="bi {{ $cat['icon'] }}"></i>
+                    </div>
+                    <div class="flex-grow-1" style="min-width:0;">
+                        <div class="q-row-name">{{ $cat['label'] }}</div>
+                        <div class="q-row-sub">{{ number_format($catCount[$cat['key']]) }} {{ __('dash.requests_word') }}</div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-semibold" style="font-size:0.85rem;">${{ number_format($catCost[$cat['key']], 2) }}</div>
+                        <div class="q-row-sub">{{ number_format($share, 1) }}%</div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+        @endif
+
     </div>
 
     {{-- ===================== KOLOM TENGAH ===================== --}}
@@ -412,93 +450,94 @@
             @endif
         </div>
 
+        {{-- ===================== TABEL OPERASI (di bawah grafik) ===================== --}}
+        @if(!empty($operations))
+            <div class="q-card">
+                <div class="q-card-head">
+                    <div>
+                        <div class="q-card-title">{{ __('dash.ops_title') }}</div>
+                        <div class="q-card-sub">{{ __('dash.ops_sub', ['pct' => round($taxRate * 100, 2)]) }}</div>
+                    </div>
+                    <a href="{{ route('admin.cost-settings.index') }}" class="q-ghost-btn" title="{{ __('ui.cost_settings') }}">
+                        <i class="bi bi-arrow-up-right"></i>
+                    </a>
+                </div>
+
+                @php $opMax = max(array_values($operations)) ?: 1; @endphp
+                <div class="table-responsive">
+                    <table class="q-table">
+                        <thead>
+                            <tr>
+                                <th style="width:210px;">{{ __('dash.ops_op') }}</th>
+                                <th>{{ __('admin.usage') }}</th>
+                                <th class="text-end">{{ __('admin.requests') }}</th>
+                                <th class="text-end">$/1k</th>
+                                <th class="text-end">{{ __('admin.est_cost') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($operations as $op => $count)
+                                @php
+                                    $rate = \App\Services\AwsLocationService::PRICING[$op] ?? 0;
+                                    $cost = ($count / 1000) * $rate;
+                                @endphp
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="q-dot"></span>
+                                            <span class="fw-semibold">{{ $op }}</span>
+                                        </div>
+                                    </td>
+                                    <td style="min-width:130px;">
+                                        <div class="q-track"><div class="q-fill" style="width: {{ ($count / $opMax) * 100 }}%;"></div></div>
+                                    </td>
+                                    <td class="text-end fw-semibold">{{ number_format($count) }}</td>
+                                    <td class="text-end" style="color:var(--muted);">${{ number_format($rate, 2) }}</td>
+                                    <td class="text-end fw-semibold">${{ number_format($cost, 2) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="2" style="color:var(--muted);">{{ __('dash.subtotal') }}</td>
+                                <td class="text-end fw-semibold">{{ number_format($totalRequests) }}</td>
+                                <td></td>
+                                <td class="text-end fw-semibold">${{ $sub['int'] }}.{{ $sub['cents'] }}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" style="color:var(--muted);">{{ __('dash.vat', ['pct' => round($taxRate * 100, 2)]) }}</td>
+                                <td class="text-end" style="color:var(--muted);">${{ number_format($tax, 2) }}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="fw-bold">{{ __('dash.total_vat') }}</td>
+                                <td class="text-end">
+                                    <div class="q-num" style="font-size:1.05rem;color:var(--green-text);">
+                                        ${{ $grand['int'] }}<span class="cents">.{{ $grand['cents'] }}</span>
+                                    </div>
+                                    <div style="font-size:0.7rem;color:var(--muted);">
+                                        ≈ Rp {{ number_format($grandCost * $idrRate, 0, ',', '.') }}
+                                    </div>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="q-card-sub mt-2">
+                    <i class="bi bi-info-circle me-1"></i>{{ __('dash.ops_note') }}
+                    @if($fetchedAt)
+                        {{ __('dash.fetched_at', ['time' => $fetchedAt->wib()->format('d M Y H:i')]) }}
+                    @else
+                        {{ __('dash.no_snapshot') }}
+                    @endif
+                </div>
+            </div>
+        @endif
+
     </div>
 
     </div>{{-- /dash-left-top --}}
 
-    {{-- ===================== TABEL OPERASI (melebar penuh di wilayah kiri) ===================== --}}
-    @if(!empty($operations))
-        <div class="q-card">
-            <div class="q-card-head">
-                <div>
-                    <div class="q-card-title">{{ __('dash.ops_title') }}</div>
-                    <div class="q-card-sub">{{ __('dash.ops_sub', ['pct' => round($taxRate * 100, 2)]) }}</div>
-                </div>
-                <a href="{{ route('admin.cost-settings.index') }}" class="q-ghost-btn" title="{{ __('ui.cost_settings') }}">
-                    <i class="bi bi-arrow-up-right"></i>
-                </a>
-            </div>
-
-            @php $opMax = max(array_values($operations)) ?: 1; @endphp
-            <div class="table-responsive">
-                <table class="q-table">
-                    <thead>
-                        <tr>
-                            <th style="width:210px;">{{ __('dash.ops_op') }}</th>
-                            <th>{{ __('admin.usage') }}</th>
-                            <th class="text-end">{{ __('admin.requests') }}</th>
-                            <th class="text-end">$/1k</th>
-                            <th class="text-end">{{ __('admin.est_cost') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($operations as $op => $count)
-                            @php
-                                $rate = \App\Services\AwsLocationService::PRICING[$op] ?? 0;
-                                $cost = ($count / 1000) * $rate;
-                            @endphp
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="q-dot"></span>
-                                        <span class="fw-semibold">{{ $op }}</span>
-                                    </div>
-                                </td>
-                                <td style="min-width:130px;">
-                                    <div class="q-track"><div class="q-fill" style="width: {{ ($count / $opMax) * 100 }}%;"></div></div>
-                                </td>
-                                <td class="text-end fw-semibold">{{ number_format($count) }}</td>
-                                <td class="text-end" style="color:var(--muted);">${{ number_format($rate, 2) }}</td>
-                                <td class="text-end fw-semibold">${{ number_format($cost, 2) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <td colspan="2" style="color:var(--muted);">{{ __('dash.subtotal') }}</td>
-                            <td class="text-end fw-semibold">{{ number_format($totalRequests) }}</td>
-                            <td></td>
-                            <td class="text-end fw-semibold">${{ $sub['int'] }}.{{ $sub['cents'] }}</td>
-                        </tr>
-                        <tr>
-                            <td colspan="4" style="color:var(--muted);">{{ __('dash.vat', ['pct' => round($taxRate * 100, 2)]) }}</td>
-                            <td class="text-end" style="color:var(--muted);">${{ number_format($tax, 2) }}</td>
-                        </tr>
-                        <tr>
-                            <td colspan="4" class="fw-bold">{{ __('dash.total_vat') }}</td>
-                            <td class="text-end">
-                                <div class="q-num" style="font-size:1.05rem;color:var(--green-text);">
-                                    ${{ $grand['int'] }}<span class="cents">.{{ $grand['cents'] }}</span>
-                                </div>
-                                <div style="font-size:0.7rem;color:var(--muted);">
-                                    ≈ Rp {{ number_format($grandCost * $idrRate, 0, ',', '.') }}
-                                </div>
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-
-            <div class="q-card-sub mt-2">
-                <i class="bi bi-info-circle me-1"></i>{{ __('dash.ops_note') }}
-                @if($fetchedAt)
-                    {{ __('dash.fetched_at', ['time' => $fetchedAt->timezone('Asia/Jakarta')->format('d M Y H:i')]) }}
-                @else
-                    {{ __('dash.no_snapshot') }}
-                @endif
-            </div>
-        </div>
-    @endif
   </div>{{-- /dash-left --}}
 
     {{-- ===================== SIDEBAR KANAN ===================== --}}
@@ -555,42 +594,6 @@
             </div>
         </div>
 
-        {{-- Biaya per kategori --}}
-        @if($totalRequests > 0)
-        <div class="q-card">
-            <div class="q-card-head">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="q-icon-box"><i class="bi bi-wallet2"></i></div>
-                    <div>
-                        <div class="q-card-title">{{ __('dash.cat_title') }}</div>
-                        <div class="q-card-sub">{{ __('dash.cat_sub') }}</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="d-flex align-items-baseline gap-2 mb-2">
-                <div class="q-num" style="font-size:1.7rem;">${{ $sub['int'] }}<span class="cents">.{{ $sub['cents'] }}</span></div>
-                <span class="q-delta">{{ number_format($totalCost > 0 ? ($catCost['places'] / $totalCost) * 100 : 0, 1) }}% Places</span>
-            </div>
-
-            @foreach($catData as $cat)
-                @php $share = $totalCost > 0 ? ($catCost[$cat['key']] / $totalCost) * 100 : 0; @endphp
-                <div class="q-row">
-                    <div class="q-icon-box" style="width:32px;height:32px;border-radius:10px;color:{{ $cat['color'] }};">
-                        <i class="bi {{ $cat['icon'] }}"></i>
-                    </div>
-                    <div class="flex-grow-1" style="min-width:0;">
-                        <div class="q-row-name">{{ $cat['label'] }}</div>
-                        <div class="q-row-sub">{{ number_format($catCount[$cat['key']]) }} {{ __('dash.requests_word') }}</div>
-                    </div>
-                    <div class="text-end">
-                        <div class="fw-semibold" style="font-size:0.85rem;">${{ number_format($catCost[$cat['key']], 2) }}</div>
-                        <div class="q-row-sub">{{ number_format($share, 1) }}%</div>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-        @endif
 
         {{-- Top pemakai --}}
         <div class="q-card">

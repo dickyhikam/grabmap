@@ -83,7 +83,7 @@
                                 <tr>
                                     <td style="padding:14px 18px;font-size:13px;color:#78350f;line-height:1.5;">
                                         <b>⏱ This link expires in {{ $expiresInHours }} hours</b><br>
-                                        <span style="color:#92400e;">For your security, please verify before {{ now()->addHours($expiresInHours)->format('d M Y, H:i') }} (server time).</span>
+                                        <span style="color:#92400e;">For your security, please verify before {{ now()->addHours($expiresInHours)->wib()->format('d M Y, H:i') }} (server time).</span>
                                     </td>
                                 </tr>
                             </table>

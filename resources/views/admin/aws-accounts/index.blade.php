@@ -228,7 +228,7 @@
 
                 <div class="acc-actions">
                     @can('api_keys.view')
-                        <a href="{{ route('admin.api-keys.index', ['account' => $account->id]) }}" class="acc-btn">
+                        <a href="{{ route('admin.api-keys.index', ['account' => $account->getRouteKey()]) }}" class="acc-btn">
                             <i class="bi bi-key"></i> {{ __('awsaccounts.api_keys') }}
                         </a>
                     @endcan

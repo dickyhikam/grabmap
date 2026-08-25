@@ -203,6 +203,10 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
         Route::middleware('permission:api_keys.update')->group(function () {
             Route::get('/{keyName}/edit', [ApiKeyController::class, 'edit'])->name('admin.api-keys.edit');
             Route::put('/{keyName}', [ApiKeyController::class, 'update'])->name('admin.api-keys.update');
+            // AWS tidak punya sakelar aktif/nonaktif — lihat komentar di controller.
+            Route::post('/{keyName}/disable', [ApiKeyController::class, 'disable'])->name('admin.api-keys.disable');
+            Route::post('/{keyName}/enable', [ApiKeyController::class, 'enable'])->name('admin.api-keys.enable');
+
             Route::post('/{keyName}/share/enable', [ApiKeyController::class, 'enableShare'])->name('admin.api-keys.share.enable');
             Route::post('/{keyName}/share/disable', [ApiKeyController::class, 'disableShare'])->name('admin.api-keys.share.disable');
             Route::post('/{keyName}/share/regenerate', [ApiKeyController::class, 'regenerateShare'])->name('admin.api-keys.share.regenerate');
@@ -292,6 +296,10 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
     Route::prefix('admin/companies')->group(function () {
         Route::middleware('permission:companies.view')->group(function () {
             Route::get('/', [CompanyController::class, 'index'])->name('admin.companies.index');
+            Route::get('/{company}', [CompanyController::class, 'show'])
+                ->whereUuid('company')          // biar "/create" tidak ikut tertangkap
+                ->name('admin.companies.show');
+            Route::get('/{company}/access-log', [CompanyController::class, 'accessLog'])->name('admin.companies.access-log');
             Route::get('/{company}/usage', [CompanyController::class, 'usage'])->name('admin.companies.usage');
             Route::get('/{company}/invoice', [CompanyController::class, 'invoice'])->name('admin.companies.invoice');
         });
@@ -305,6 +313,18 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
             Route::get('/{company}/edit', [CompanyController::class, 'edit'])->name('admin.companies.edit');
             Route::put('/{company}', [CompanyController::class, 'update'])->name('admin.companies.update');
             Route::patch('/{company}/toggle-status', [CompanyController::class, 'toggleStatus'])->name('admin.companies.toggle-status');
+
+            // API key yang menempel ke perusahaan + link laporan gabungannya.
+            Route::post('/{company}/keys', [CompanyController::class, 'attachKey'])->name('admin.companies.keys.attach');
+            Route::delete('/{company}/keys/{key}', [CompanyController::class, 'detachKey'])->name('admin.companies.keys.detach');
+            Route::post('/{company}/keys/{key}/primary', [CompanyController::class, 'primaryKey'])->name('admin.companies.keys.primary');
+
+            // Satu perusahaan boleh punya beberapa link laporan.
+            Route::post('/{company}/shares', [CompanyController::class, 'storeShare'])->name('admin.companies.shares.store');
+            Route::post('/{company}/shares/{share}/toggle', [CompanyController::class, 'toggleShare'])->name('admin.companies.shares.toggle');
+            Route::post('/{company}/shares/{share}/regenerate', [CompanyController::class, 'regenerateShare'])->name('admin.companies.shares.regenerate');
+            Route::delete('/{company}/shares/{share}', [CompanyController::class, 'destroyShare'])->name('admin.companies.shares.destroy');
+            Route::post('/{company}/refresh-usage', [CompanyController::class, 'refreshUsage'])->name('admin.companies.refresh-usage');
         });
     });
 

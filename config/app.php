@@ -69,6 +69,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Zona Waktu Tampilan
+    |--------------------------------------------------------------------------
+    |
+    | Waktu tetap disimpan dalam UTC (aman untuk perhitungan & perbandingan),
+    | tapi ditampilkan ke pengguna dalam zona ini lewat Carbon::wib().
+    |
+    */
+
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Jakarta'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AwsAccount;
 use App\Models\ApiKeyBudget;
+use App\Models\ApiKeyDisable;
 use App\Models\ApiKeyUsageShare;
 use App\Models\Company;
 use App\Models\ExchangeRate;
@@ -108,6 +109,8 @@ class ApiKeyController extends Controller
         }
 
         $region = $account?->region ?: config('aws.region');
+
+        $disabled = ApiKeyDisable::mapFor($account?->id);
 
         return view('admin.api-keys.index', compact(
             'hasCredentials', 'keys', 'error', 'companies', 'accountCompanies',
@@ -252,7 +255,8 @@ class ApiKeyController extends Controller
         if ($validated['expiry_mode'] === 'never') {
             $params['no_expiry'] = true;
         } elseif ($validated['expiry_mode'] === 'date') {
-            $params['expire_time'] = \Carbon\Carbon::parse($validated['expire_date']);
+            // Jam yang diketik user adalah waktu Jakarta, bukan UTC.
+            $params['expire_time'] = \Carbon\Carbon::parse($validated['expire_date'], config('app.display_timezone'));
         } else { // preset
             $params['expire_time'] = now()->addDays((int) $validated['preset_days']);
         }
@@ -276,6 +280,85 @@ class ApiKeyController extends Controller
 
         return redirect()->route('admin.api-keys.index')
             ->with('success', "API Key \"{$validated['key_name']}\" berhasil dibuat.");
+    }
+
+    /**
+     * Nonaktifkan API key.
+     *
+     * AWS tidak punya sakelar aktif/nonaktif untuk API key — satu-satunya cara
+     * menghentikannya tanpa menghapus adalah memajukan masa berlakunya. Masa
+     * berlaku aslinya dicatat supaya bisa dikembalikan persis saat diaktifkan.
+     */
+    public function disable(Request $request, string $keyName)
+    {
+        $account = $this->resolveAccount($request);
+
+        if (!AwsLocationService::hasCredentials($account)) {
+            return back()->with('error', 'AWS credentials belum dikonfigurasi.');
+        }
+
+        $service = AwsLocationService::forAccount($account);
+        $current = $service->describeKey($keyName);
+
+        if ($current['error']) {
+            return back()->with('error', __('apikeys.disable_failed', ['error' => $current['error']]));
+        }
+
+        // AWS menolak ExpireTime yang lebih dari 1 menit di masa lalu, dan
+        // "sekarang" bisa jadi sudah lewat begitu permintaannya sampai ke sana
+        // (latensi + selisih jam). Diberi jeda kecil ke depan: efeknya tetap
+        // seketika, tapi tidak pernah ditolak.
+        $result = $service->updateKey($keyName, [
+            'expire_time'  => now()->addSeconds(10),
+            'force_update' => true,
+        ]);
+
+        if ($result['error']) {
+            return back()->with('error', __('apikeys.disable_failed', ['error' => $result['error']]));
+        }
+
+        ApiKeyDisable::updateOrCreate(
+            ['aws_account_id' => $account?->id, 'key_name' => $keyName],
+            [
+                'previous_expire_time' => $current['key']['expire_time'] ?? null,
+                'disabled_by'          => $request->user()?->name,
+            ],
+        );
+
+        Cache::forget($service->cacheKey("aws_key_info:{$keyName}"));
+
+        return back()->with('success', __('apikeys.disabled', ['name' => $keyName]));
+    }
+
+    /** Aktifkan lagi — masa berlaku dikembalikan seperti sebelum dinonaktifkan. */
+    public function enable(Request $request, string $keyName)
+    {
+        $account = $this->resolveAccount($request);
+
+        if (!AwsLocationService::hasCredentials($account)) {
+            return back()->with('error', 'AWS credentials belum dikonfigurasi.');
+        }
+
+        $lock = ApiKeyDisable::forKey($account?->id, $keyName);
+        $previous = $lock?->previous_expire_time;
+
+        // Masa berlaku lama yang sudah telanjur lewat tidak berguna untuk
+        // menghidupkan lagi — jatuhkan ke "tanpa masa berlaku".
+        $params = ($previous && $previous->isFuture())
+            ? ['expire_time' => $previous, 'force_update' => true]
+            : ['no_expiry' => true, 'force_update' => true];
+
+        $service = AwsLocationService::forAccount($account);
+        $result = $service->updateKey($keyName, $params);
+
+        if ($result['error']) {
+            return back()->with('error', __('apikeys.enable_failed', ['error' => $result['error']]));
+        }
+
+        $lock?->delete();
+        Cache::forget($service->cacheKey("aws_key_info:{$keyName}"));
+
+        return back()->with('success', __('apikeys.enabled', ['name' => $keyName]));
     }
 
     public function edit(Request $request, string $keyName)
@@ -335,7 +418,8 @@ class ApiKeyController extends Controller
         if ($validated['expiry_mode'] === 'never') {
             $params['no_expiry'] = true;
         } elseif ($validated['expiry_mode'] === 'date') {
-            $params['expire_time'] = \Carbon\Carbon::parse($validated['expire_date']);
+            // Jam yang diketik user adalah waktu Jakarta, bukan UTC.
+            $params['expire_time'] = \Carbon\Carbon::parse($validated['expire_date'], config('app.display_timezone'));
         } else { // preset
             $params['expire_time'] = now()->addDays((int) $validated['preset_days']);
         }
@@ -384,7 +468,7 @@ class ApiKeyController extends Controller
             $end = \Carbon\Carbon::parse($endDate);
         }
 
-        $days = $start->diffInDays($end) + 1;
+        $days = (int) floor($start->diffInDays($end)) + 1;
 
         $filterOperation = $request->query('operation');
         $operations = AwsLocationService::getOperations();
@@ -466,7 +550,7 @@ class ApiKeyController extends Controller
             'keyName' => $keyName,
             'start'   => $startDate,
             'end'     => $endDate,
-            'account' => $account?->id,
+            'account' => $account?->getRouteKey(),
         ]);
 
         return view('admin.companies.invoice', compact(

@@ -23,6 +23,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Semua waktu DISIMPAN dalam UTC, tapi DITAMPILKAN dalam waktu Jakarta.
+        // Dipakai lewat ->wib() di view: $x->wib()->translatedFormat('d M Y H:i').
+        // Aman dipanggil berulang, dan tidak mengubah objek aslinya.
+        Carbon::macro('wib', function () {
+            /** @var \Carbon\Carbon $this */
+            return $this->copy()->setTimezone(config('app.display_timezone', 'Asia/Jakarta'));
+        });
+
         // Setiap kunci izin di config/permissions.php jadi Gate, sehingga bisa dipakai
         // lewat @can('users.manage') di Blade maupun $user->can(...) di kode.
         foreach (collect(config('permissions', []))->flatten() as $permission) {
