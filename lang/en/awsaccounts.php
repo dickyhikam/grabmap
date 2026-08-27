@@ -101,4 +101,9 @@ return [
     'yes'          => 'Yes',
     'no'           => 'No',
     'test_hint'    => 'Test the connection from the account list.',
+    'secret_stored_label' => 'Stored secret',
+    'secret_show'   => 'Show',
+    'secret_hide'   => 'Hide',
+    'secret_copy'   => 'Copy',
+    'secret_copied' => 'Secret copied.',
 ];

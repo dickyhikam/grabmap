@@ -16,6 +16,7 @@ return [
     'api_tester'        => 'API Tester',
     'sign_out'          => 'Keluar',
     'homepage'          => 'Homepage',
+    'copy_failed'       => 'Gagal menyalin — sorot teksnya lalu salin manual.',
     'language'          => 'Bahasa',
     'theme'             => 'Tema',
     'theme_light'       => 'Mode terang',

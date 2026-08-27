@@ -66,6 +66,32 @@ class AwsAccountController extends Controller
         ]);
     }
 
+    /**
+     * Tampilkan secret yang tersimpan — untuk memastikan kredensial yang dipakai
+     * memang yang benar.
+     *
+     * Sengaja lewat permintaan terpisah, bukan ikut dirender di formulir: dengan
+     * begitu secret-nya hanya melintas saat benar-benar diminta, bukan pada
+     * setiap kali halaman dibuka. Aksesnya butuh izin yang sama dengan mengubah
+     * akun, dan hasilnya tidak boleh disimpan di cache mana pun.
+     */
+    public function revealSecret(Request $request, AwsAccount $awsAccount)
+    {
+        if (!$awsAccount->secret_access_key) {
+            return response()->json(['error' => __('awsaccounts.secret_missing')], 404);
+        }
+
+        \Illuminate\Support\Facades\Log::info('AWS account secret revealed', [
+            'account' => $awsAccount->name,
+            'by'      => $request->user()?->email,
+            'ip'      => $request->ip(),
+        ]);
+
+        return response()
+            ->json(['secret' => $awsAccount->secret_access_key])
+            ->header('Cache-Control', 'no-store, max-age=0');
+    }
+
     /** Akun yang saat ini bertanda default — dipakai untuk konfirmasi pemindahan. */
     private function currentDefault(): ?AwsAccount
     {

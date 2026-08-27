@@ -229,6 +229,8 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
             Route::put('/{awsAccount}', [AwsAccountController::class, 'update'])->name('admin.aws-accounts.update');
             Route::post('/{awsAccount}/default', [AwsAccountController::class, 'setDefault'])->name('admin.aws-accounts.default');
             Route::post('/{awsAccount}/test', [AwsAccountController::class, 'test'])->name('admin.aws-accounts.test');
+            // Secret hanya dikirim saat diminta, tidak ikut dirender di formulir.
+            Route::post('/{awsAccount}/secret', [AwsAccountController::class, 'revealSecret'])->name('admin.aws-accounts.secret');
         });
 
         Route::middleware('permission:aws_accounts.delete')->group(function () {

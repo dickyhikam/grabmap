@@ -101,4 +101,9 @@ return [
     'yes'          => 'Ya',
     'no'           => 'Tidak',
     'test_hint'    => 'Uji koneksi dilakukan dari daftar akun.',
+    'secret_stored_label' => 'Secret tersimpan',
+    'secret_show'   => 'Lihat',
+    'secret_hide'   => 'Sembunyikan',
+    'secret_copy'   => 'Salin',
+    'secret_copied' => 'Secret disalin.',
 ];

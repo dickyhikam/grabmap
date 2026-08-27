@@ -560,11 +560,11 @@
             if (!btn) return;
 
             const input = document.getElementById(btn.dataset.copy);
-            navigator.clipboard.writeText(input.value).then(() => {
+            window.gmCopy(input.value).then(() => {
                 window.gmToast?.(@json(__('companies.copied')), 'ok');
                 btn.querySelector('i').className = 'bi bi-check-lg';
                 setTimeout(() => { btn.querySelector('i').className = 'bi bi-clipboard'; }, 1600);
-            });
+            }, () => window.gmToast?.(@json(__('ui.copy_failed')), 'bad'));
         });
     })();
 </script>

@@ -16,6 +16,7 @@ return [
     'api_tester'        => 'API Tester',
     'sign_out'          => 'Sign out',
     'homepage'          => 'Homepage',
+    'copy_failed'       => 'Could not copy — select the text and copy it manually.',
     'language'          => 'Language',
     'theme'             => 'Theme',
     'theme_light'       => 'Light mode',

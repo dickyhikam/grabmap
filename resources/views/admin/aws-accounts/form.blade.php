@@ -57,6 +57,29 @@
     .form-error { display: flex; gap: 6px; font-size: 0.72rem; color: var(--danger-fg); margin-top: 6px; }
     .form-hint { font-size: 0.68rem; color: var(--muted); margin-top: 6px; }
 
+    /* Secret yang tersimpan — hanya untuk memastikan, bukan untuk diubah. */
+    .stored {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+        background: var(--surface); border-radius: 14px;
+        padding: 10px 12px; margin-top: 10px;
+    }
+    .stored .lb { font-size: 0.68rem; font-weight: 700; color: var(--muted); }
+    .stored .val {
+        flex: 1; min-width: 120px;
+        font-family: ui-monospace, monospace; font-size: 0.76rem;
+        color: var(--ink); word-break: break-all;
+    }
+    .stored .val.on { color: var(--green-text); }
+    .stored .mini {
+        display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+        border: none; border-radius: 999px; padding: 6px 12px;
+        background: var(--card); color: var(--muted);
+        font-size: 0.7rem; font-weight: 700; cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+    }
+    .stored .mini:hover { background: var(--green); color: #fff; }
+    .stored .mini[hidden] { display: none; }
+
     /* Region cepat-pilih */
     .reg-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
     .reg-quick .lb { font-size: 0.68rem; color: var(--muted); margin-right: 2px; }
@@ -259,6 +282,24 @@
                         @elseif($editing)
                             <div class="form-hint">{{ __('awsaccounts.secret_keep') }}</div>
                         @enderror
+
+                        @if($editing && $account->secret_access_key)
+                            {{-- Secret tersimpan ditarik saat diminta saja, bukan ikut
+                                 dirender tiap halaman dibuka. --}}
+                            <div class="stored" data-secret-box>
+                                <span class="lb">{{ __('awsaccounts.secret_stored_label') }}</span>
+                                <code class="val" data-secret-val>••••••••••••••••••••</code>
+
+                                <button type="button" class="mini" data-secret-show
+                                        data-url="{{ route('admin.aws-accounts.secret', $account) }}">
+                                    <i class="bi bi-eye"></i> <span>{{ __('awsaccounts.secret_show') }}</span>
+                                </button>
+
+                                <button type="button" class="mini" data-secret-copy hidden>
+                                    <i class="bi bi-clipboard"></i> <span>{{ __('awsaccounts.secret_copy') }}</span>
+                                </button>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
@@ -443,6 +484,65 @@
 
 @push('scripts')
 <script>
+    // Menampilkan secret tersimpan. Nilainya diminta ke server saat tombol
+    // ditekan, lalu disembunyikan lagi otomatis supaya tidak tertinggal di layar.
+    (function () {
+        const box = document.querySelector('[data-secret-box]');
+        if (!box) return;
+
+        const val  = box.querySelector('[data-secret-val]');
+        const show = box.querySelector('[data-secret-show]');
+        const copy = box.querySelector('[data-secret-copy]');
+        const masked = val.textContent;
+        let timer = null;
+
+        function hide() {
+            clearTimeout(timer);
+            val.textContent = masked;
+            val.classList.remove('on');
+            copy.hidden = true;
+            show.querySelector('span').textContent = @json(__('awsaccounts.secret_show'));
+            show.querySelector('i').className = 'bi bi-eye';
+        }
+
+        show.addEventListener('click', async () => {
+            if (val.classList.contains('on')) { hide(); return; }
+
+            show.disabled = true;
+            try {
+                const res = await fetch(show.dataset.url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                        'Accept': 'application/json',
+                    },
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error ?? res.statusText);
+
+                val.textContent = data.secret;
+                val.classList.add('on');
+                copy.hidden = false;
+                show.querySelector('span').textContent = @json(__('awsaccounts.secret_hide'));
+                show.querySelector('i').className = 'bi bi-eye-slash';
+
+                // Tertutup sendiri setelah setengah menit.
+                timer = setTimeout(hide, 30000);
+            } catch (e) {
+                window.gmToast?.(String(e.message ?? e), 'bad');
+            } finally {
+                show.disabled = false;
+            }
+        });
+
+        copy.addEventListener('click', () => {
+            window.gmCopy(val.textContent).then(
+                () => window.gmToast?.(@json(__('awsaccounts.secret_copied')), 'ok'),
+                () => window.gmToast?.(@json(__('ui.copy_failed')), 'bad'),
+            );
+        });
+    })();
+
     (function () {
         // Chip region hanya mengisi input — nilainya tetap bebas diketik.
         const input = document.getElementById('accRegion');

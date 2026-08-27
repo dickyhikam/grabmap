@@ -127,6 +127,37 @@
             setTimeout(() => el.remove(), 320);
         }
 
+        /**
+         * Salin teks ke papan klip.
+         *
+         * navigator.clipboard HANYA ada di konteks aman (https atau localhost);
+         * di http://grabmap.test ia undefined, dan pemanggilan langsung gagal
+         * diam-diam. Karena itu ada jalur cadangan lewat textarea tersembunyi.
+         */
+        window.gmCopy = function (text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                return navigator.clipboard.writeText(text);
+            }
+
+            return new Promise((resolve, reject) => {
+                const area = document.createElement('textarea');
+                area.value = text;
+                // Di luar layar, tapi tetap bisa dipilih — syarat execCommand.
+                area.setAttribute('readonly', '');
+                area.style.cssText = 'position:fixed;top:-1000px;left:-1000px;opacity:0;';
+                document.body.appendChild(area);
+
+                area.select();
+                area.setSelectionRange(0, text.length);
+
+                let ok = false;
+                try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+
+                area.remove();
+                ok ? resolve() : reject(new Error('copy-failed'));
+            });
+        };
+
         window.gmToast = function (message, type = 'ok', life = 5000) {
             const el = document.createElement('div');
             // Prefiks gm- wajib: kelas .toast milik Bootstrap memaksa display:none.

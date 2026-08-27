@@ -4,6 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ApiKeyBudget;
+use App\Models\ApiKeyDisable;
+use App\Models\ApiKeyUsageDaily;
+use App\Models\ApiKeyUsageShare;
+use App\Models\CompanyApiKey;
+use App\Models\UsageShareVisit;
 use App\Models\AwsAccount;
 use App\Models\Company;
 use App\Models\ExchangeRate;
@@ -117,15 +122,30 @@ class DashboardController extends Controller
 
                 $total = 0;
                 $active = 0;
+                $expiring = [];         // aktif tapi tinggal < 14 hari
+
                 foreach ($services as $service) {
+                    $accountId = $service->account()?->id;
+                    $off = ApiKeyDisable::mapFor($accountId);
                     $keys = $service->listApiKeys()['keys'] ?? [];
                     $total += count($keys);
-                    $active += collect($keys)
-                        ->filter(fn ($k) => !($k['expire_time'] && \Carbon\Carbon::parse($k['expire_time'])->isPast()))
-                        ->count();
+
+                    foreach ($keys as $key) {
+                        $expire = $key['expire_time'] ? \Carbon\Carbon::parse($key['expire_time']) : null;
+
+                        if ($expire && $expire->isPast()) {
+                            continue;                       // kedaluwarsa / dinonaktifkan
+                        }
+
+                        $active++;
+
+                        if ($expire && $expire->lt(now()->addDays(14))) {
+                            $expiring[] = ['name' => $key['key_name'], 'at' => $expire->toIso8601String()];
+                        }
+                    }
                 }
 
-                return ['total' => $total, 'active' => $active];
+                return ['total' => $total, 'active' => $active, 'expiring' => $expiring];
             });
 
             // Usage agregat — model manual refresh (TIDAK menembak AWS tiap load).
@@ -171,6 +191,45 @@ class DashboardController extends Controller
             ->filter(fn ($row) => $row['state'] !== 'ok')
             ->values();
 
+        // ── Bahan kartu "Perlu perhatian" & "Laporan klien" ──────────────
+        // Semuanya dibaca dari database lokal; tidak ada panggilan AWS tambahan.
+        $disabledKeys = ApiKeyDisable::query()
+            ->when($scopeAccount, fn ($q) => $q->where('aws_account_id', $scopeAccount->id))
+            ->count();
+
+        $expiringKeys = collect($apiKeysData['expiring'] ?? [])
+            ->map(fn ($k) => ['name' => $k['name'], 'at' => \Carbon\Carbon::parse($k['at'])])
+            ->sortBy('at')
+            ->values();
+
+        // Perusahaan tanpa key sama sekali → laporannya pasti kosong.
+        $companiesWithoutKey = Company::query()
+            ->where('is_active', true)
+            ->whereDoesntHave('apiKeys')
+            ->count();
+
+        // Key milik perusahaan yang belum pernah ditarik datanya.
+        $keysNeverPulled = CompanyApiKey::query()
+            ->whereNotExists(function ($q) {
+                $q->selectRaw(1)
+                    ->from('api_key_usage_daily')
+                    ->whereColumn('api_key_usage_daily.key_name', 'company_api_keys.key_name')
+                    ->whereRaw('COALESCE(api_key_usage_daily.aws_account_id, 0) = COALESCE(company_api_keys.aws_account_id, 0)');
+            })
+            ->count();
+
+        $lastPull = ApiKeyUsageDaily::max('synced_at');
+        $lastPull = $lastPull ? \Carbon\Carbon::parse($lastPull) : null;
+
+        // Laporan yang dibagikan ke klien.
+        $shareStats = [
+            'active'  => ApiKeyUsageShare::query()->where('share_enabled', true)->whereNotNull('company_id')->count(),
+            'visits'  => UsageShareVisit::query()->where('last_seen_at', '>=', now()->subDays(7))->sum('hits'),
+            'readers' => UsageShareVisit::query()->where('last_seen_at', '>=', now()->subDays(7))
+                ->distinct('ip_address')->count('ip_address'),
+            'last'    => UsageShareVisit::query()->latest('last_seen_at')->first(),
+        ];
+
         // Rincian per akun AWS — hanya relevan kalau memang ada lebih dari satu akun.
         $byAccount    = $cw['by_account'] ?? [];
         $awsAccounts  = AwsAccount::query()->active()->orderByDesc('is_default')->orderBy('id')->get();
@@ -180,7 +239,8 @@ class DashboardController extends Controller
             'apiKeysData', 'fetchedAt', 'cw', 'operations', 'totalRequests',
             'totalCost', 'tax', 'grandCost', 'catCount', 'catCost',
             'activeRate', 'idrRate', 'taxRate', 'budgetAlert', 'companyByKey',
-            'startDate', 'endDate', 'byAccount', 'awsAccounts', 'scopeAccount', 'keyBudgets'
+            'startDate', 'endDate', 'byAccount', 'awsAccounts', 'scopeAccount', 'keyBudgets',
+            'disabledKeys', 'expiringKeys', 'companiesWithoutKey', 'keysNeverPulled', 'lastPull', 'shareStats'
         ));
     }
 
