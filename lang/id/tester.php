@@ -92,4 +92,8 @@ return [
     'send_request' => 'Kirim Permintaan :mode',
     'geofences' => 'Geofence',
     'devices' => 'Perangkat',
+
+    // Penanda versi API di panel kiri.
+    'recommended' => 'Disarankan',
+    'legacy' => 'Lawas',
 ];

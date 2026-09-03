@@ -1532,6 +1532,23 @@
         [data-theme="dark"] .form-label { color: var(--t-ink); }
         [data-theme="dark"] .small,
         [data-theme="dark"] small { color: inherit; }
+
+        /* Penanda versi API: v2 disarankan, v0 lawas. */
+        .ver-tag {
+            display: inline-block;
+            margin-left: 4px;
+            padding: 1px 6px;
+            border-radius: 999px;
+            font-size: 0.58rem;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            vertical-align: middle;
+        }
+        .ver-tag.ver-rec { background: #dcfce7; color: #166534; }
+        .ver-tag.ver-legacy { background: #f3f4f6; color: #6b7280; }
+        [data-theme="dark"] .ver-tag.ver-rec { background: rgba(0, 177, 79, 0.18); color: #6ee7a8; }
+        [data-theme="dark"] .ver-tag.ver-legacy { background: var(--t-surface); color: var(--t-muted); }
     </style>
 </head>
 
@@ -1916,11 +1933,11 @@
                         <div class="btn-group w-100" role="group">
                             <input type="radio" class="btn-check" name="routeApiVersion" id="routeApiV0" value="v0" onchange="switchRouteApiVersion('v0')">
                             <label class="btn btn-sm btn-outline-secondary" for="routeApiV0">
-                                <i class="bi bi-clock-history me-1"></i> v0 (Legacy)
+                                <i class="bi bi-clock-history me-1"></i> v0 <span class="ver-tag ver-legacy">{{ __('tester.legacy') }}</span>
                             </label>
                             <input type="radio" class="btn-check" name="routeApiVersion" id="routeApiV2" value="v2" checked onchange="switchRouteApiVersion('v2')">
                             <label class="btn btn-sm btn-outline-primary" for="routeApiV2">
-                                <i class="bi bi-stars me-1"></i> v2 (New)
+                                <i class="bi bi-stars me-1"></i> v2 <span class="ver-tag ver-rec">{{ __('tester.recommended') }}</span>
                             </label>
                         </div>
                         <small class="text-muted d-block mt-1" style="font-size:0.7rem;">
@@ -1992,11 +2009,11 @@
                         <div class="btn-group w-100" role="group">
                             <input type="radio" class="btn-check" name="locApiVersion" id="locApiV0" value="v0" onchange="switchLocApiVersion('v0')">
                             <label class="btn btn-sm btn-outline-secondary" for="locApiV0">
-                                <i class="bi bi-clock-history me-1"></i> v0 (Legacy)
+                                <i class="bi bi-clock-history me-1"></i> v0 <span class="ver-tag ver-legacy">{{ __('tester.legacy') }}</span>
                             </label>
                             <input type="radio" class="btn-check" name="locApiVersion" id="locApiV2" value="v2" checked onchange="switchLocApiVersion('v2')">
                             <label class="btn btn-sm btn-outline-primary" for="locApiV2">
-                                <i class="bi bi-stars me-1"></i> v2 (New)
+                                <i class="bi bi-stars me-1"></i> v2 <span class="ver-tag ver-rec">{{ __('tester.recommended') }}</span>
                             </label>
                         </div>
                         <small class="text-muted d-block mt-1" style="font-size:0.7rem;">
@@ -2262,11 +2279,11 @@
                         <div class="btn-group w-100" role="group">
                             <input type="radio" class="btn-check" name="mapsApiVersion" id="mapsApiV0" value="v0" onchange="switchMapsApiVersion('v0')">
                             <label class="btn btn-sm btn-outline-secondary" for="mapsApiV0">
-                                <i class="bi bi-clock-history me-1"></i> v0 (Legacy)
+                                <i class="bi bi-clock-history me-1"></i> v0 <span class="ver-tag ver-legacy">{{ __('tester.legacy') }}</span>
                             </label>
                             <input type="radio" class="btn-check" name="mapsApiVersion" id="mapsApiV2" value="v2" checked onchange="switchMapsApiVersion('v2')">
                             <label class="btn btn-sm btn-outline-primary" for="mapsApiV2">
-                                <i class="bi bi-stars me-1"></i> v2 (New)
+                                <i class="bi bi-stars me-1"></i> v2 <span class="ver-tag ver-rec">{{ __('tester.recommended') }}</span>
                             </label>
                         </div>
                         <small class="text-muted d-block mt-1" style="font-size:0.7rem;">

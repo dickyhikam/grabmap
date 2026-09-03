@@ -94,9 +94,9 @@ return [
 
     'items' => [
         'autocomplete_suggest' => ['name' => 'Autocomplete, Suggest', 'description' => 'Saran alamat dan tempat saat pengguna mengetik. Tanpa additionalFeature, balasannya hanya PlaceID, jenis tempat, judul, dan label alamat.'],
-        'geocode_core' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Dipakai saat additionalFeature kosong. Balasannya komponen alamat lengkap, kategori, dan detail tempat standar.'],
-        'geocode_advanced' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Dipakai saat meminta additionalFeature Contact, Access, TimeZone, atau Phonemes — jam buka, kontak, zona waktu, dan titik akses.'],
-        'geocode_stored' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Dipakai saat intendedUse = Stored: hasil boleh disimpan permanen untuk caching atau analitik. Harga ini juga jadi batas atas satu panggilan Places.'],
+        'geocode_core' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Dipakai saat AdditionalFeatures kosong. Balasannya komponen alamat lengkap, kategori, dan detail tempat standar.'],
+        'geocode_advanced' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Dipakai saat meminta AdditionalFeatures: Contact, Access, TimeZone, atau Phonemes. Khusus ap-southeast-1, hanya TimeZone yang dilayani — tiga sisanya membalas 400.'],
+        'geocode_stored' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Dipakai saat IntendedUse = Storage: hasil boleh disimpan permanen untuk caching atau analitik. Harga ini juga jadi batas atas satu panggilan Places.'],
         'calculate_routes_core' => ['name' => 'Calculate Routes', 'description' => 'Mode Car dan Truck tanpa hitung tol, plus Pedestrian dan Transit. Untuk pelanggan GrabMaps di ap-southeast-1, mode Scooter ikut masuk Core.'],
         'calculate_routes_advanced' => ['name' => 'Calculate Routes', 'description' => 'Mode perjalanan alternatif seperti Scooter, tanpa hitung tol. Di GrabMaps ap-southeast-1 Scooter sudah dihitung Core, jadi tier ini jarang terpakai.'],
         'calculate_routes_premium' => ['name' => 'Calculate Routes', 'description' => 'Dipakai saat meminta biaya tol lewat LegAdditionalFeatures[Tolls] atau SpanAdditionalFeatures[TollSystems], dan saat memakai mode Intermodal.'],

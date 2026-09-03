@@ -145,9 +145,17 @@
             const nearest = track.querySelector('.lang-item.is-center');
             if (!nearest || !userMoved) return;
             if (nearest.classList.contains('active')) return;
-            wheel.classList.add('is-loading');
             if (typeof window.gmBeforeLangChange === 'function') window.gmBeforeLangChange();
-            window.location.href = nearest.href;
+
+            // Halaman yang menukar bahasa lewat tautan akan berpindah; yang
+            // menukarnya di browser cukup memakai <button> tanpa href, dan
+            // penanganannya diserahkan ke handler klik halaman itu.
+            if (nearest.tagName === 'A' && nearest.getAttribute('href')) {
+                wheel.classList.add('is-loading');
+                window.location.href = nearest.href;
+                return;
+            }
+            nearest.click();
         };
 
         const snapToNearest = () => {
@@ -233,12 +241,34 @@
             const item = e.target.closest('.lang-item');
             if (!item) return;
             clearTimeout(goTimer);
-            wheel.classList.add('is-loading');
             if (typeof window.gmBeforeLangChange === 'function') window.gmBeforeLangChange();
+
+            if (item.tagName === 'A' && item.getAttribute('href')) {
+                // Halaman akan berpindah alamat; roda diredupkan sampai muat ulang.
+                wheel.classList.add('is-loading');
+                return;
+            }
+
+            // Halaman yang menukar bahasa di browser tidak pernah dimuat ulang,
+            // jadi roda TIDAK boleh dikunci — dulu ia tetap ber-is-loading
+            // (pointer-events: none) sehingga klik berikutnya tidak sampai.
+            // Cukup dipusatkan ulang ke kode yang baru dipilih halaman.
+            setTimeout(() => {
+                userMoved = false;
+                clearTimeout(goTimer);
+                centerActive();
+            }, 0);
         });
 
         window.addEventListener('resize', centerActive);
         centerActive();
+
+        // Halaman yang menukar bahasa di browser (mis. /docs/aws-api) baru
+        // memindahkan kelas .active sesudah skrip ini jalan, jadi rodanya bisa
+        // terlanjur berhenti di kode yang salah — terlihat "EN" padahal teksnya
+        // sudah Indonesia. Kaitan ini dipanggil halaman itu setiap kali bahasa
+        // diterapkan supaya rodanya ikut dipusatkan ulang.
+        window.gmCenterLangWheel = centerActive;
     })();
 
     // Tooltip untuk semua kontrol ber-data-tip. Satu elemen dipakai bersama dan

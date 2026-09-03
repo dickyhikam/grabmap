@@ -283,6 +283,13 @@
 .lang-track::-webkit-scrollbar { display: none; }
 
 .lang-item {
+    /* Bisa berupa <a> (halaman yang pindah alamat) atau <button> (halaman yang
+       menukar bahasa di browser), jadi gaya bawaan tombol dinetralkan. */
+    appearance: none;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
     flex: 0 0 44px;
     scroll-snap-align: center;
     text-align: center;

@@ -92,4 +92,8 @@ return [
     'send_request' => 'Send :mode Request',
     'geofences' => 'Geofences',
     'devices' => 'Devices',
+
+    // Penanda versi API di panel kiri.
+    'recommended' => 'Recommended',
+    'legacy' => 'Legacy',
 ];

@@ -23,6 +23,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/gm-page-head.css?v={{ filemtime(public_path('css/gm-page-head.css')) }}">
 
     <style>
         :root {
@@ -73,64 +74,9 @@
         }
 
         /* Nav */
-        .topnav {
-            position: fixed; top: 3px; left: 0; right: 0;
-            background: rgba(255,255,255,0.85);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-            z-index: 999; padding: 12px 24px;
-            display: flex; align-items: center; gap: 12px;
-        }
-        .topnav-brand {
-            display: flex; align-items: center; gap: 10px;
-            font-weight: 800; color: var(--gray-800);
-            font-size: 0.95rem;
-        }
-        .topnav-brand .logo-dot {
-            width: 28px; height: 28px;
-            background: linear-gradient(135deg, var(--grab-green), var(--grab-green-dark));
-            border-radius: 8px;
-            display: inline-flex; align-items: center; justify-content: center;
-            color: #fff; font-size: 0.9rem;
-            box-shadow: 0 2px 6px rgba(0,177,79,0.35);
-        }
-        .topnav-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-        .btn-nav {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 7px 14px; border-radius: 8px;
-            font-size: 0.8rem; font-weight: 600;
-            transition: all 0.15s;
-            border: 1px solid var(--gray-200);
-            color: var(--gray-800); background: #fff;
-        }
-        .btn-nav:hover { background: var(--gray-50); transform: translateY(-1px); box-shadow: var(--shadow-sm); color: var(--gray-800); }
-        .btn-nav.primary { background: var(--grab-green); color: #fff; border-color: var(--grab-green); }
-        .btn-nav.primary:hover { background: var(--grab-green-dark); color: #fff; }
+        /* Gaya .topnav dan .lang-toggle lama dilepas — kepala halaman sekarang
+           memakai komponen bersama di public/css/gm-page-head.css. */
 
-        .lang-toggle {
-            display: flex;
-            background: var(--gray-100);
-            border: 1px solid var(--gray-200);
-            border-radius: 8px;
-            padding: 2px;
-            gap: 2px;
-        }
-        .lang-toggle button {
-            background: transparent; border: 0;
-            color: var(--gray-600);
-            font-size: 0.72rem; font-weight: 700;
-            padding: 5px 10px; cursor: pointer;
-            letter-spacing: 0.5px;
-            border-radius: 6px; transition: all 0.12s;
-        }
-        .lang-toggle button:hover { background: rgba(0,0,0,0.04); color: var(--gray-800); }
-        .lang-toggle button.active {
-            background: #fff; color: var(--grab-green);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
-        }
-
-        /* Hero */
         .hero {
             position: relative;
             min-height: 100vh;
@@ -269,7 +215,8 @@
             width: 64px; height: 64px;
             border-radius: 18px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 2rem;
+            font-size: 1.7rem;
+            color: #fff;
             margin-bottom: 18px;
             box-shadow: 0 10px 24px rgba(0,0,0,0.12);
             transition: transform 0.3s;
@@ -457,9 +404,21 @@
             box-shadow: 0 4px 10px rgba(0,177,79,0.35);
         }
         .journey-step .js-icon {
-            font-size: 2.4rem;
-            margin: 10px 0 14px;
+            width: 46px;
+            height: 46px;
+            margin: 14px auto 14px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            color: var(--grab-green-dark);
         }
+        /* Tiap langkah diberi rona berbeda supaya alurnya terbaca berurutan. */
+        .journey-step:nth-child(2) .js-icon { background: linear-gradient(135deg, #fef3c7, #fde68a); color: var(--amber-dark); }
+        .journey-step:nth-child(3) .js-icon { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: var(--blue); }
+        .journey-step:nth-child(4) .js-icon { background: linear-gradient(135deg, #ede9fe, #ddd6fe); color: var(--purple); }
         .journey-step .js-title {
             font-weight: 800;
             font-size: 0.95rem;
@@ -470,13 +429,23 @@
             font-size: 0.78rem;
             color: var(--gray-600);
         }
+        /* Panah penghubung disejajarkan dengan baris ikon, bukan tengah kartu,
+           supaya alurnya terbaca mendatar dari ubin ke ubin. */
         .journey-step .js-arrow {
             position: absolute;
-            top: 50%;
-            right: -18px;
-            transform: translateY(-50%);
+            top: 62px;
+            right: -20px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            border: 1px solid var(--gray-200);
             color: var(--gray-400);
-            font-size: 1.4rem;
+            font-size: 0.85rem;
+            line-height: 1;
             z-index: 2;
         }
         .journey-step:last-child .js-arrow { display: none; }
@@ -709,20 +678,26 @@
 <body>
     <div class="read-progress"><div class="read-progress-fill" id="readProgress"></div></div>
 
-    <nav class="topnav">
-        <a href="/" class="topnav-brand">
-            <span class="logo-dot">🗺️</span>
-            <span data-i18n="brand">GrabMaps Tutorial Hub</span>
-        </a>
-        <div class="topnav-actions">
-            <a href="/docs/aws-api" class="btn-nav"><i class="bi bi-book"></i> <span data-i18n="nav_reference">API Reference</span></a>
-            <a href="/tester-api" class="btn-nav primary"><i class="bi bi-play-circle-fill"></i> <span data-i18n="nav_playground">Playground</span></a>
-            <div class="lang-toggle" role="group" aria-label="Language">
-                <button type="button" data-lang="en" class="active">EN</button>
-                <button type="button" data-lang="id">ID</button>
+    {{-- Kepala halaman memakai komponen bersama (lihat components/page-head).
+         Bahasa di sini ditukar di browser lewat kamus I18N, jadi rodanya diisi
+         <button> tanpa href — komponen akan menyerahkan pilihannya ke handler
+         klik di halaman ini, bukan berpindah alamat. --}}
+    <x-page-head :back="url('/')" back-label="Kembali ke beranda">
+        <x-slot:title><span data-i18n="brand">GrabMaps Tutorial Hub</span></x-slot:title>
+        <x-slot:subtitle><span data-i18n="head_subtitle">Two paths to build with GrabMaps + AWS Location Service</span></x-slot:subtitle>
+
+        <x-slot:tools>
+            <div class="lang-wheel" id="langWheel" role="listbox" aria-label="Language">
+                <div class="lang-track" id="langTrack">
+                    <button type="button" class="lang-item active" data-lang="en" data-tip="English">EN</button>
+                    <button type="button" class="lang-item" data-lang="id" data-tip="Indonesia">ID</button>
+                </div>
             </div>
-        </div>
-    </nav>
+        </x-slot:tools>
+
+        <a href="/docs/aws-api" class="head-btn"><i class="bi bi-book"></i> <span data-i18n="nav_reference">API Reference</span></a>
+        <a href="/tester-api" class="head-btn is-solid"><i class="bi bi-play-circle-fill"></i> <span data-i18n="nav_playground">Playground</span></a>
+    </x-page-head>
 
     <!-- HERO with path selector -->
     <section class="hero">
@@ -743,7 +718,7 @@
             <div class="path-grid">
                 <!-- PATH A: I don't have a key -->
                 <div class="path-card a">
-                    <div class="pc-icon">🔑</div>
+                    <div class="pc-icon"><i class="bi bi-key-fill"></i></div>
                     <div class="pc-label"><i class="bi bi-arrow-right-circle-fill"></i> <span data-i18n="path_a_label">Path A — Beginner</span></div>
                     <h3 data-i18n="path_a_title">I need to create an AWS API Key</h3>
                     <p data-i18n="path_a_desc">Never used AWS Location Service before? Follow the 8-step visual tutorial with real Console screenshots — from signup to a working key you can use immediately.</p>
@@ -761,7 +736,7 @@
 
                 <!-- PATH B: I have a key -->
                 <div class="path-card b">
-                    <div class="pc-icon">🚀</div>
+                    <div class="pc-icon"><i class="bi bi-rocket-takeoff-fill"></i></div>
                     <div class="pc-label"><i class="bi bi-arrow-right-circle-fill"></i> <span data-i18n="path_b_label">Path B — Ready to build</span></div>
                     <h3 data-i18n="path_b_title">I already have an API Key</h3>
                     <p data-i18n="path_b_desc">Jump straight into the interactive API reference with a live inspector, or hit the playground to test endpoints against your key in real time — no coding required.</p>
@@ -794,28 +769,28 @@
             <div class="journey-flow">
                 <div class="journey-step reveal">
                     <span class="js-num">1</span>
-                    <div class="js-icon">🏢</div>
+                    <div class="js-icon"><i class="bi bi-cloud-fill"></i></div>
                     <div class="js-title" data-i18n="j1_t">AWS Console</div>
-                    <div class="js-desc" data-i18n="j1_d">Sign in, pick <code>ap-southeast-1</code></div>
+                    <div class="js-desc" data-i18n-html="j1_d">Sign in, pick <code>ap-southeast-1</code></div>
                     <div class="js-arrow">→</div>
                 </div>
                 <div class="journey-step reveal">
                     <span class="js-num">2</span>
-                    <div class="js-icon">🔑</div>
+                    <div class="js-icon"><i class="bi bi-key-fill"></i></div>
                     <div class="js-title" data-i18n="j2_t">Create API Key</div>
                     <div class="js-desc" data-i18n="j2_d">Restrict actions & referrers</div>
                     <div class="js-arrow">→</div>
                 </div>
                 <div class="journey-step reveal">
                     <span class="js-num">3</span>
-                    <div class="js-icon">📱</div>
+                    <div class="js-icon"><i class="bi bi-phone-fill"></i></div>
                     <div class="js-title" data-i18n="j3_t">Your App</div>
                     <div class="js-desc" data-i18n="j3_d">Web / iOS / Android</div>
                     <div class="js-arrow">→</div>
                 </div>
                 <div class="journey-step reveal">
                     <span class="js-num">4</span>
-                    <div class="js-icon">🗺️</div>
+                    <div class="js-icon"><i class="bi bi-map-fill"></i></div>
                     <div class="js-title" data-i18n="j4_t">GrabMaps Data</div>
                     <div class="js-desc" data-i18n="j4_d">POI · Routes · Maps · Geocoding</div>
                 </div>
@@ -833,22 +808,22 @@
             </div>
             <div class="feature-grid">
                 <div class="feature-card maps">
-                    <div class="fc-icon">🗺️</div>
+                    <div class="fc-icon"><i class="bi bi-map-fill"></i></div>
                     <h4 data-i18n="f1_t">Maps</h4>
                     <p data-i18n="f1_d">High-resolution vector & raster tiles for the whole SEA region, styled to match your brand.</p>
                 </div>
                 <div class="feature-card places">
-                    <div class="fc-icon">📍</div>
+                    <div class="fc-icon"><i class="bi bi-geo-alt-fill"></i></div>
                     <h4 data-i18n="f2_t">Places (Search & Geocode)</h4>
                     <p data-i18n="f2_d">Autocomplete POI, reverse geocode coordinates, search by text — down to alley-level precision.</p>
                 </div>
                 <div class="feature-card routes">
-                    <div class="fc-icon">🛣️</div>
+                    <div class="fc-icon"><i class="bi bi-signpost-split-fill"></i></div>
                     <h4 data-i18n="f3_t">Routes</h4>
                     <p data-i18n="f3_d">Turn-by-turn directions, alternative routes, real-time traffic — optimised for SEA road networks.</p>
                 </div>
                 <div class="feature-card matrix">
-                    <div class="fc-icon">🎯</div>
+                    <div class="fc-icon"><i class="bi bi-grid-3x3"></i></div>
                     <h4 data-i18n="f4_t">Route Matrix</h4>
                     <p data-i18n="f4_d">Calculate distance & time for hundreds of origin-destination pairs at once — perfect for dispatch.</p>
                 </div>
@@ -938,6 +913,7 @@
         const I18N = {
             en: {
                 brand: 'GrabMaps Tutorial Hub',
+                head_subtitle: 'Two paths to build with GrabMaps + AWS Location Service',
                 nav_reference: 'API Reference',
                 nav_playground: 'Playground',
                 hero_badge: 'AWS Location Service · GrabMaps · Southeast Asia',
@@ -1008,6 +984,7 @@
             },
             id: {
                 brand: 'GrabMaps Tutorial Hub',
+                head_subtitle: 'Dua jalur untuk mulai membangun dengan GrabMaps + AWS Location Service',
                 nav_reference: 'API Reference',
                 nav_playground: 'Playground',
                 hero_badge: 'AWS Location Service · GrabMaps · Asia Tenggara',
@@ -1089,7 +1066,7 @@
                 const key = el.getAttribute('data-i18n-html');
                 if (dict[key] != null) el.innerHTML = dict[key];
             });
-            document.querySelectorAll('.lang-toggle button').forEach(b => {
+            document.querySelectorAll('.lang-item').forEach(b => {
                 b.classList.toggle('active', b.dataset.lang === lang);
             });
             try { localStorage.setItem('tutorial_lang', lang); } catch(_) {}
@@ -1099,7 +1076,7 @@
             let saved = 'en';
             try { saved = localStorage.getItem('tutorial_lang') || 'en'; } catch(_) {}
             applyLang(saved);
-            document.querySelectorAll('.lang-toggle button').forEach(btn => {
+            document.querySelectorAll('.lang-item').forEach(btn => {
                 btn.addEventListener('click', () => applyLang(btn.dataset.lang));
             });
         })();

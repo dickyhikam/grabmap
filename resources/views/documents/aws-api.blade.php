@@ -5,7 +5,42 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>AWS Location Service — GrabMaps Provider</title>
+    <title>AWS Location Service Documentation — GrabMaps</title>
+
+    {{-- Tema dipasang sebelum CSS supaya tidak berkedip putih. Pilihan disimpan
+         di data-theme-choice, hasilnya (light/dark) di data-theme — jadi aturan
+         gelap cukup ditulis sekali sebagai [data-theme="dark"]. Kuncinya sama
+         dengan halaman lain: gm-theme. --}}
+    <script>
+        (function() {
+            var root = document.documentElement;
+            var choice = 'system';
+            try {
+                choice = localStorage.getItem('gm-theme') || 'system';
+            } catch (e) {
+                /* mode privat */ }
+
+            window.gmApplyTheme = function(next) {
+                if (next) choice = next;
+                var dark = choice === 'dark' ||
+                    (choice === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                root.setAttribute('data-theme-choice', choice);
+                root.setAttribute('data-theme', dark ? 'dark' : 'light');
+            };
+
+            window.gmApplyTheme();
+            if (window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function() {
+                    if (choice === 'system') window.gmApplyTheme();
+                });
+            }
+        })();
+    </script>
+
+    {{-- Halaman ini sempat tidak punya favicon sama sekali, jadi tabnya memakai
+         ikon bawaan peramban. --}}
+    <link rel="shortcut icon" href="{{ asset('logo2.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('logo2.png') }}" type="image/png" sizes="32x32">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -17,1636 +52,10 @@
     <link href="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.js"></script>
 
-    <style>
-        :root {
-            --grab-green: #00B14F;
-            --text-primary: #0f172a;
-            --text-secondary: #475569;
-            --text-muted: #94a3b8;
-            --bg-page: #f8fafc;
-            --bg-surface: #ffffff;
-            --bg-sidebar: #ffffff;
-            --border-light: #e5e7eb;
-        }
+    <link rel="stylesheet" href="/css/gm-page-head.css?v={{ filemtime(public_path('css/gm-page-head.css')) }}">
 
-        * {
-            box-sizing: border-box;
-        }
-
-        html,
-        body {
-            height: 100%;
-            margin: 0;
-        }
-
-        body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            color: var(--text-primary);
-            background: var(--bg-page);
-            font-size: 14px;
-            overflow: hidden;
-        }
-
-        /* Top bar (glass style — matches tutorial page) */
-        .topbar {
-            height: 60px;
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            color: #1f2937;
-            padding: 0 24px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-            z-index: 10;
-            position: relative;
-        }
-
-        .topbar .brand {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 800;
-            font-size: 0.95rem;
-            letter-spacing: -0.2px;
-            color: #1f2937;
-            text-decoration: none;
-        }
-
-        .topbar .brand .logo-dot {
-            width: 28px;
-            height: 28px;
-            background: linear-gradient(135deg, #00B14F, #008b3d);
-            border-radius: 8px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-size: 0.9rem;
-            box-shadow: 0 2px 6px rgba(0, 177, 79, 0.35);
-        }
-
-        .topbar .brand small {
-            opacity: 0.7;
-            font-weight: 500;
-            margin-left: 4px;
-            font-size: 0.75rem;
-            color: #6b7280;
-        }
-
-        .topbar .search-box {
-            margin-left: auto;
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            color: #1f2937;
-            padding: 7px 14px 7px 14px;
-            border-radius: 8px;
-            font-size: 0.82rem;
-            width: 260px;
-            font-weight: 500;
-            transition: all 0.15s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-        }
-
-        .topbar .search-box::placeholder {
-            color: #9ca3af;
-        }
-
-        .topbar .search-box:focus {
-            outline: none;
-            background: #fff;
-            border-color: #00B14F;
-            box-shadow: 0 0 0 3px rgba(0, 177, 79, 0.15), 0 1px 2px rgba(0,0,0,0.06);
-        }
-
-        /* Language toggle (glass) */
-        .lang-toggle {
-            display: flex;
-            background: #f3f4f6;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            overflow: hidden;
-            padding: 2px;
-            gap: 2px;
-        }
-
-        .lang-toggle button {
-            background: transparent;
-            border: 0;
-            color: #6b7280;
-            font-size: 0.74rem;
-            font-weight: 700;
-            padding: 5px 10px;
-            cursor: pointer;
-            letter-spacing: 0.5px;
-            border-radius: 6px;
-            transition: all 0.12s;
-        }
-
-        .lang-toggle button:hover {
-            background: rgba(0, 0, 0, 0.04);
-            color: #1f2937;
-        }
-
-        .lang-toggle button.active {
-            background: #ffffff;
-            color: #00B14F;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-        }
-
-        /* === API Key Inspector — topbar button (glass ver.) === */
-        .key-inspector-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            background: #00B14F;
-            color: #ffffff;
-            border: 1.5px solid #00B14F;
-            border-radius: 8px;
-            padding: 7px 14px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.18s;
-            box-shadow: 0 2px 6px rgba(0, 177, 79, 0.25);
-            white-space: nowrap;
-        }
-        .key-inspector-btn i {
-            font-size: 0.95rem;
-            color: #ffffff;
-        }
-        .key-inspector-btn:hover {
-            transform: translateY(-1px);
-            background: #008b3d;
-            border-color: #008b3d;
-            box-shadow: 0 4px 12px rgba(0, 177, 79, 0.35);
-        }
-        .key-inspector-btn.has-key {
-            background: #fef3c7;
-            color: #92400e;
-            border-color: #fde68a;
-            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.2);
-        }
-        .key-inspector-btn.has-key:hover {
-            background: #fde68a;
-            border-color: #fbbf24;
-        }
-        .key-inspector-btn.has-key i { color: #d97706; }
-        .key-inspector-btn .key-pill {
-            background: #ef4444;
-            color: #fff;
-            font-size: 0.66rem;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-weight: 700;
-            margin-left: 2px;
-            line-height: 1.2;
-        }
-        .key-inspector-btn .key-pill.ok { background: #16a34a; }
-        .key-inspector-btn .key-pill.warn { background: #f59e0b; }
-
-        /* === API Key Inspector — modal === */
-        .key-modal {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 9998;
-            align-items: flex-start;
-            justify-content: center;
-            padding: 30px 20px;
-            overflow-y: auto;
-        }
-        .key-modal-card {
-            background: #fff;
-            border-radius: 14px;
-            max-width: 680px;
-            width: 100%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-            overflow: hidden;
-        }
-        .key-modal-header {
-            padding: 14px 20px;
-            border-bottom: 1px solid #e5e7eb;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: linear-gradient(135deg, #00B14F, #008b3d);
-            color: #fff;
-        }
-        .key-modal-close {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: #fff;
-            font-size: 1.4rem;
-            line-height: 1;
-            cursor: pointer;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-        }
-        .key-modal-close:hover { background: rgba(255,255,255,0.3); }
-        .key-modal-body { padding: 18px 20px; max-height: 70vh; overflow-y: auto; }
-        .key-modal-footer {
-            padding: 12px 20px;
-            border-top: 1px solid #e5e7eb;
-            display: flex;
-            gap: 8px;
-            justify-content: flex-end;
-            background: #f9fafb;
-        }
-        .key-btn-primary,
-        .key-btn-secondary {
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            cursor: pointer;
-            border: 1px solid transparent;
-        }
-        .key-btn-primary { background: #00B14F; color: #fff; }
-        .key-btn-primary:hover { background: #008b3d; }
-        .key-btn-secondary { background: #fff; color: #6b7280; border-color: #d1d5db; }
-        .key-btn-secondary:hover { background: #f3f4f6; color: #dc2626; border-color: #fca5a5; }
-
-        .key-form-row { margin-bottom: 14px; }
-        .key-form-row label {
-            display: block;
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 4px;
-        }
-        .key-form-row input[type="text"],
-        .key-form-row input[type="datetime-local"],
-        .key-form-row select {
-            width: 100%;
-            padding: 7px 10px;
-            border: 1px solid #d1d5db;
-            border-radius: 7px;
-            font-size: 0.85rem;
-            background: #fff;
-        }
-        .key-form-row input:focus,
-        .key-form-row select:focus {
-            outline: none;
-            border-color: #00B14F;
-            box-shadow: 0 0 0 3px rgba(0,177,79,0.1);
-        }
-        .key-checkbox-row {
-            display: flex !important;
-            align-items: flex-start;
-            gap: 8px;
-            font-weight: 500 !important;
-            color: #4b5563 !important;
-            font-size: 0.74rem !important;
-        }
-        .key-actions-group {
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 10px 12px;
-            margin-bottom: 8px;
-        }
-        .key-actions-group strong { font-size: 0.8rem; color: #1f2937; display: block; margin-bottom: 6px; }
-        .key-actions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 4px;
-        }
-        .key-actions-grid label {
-            font-size: 0.74rem;
-            font-weight: 500;
-            color: #4b5563;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-            margin: 0;
-            padding: 2px 4px;
-            border-radius: 4px;
-        }
-        .key-actions-grid label:hover { background: #fff; }
-        .key-actions-grid input { margin: 0; }
-
-        /* Visual badge when response came from direct AWS call */
-        .resp-body.direct-mode {
-            border-left: 3px solid #f59e0b;
-        }
-        .resp-body.direct-mode::before {
-            content: '🔑 Direct AWS call (your key)';
-            display: block;
-            background: #fef3c7;
-            color: #92400e;
-            padding: 6px 10px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            margin: -12px -12px 8px;
-            border-radius: 6px 6px 0 0;
-        }
-
-        /* === Sidebar op-link permission indicators === */
-        .op-link.key-allowed::after {
-            content: '';
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #10b981;
-            margin-left: 6px;
-            vertical-align: middle;
-            box-shadow: 0 0 0 2px rgba(16,185,129,0.2);
-        }
-        .op-link.key-denied {
-            opacity: 0.55;
-        }
-        .op-link.key-denied::after {
-            content: '⛔';
-            display: inline-block;
-            font-size: 0.65rem;
-            margin-left: 6px;
-            vertical-align: middle;
-        }
-
-        /* Layout */
-        .layout {
-            display: flex;
-            height: calc(100vh - 60px);
-        }
-
-        /* Sidebar */
-        .sidebar {
-            width: 320px;
-            background: var(--bg-sidebar);
-            border-right: 1px solid var(--border-light);
-            overflow-y: auto;
-            padding: 16px 0;
-            flex-shrink: 0;
-        }
-
-        /* Sidebar search */
-        .sidebar-search-wrap {
-            position: relative;
-            margin: 0 12px 12px;
-        }
-        .sidebar-search-wrap input {
-            width: 100%;
-            padding: 8px 32px 8px 32px;
-            border: 1px solid var(--border-light);
-            border-radius: 8px;
-            font-size: 0.82rem;
-            background: #f9fafb;
-            color: var(--text-primary);
-            transition: all 0.15s;
-        }
-        .sidebar-search-wrap input:focus {
-            outline: none;
-            background: #fff;
-            border-color: #10b981;
-            box-shadow: 0 0 0 3px rgba(16,185,129,0.1);
-        }
-        .sidebar-search-wrap > i.bi-search {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #9ca3af;
-            font-size: 0.85rem;
-            pointer-events: none;
-        }
-        .sidebar-search-wrap > button {
-            position: absolute;
-            right: 6px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: #9ca3af;
-            cursor: pointer;
-            font-size: 1.1rem;
-            line-height: 1;
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-        .sidebar-search-wrap > button:hover { color: #dc2626; background: #fef2f2; }
-
-        /* Highlight matched query in op-link */
-        .op-link .match-hl {
-            background: rgba(16,185,129,0.18);
-            color: #047857;
-            font-weight: 700;
-            padding: 0 2px;
-            border-radius: 3px;
-        }
-
-        .sidebar .service-group {
-            margin-bottom: 4px;
-        }
-
-        .sidebar .service-header {
-            width: 100%;
-            text-align: left;
-            background: transparent;
-            border: 0;
-            padding: 8px 18px;
-            font-weight: 700;
-            color: var(--text-primary);
-            font-size: 0.86rem;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-            transition: background 0.12s;
-        }
-
-        .sidebar .service-header:hover {
-            background: #f1f5f9;
-        }
-
-        .sidebar .service-header .caret {
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            transition: transform 0.15s;
-        }
-
-        .sidebar .service-group.collapsed .caret {
-            transform: rotate(-90deg);
-        }
-
-        .sidebar .service-group.collapsed .operations {
-            display: none;
-        }
-
-        .sidebar .operations {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 8px;
-        }
-
-        .sidebar .op-link {
-            display: block;
-            padding: 6px 18px 6px 36px;
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.82rem;
-            border-left: 2px solid transparent;
-            cursor: pointer;
-            transition: all 0.12s;
-        }
-
-        .sidebar .op-link:hover {
-            background: #f1f5f9;
-            color: var(--text-primary);
-        }
-
-        .sidebar .op-link.active {
-            color: var(--grab-green);
-            background: #ecfdf5;
-            border-left-color: var(--grab-green);
-            font-weight: 600;
-        }
-
-        .sidebar .op-link .badge-v0 {
-            display: inline-block;
-            background: #fee2e2;
-            color: #b91c1c;
-            font-size: 0.62rem;
-            font-weight: 700;
-            padding: 1px 5px;
-            border-radius: 3px;
-            margin-left: 6px;
-            letter-spacing: 0.5px;
-        }
-
-        .sidebar .op-link .badge-new {
-            display: inline-block;
-            background: #dbeafe;
-            color: #1d4ed8;
-            font-size: 0.62rem;
-            font-weight: 700;
-            padding: 1px 5px;
-            border-radius: 3px;
-            margin-left: 6px;
-            letter-spacing: 0.5px;
-        }
-
-        .sidebar .op-link .badge-soon {
-            display: inline-block;
-            background: linear-gradient(90deg, #fbbf24, #f59e0b);
-            color: #fff;
-            font-size: 0.6rem;
-            font-weight: 700;
-            padding: 1px 6px;
-            border-radius: 10px;
-            margin-left: 6px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-
-        /* Availability dot — depan op name */
-        .sidebar .op-link .dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 8px;
-            vertical-align: middle;
-            flex-shrink: 0;
-        }
-
-        .sidebar .op-link .dot.ok {
-            background: #10b981;
-            box-shadow: 0 0 0 2px #d1fae5;
-        }
-
-        .sidebar .op-link .dot.no {
-            background: #cbd5e1;
-        }
-
-        .sidebar .op-link.unavail {
-            color: #94a3b8;
-        }
-
-        .sidebar .op-link.unavail:hover {
-            color: #64748b;
-        }
-
-        /* Legend bawah sidebar */
-        .sidebar .legend {
-            margin-top: 16px;
-            padding: 12px 18px;
-            border-top: 1px solid var(--border-light);
-            font-size: 0.72rem;
-            color: var(--text-muted);
-        }
-
-        .sidebar .legend .row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 4px;
-        }
-
-        .sidebar .legend .dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-
-        .sidebar .legend .dot.ok {
-            background: #10b981;
-            box-shadow: 0 0 0 2px #d1fae5;
-        }
-
-        .sidebar .legend .dot.no {
-            background: #cbd5e1;
-        }
-
-        /* Main content */
-        .main {
-            flex: 1;
-            overflow-y: auto;
-            padding: 28px 36px 80px;
-        }
-
-        .op-panel {
-            display: none;
-            max-width: 960px;
-        }
-
-        .op-panel.active {
-            display: block;
-        }
-
-        .op-panel .breadcrumb-mini {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .op-panel h1 {
-            font-weight: 800;
-            font-size: 1.7rem;
-            margin: 0 0 6px;
-            letter-spacing: -0.5px;
-        }
-
-        .op-panel .op-desc {
-            font-size: 0.95rem;
-            color: var(--text-secondary);
-            margin-bottom: 22px;
-            line-height: 1.55;
-        }
-
-        .op-panel h3 {
-            font-weight: 700;
-            font-size: 1rem;
-            margin: 24px 0 10px;
-            color: var(--text-primary);
-        }
-
-        .op-panel h4 {
-            font-weight: 600;
-            font-size: 0.86rem;
-            margin: 16px 0 6px;
-            color: var(--text-secondary);
-        }
-
-        /* Endpoint pill */
-        .endpoint-line {
-            background: #1e293b;
-            color: #e2e8f0;
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', 'Menlo', monospace;
-            font-size: 0.82rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 16px;
-            overflow-x: auto;
-        }
-
-        .endpoint-line .method {
-            background: #f59e0b;
-            color: #1e293b;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: 700;
-            font-size: 0.72rem;
-            flex-shrink: 0;
-        }
-
-        .endpoint-line .method.GET {
-            background: #10b981;
-            color: #fff;
-        }
-
-        .endpoint-line .method.POST {
-            background: #3b82f6;
-            color: #fff;
-        }
-
-        .endpoint-line .method.PUT {
-            background: #f59e0b;
-            color: #fff;
-        }
-
-        .endpoint-line .method.DELETE {
-            background: #ef4444;
-            color: #fff;
-        }
-
-        code {
-            background: #f1f5f9;
-            color: #d23a3a;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.85em;
-            font-family: 'JetBrains Mono', 'Menlo', monospace;
-        }
-
-        pre {
-            background: #1e293b !important;
-            color: #f1f5f9;
-            padding: 14px 18px;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            line-height: 1.55;
-            overflow-x: auto;
-            margin: 0 0 14px;
-        }
-
-        pre code {
-            background: transparent;
-            color: inherit;
-            padding: 0;
-        }
-
-        /* v0 / v2 tabs */
-        .ver-tabs {
-            border-bottom: 2px solid var(--border-light);
-            margin-bottom: 14px;
-            display: flex;
-            gap: 4px;
-        }
-
-        .ver-tabs button {
-            background: transparent;
-            border: 0;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -2px;
-            padding: 8px 16px;
-            color: var(--text-muted);
-            font-weight: 600;
-            font-size: 0.86rem;
-            cursor: pointer;
-            transition: all 0.12s;
-        }
-
-        .ver-tabs button:hover {
-            color: var(--text-primary);
-            background: #f8fafc;
-        }
-
-        .ver-tabs button.active[data-version="v2"] {
-            color: var(--grab-green);
-            border-bottom-color: var(--grab-green);
-        }
-
-        .ver-tabs button.active[data-version="v0"] {
-            color: #ef4444;
-            border-bottom-color: #ef4444;
-        }
-
-        .ver-content>div {
-            display: none;
-        }
-
-        .ver-content>div.active {
-            display: block;
-        }
-
-        /* Info boxes */
-        .alert-mini {
-            font-size: 0.84rem;
-            padding: 10px 14px;
-            border-radius: 6px;
-            margin: 12px 0;
-        }
-
-        .alert-mini.warn {
-            background: #fffbeb;
-            border-left: 3px solid #f59e0b;
-        }
-
-        .alert-mini.info {
-            background: #eff6ff;
-            border-left: 3px solid #3b82f6;
-        }
-
-        .alert-mini.success {
-            background: #ecfdf5;
-            border-left: 3px solid #10b981;
-        }
-
-        .alert-mini.danger {
-            background: #fef2f2;
-            border-left: 3px solid #ef4444;
-        }
-
-        .alert-mini.soon {
-            background: linear-gradient(90deg, #fff7ed 0%, #fffbeb 100%);
-            border-left: 3px solid #f59e0b;
-            color: #78350f;
-        }
-
-        .alert-mini.soon .soon-pill {
-            display: inline-block;
-            background: linear-gradient(90deg, #fbbf24, #f59e0b);
-            color: #fff;
-            font-size: 0.65rem;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 10px;
-            margin-right: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            vertical-align: middle;
-        }
-
-        /* Section heading dengan icon */
-        .doc-section-h {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 700;
-            font-size: 0.95rem;
-            color: var(--text-primary);
-            margin: 28px 0 12px;
-            padding-bottom: 6px;
-            border-bottom: 2px solid var(--border-light);
-        }
-
-        .doc-section-h .ic {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 26px;
-            height: 26px;
-            border-radius: 6px;
-            background: #f0fdf4;
-            color: var(--grab-green);
-            font-size: 0.86rem;
-        }
-
-        .doc-section-h .ic.purple {
-            background: #faf5ff;
-            color: #9333ea;
-        }
-
-        .doc-section-h .ic.blue {
-            background: #eff6ff;
-            color: #3b82f6;
-        }
-
-        .doc-section-h .ic.orange {
-            background: #fff7ed;
-            color: #f59e0b;
-        }
-
-        /* Live demo form */
-        .demo-form {
-            background: #f8fafc;
-            border: 1px solid var(--border-light);
-            border-radius: 10px;
-            padding: 16px 18px;
-            margin-bottom: 16px;
-        }
-
-        .demo-form .row-form {
-            display: grid;
-            grid-template-columns: 160px 1fr;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .demo-form label {
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        .demo-form label .req {
-            color: #ef4444;
-            margin-left: 3px;
-        }
-
-        .demo-form input,
-        .demo-form select {
-            width: 100%;
-            padding: 6px 10px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            font-size: 0.84rem;
-            font-family: inherit;
-            background: #fff;
-        }
-
-        .demo-form .row-form-2col {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-
-        .demo-form .btn-run {
-            background: linear-gradient(90deg, #00B14F, #00d65a);
-            color: #fff;
-            border: 0;
-            padding: 8px 22px;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 0.86rem;
-            cursor: pointer;
-            margin-top: 4px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.12s;
-        }
-
-        .demo-form .btn-run:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 177, 79, 0.3);
-        }
-
-        .demo-form .btn-run:disabled {
-            opacity: 0.6;
-            cursor: wait;
-        }
-
-        .demo-output {
-            background: #1e293b;
-            color: #f1f5f9;
-            padding: 14px 16px;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.78rem;
-            line-height: 1.55;
-            max-height: 420px;
-            overflow: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .demo-output.empty {
-            color: #64748b;
-            font-style: italic;
-            padding: 40px;
-            text-align: center;
-        }
-
-        .demo-output.error {
-            background: #450a0a;
-            color: #fecaca;
-        }
-
-        .demo-status {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 999px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            margin-left: 6px;
-        }
-
-        .demo-status.ok {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .demo-status.bad {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        /* Try It Live — Postman-style 2-column layout */
-        .try-it {
-            border: 1px solid var(--border-light);
-            border-radius: 12px;
-            overflow: hidden;
-            background: #fff;
-            margin-bottom: 16px;
-        }
-
-        .try-it-grid {
-            display: grid;
-            grid-template-columns: minmax(300px, 1fr) minmax(300px, 1.3fr);
-        }
-
-        @media (max-width: 900px) {
-            .try-it-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .try-it-pane {
-            padding: 16px 18px;
-        }
-
-        .try-it-pane.left {
-            background: #f8fafc;
-            border-right: 1px solid var(--border-light);
-        }
-
-        .try-it-pane.right {
-            background: #1e293b;
-        }
-
-        @media (max-width: 900px) {
-            .try-it-pane.left {
-                border-right: 0;
-                border-bottom: 1px solid var(--border-light);
-            }
-        }
-
-        .try-it-pane-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 0.72rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.7px;
-            margin-bottom: 12px;
-        }
-
-        .try-it-pane.left .try-it-pane-header {
-            color: var(--text-muted);
-        }
-
-        .try-it-pane.right .try-it-pane-header {
-            color: #94a3b8;
-        }
-
-        .try-it-pane.right .try-it-method {
-            display: inline-block;
-            background: #3b82f6;
-            color: #fff;
-            padding: 1px 7px;
-            border-radius: 3px;
-            font-size: 0.65rem;
-            margin-right: 6px;
-        }
-
-        .try-it-pane.right .try-it-url {
-            color: #cbd5e1;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.74rem;
-            margin-bottom: 10px;
-            word-break: break-all;
-        }
-
-        .try-it-body {
-            background: #0f172a;
-            color: #f1f5f9;
-            padding: 12px 14px;
-            border-radius: 6px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.78rem;
-            line-height: 1.55;
-            max-height: 320px;
-            overflow: auto;
-            white-space: pre-wrap;
-        }
-
-        .try-it form .field {
-            margin-bottom: 12px;
-        }
-
-        .try-it form label {
-            display: block;
-            font-size: 0.72rem;
-            font-weight: 700;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-        }
-
-        .try-it form label .req {
-            color: #ef4444;
-            margin-left: 3px;
-        }
-
-        .try-it form input,
-        .try-it form select {
-            width: 100%;
-            padding: 7px 10px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            font-size: 0.86rem;
-            font-family: inherit;
-            background: #fff;
-            transition: border-color 0.12s;
-        }
-
-        .try-it form input:focus,
-        .try-it form select:focus {
-            outline: 0;
-            border-color: var(--grab-green);
-            box-shadow: 0 0 0 3px rgba(0, 177, 79, 0.12);
-        }
-
-        .try-it form .two-col {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-
-        .try-it .send-row {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-top: 14px;
-            padding-top: 12px;
-            border-top: 1px solid #e5e7eb;
-        }
-
-        .try-it .btn-send {
-            background: linear-gradient(90deg, #00B14F, #00d65a);
-            color: #fff;
-            border: 0;
-            padding: 9px 22px;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 0.86rem;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.12s;
-        }
-
-        .try-it .btn-send:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 177, 79, 0.3);
-        }
-
-        .try-it .btn-send:disabled {
-            opacity: 0.6;
-            cursor: wait;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .try-it .btn-copy {
-            background: rgba(255, 255, 255, 0.08);
-            color: #cbd5e1;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 3px 10px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            cursor: pointer;
-            transition: all 0.12s;
-        }
-
-        .try-it .btn-copy:hover {
-            background: rgba(255, 255, 255, 0.15);
-            color: #fff;
-        }
-
-        /* Response section */
-        .resp-bar {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 16px;
-            background: #f8fafc;
-            border: 1px solid var(--border-light);
-            border-radius: 8px 8px 0 0;
-            border-bottom: 0;
-            font-size: 0.78rem;
-        }
-
-        .resp-bar .status-pill {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 700;
-            padding: 2px 10px;
-            border-radius: 4px;
-            font-size: 0.74rem;
-        }
-
-        .resp-bar .status-pill.ok {
-            background: #dcfce7;
-            color: #15803d;
-        }
-
-        .resp-bar .status-pill.bad {
-            background: #fee2e2;
-            color: #b91c1c;
-        }
-
-        .resp-bar .status-pill.idle {
-            background: #e2e8f0;
-            color: #64748b;
-        }
-
-        .resp-bar .meta {
-            color: var(--text-muted);
-            font-size: 0.74rem;
-        }
-
-        .resp-bar .meta b {
-            color: var(--text-primary);
-            font-weight: 700;
-        }
-
-        .resp-body {
-            background: #1e293b;
-            color: #f1f5f9;
-            padding: 14px 16px;
-            border-radius: 0 0 8px 8px;
-            border: 1px solid var(--border-light);
-            border-top: 0;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.78rem;
-            line-height: 1.55;
-            max-height: 460px;
-            overflow: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-            margin-bottom: 16px;
-        }
-
-        .resp-body.empty {
-            color: #64748b;
-            font-style: italic;
-            padding: 36px;
-            text-align: center;
-            background: #1e293b;
-        }
-
-        .resp-body.error {
-            background: #450a0a;
-            color: #fecaca;
-        }
-
-        /* Preset buttons row */
-        .preset-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-bottom: 12px;
-            padding: 10px 14px;
-            background: #f1f5f9;
-            border-radius: 8px;
-            border: 1px solid var(--border-light);
-        }
-
-        .preset-row .preset-label {
-            font-size: 0.7rem;
-            font-weight: 700;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: flex;
-            align-items: center;
-            margin-right: 4px;
-        }
-
-        .preset-btn {
-            background: #fff;
-            border: 1px solid #cbd5e1;
-            color: var(--text-secondary);
-            padding: 4px 10px;
-            border-radius: 5px;
-            font-size: 0.74rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.12s;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .preset-btn:hover {
-            background: var(--grab-green);
-            color: #fff;
-            border-color: var(--grab-green);
-        }
-
-        .preset-btn .pico {
-            font-size: 0.72rem;
-            opacity: 0.7;
-        }
-
-        /* Editable JSON textarea */
-        .json-editor {
-            width: 100%;
-            min-height: 320px;
-            background: #0f172a;
-            color: #f1f5f9;
-            border: 1px solid #334155;
-            border-radius: 6px;
-            padding: 12px 14px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.78rem;
-            line-height: 1.55;
-            resize: vertical;
-            outline: none;
-            tab-size: 2;
-            white-space: pre;
-            overflow-wrap: normal;
-            overflow-x: auto;
-        }
-
-        .json-editor:focus {
-            border-color: var(--grab-green);
-            box-shadow: 0 0 0 2px rgba(0, 177, 79, 0.2);
-        }
-
-        .json-editor.invalid {
-            border-color: #ef4444;
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
-        }
-
-        .json-status {
-            display: inline-block;
-            font-size: 0.68rem;
-            font-weight: 700;
-            padding: 1px 7px;
-            border-radius: 3px;
-            margin-left: 6px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-
-        .json-status.ok {
-            background: #16a34a;
-            color: #fff;
-        }
-
-        .json-status.invalid {
-            background: #dc2626;
-            color: #fff;
-        }
-
-        /* Field rules card */
-        .rules-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .rule-card {
-            border: 1px solid var(--border-light);
-            border-radius: 10px;
-            padding: 14px 16px;
-            background: #fff;
-        }
-
-        .rule-card .rule-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.78rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .rule-card .rule-header .ic {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 22px;
-            height: 22px;
-            border-radius: 5px;
-            font-size: 0.78rem;
-        }
-
-        .rule-card.required {
-            border-color: #fde68a;
-            background: #fffbeb;
-        }
-
-        .rule-card.required .ic {
-            background: #fef3c7;
-            color: #d97706;
-        }
-
-        .rule-card.exclusive {
-            border-color: #fecaca;
-            background: #fef2f2;
-        }
-
-        .rule-card.exclusive .ic {
-            background: #fee2e2;
-            color: #dc2626;
-        }
-
-        .rule-card.combo {
-            border-color: #bbf7d0;
-            background: #f0fdf4;
-        }
-
-        .rule-card.combo .ic {
-            background: #dcfce7;
-            color: #15803d;
-        }
-
-        .rule-card .field-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 6px;
-        }
-
-        .rule-card .field-list code {
-            background: #fff;
-            border: 1px solid var(--border-light);
-            color: var(--text-primary);
-            font-size: 0.74rem;
-            padding: 3px 8px;
-            border-radius: 4px;
-        }
-
-        .rule-card .field-list .sep {
-            color: #94a3b8;
-            font-weight: 700;
-            padding: 3px 0;
-            font-size: 0.74rem;
-        }
-
-        .rule-card .rule-note {
-            font-size: 0.74rem;
-            color: var(--text-muted);
-            margin-top: 8px;
-            line-height: 1.5;
-        }
-
-        .rule-card .rule-note code {
-            font-size: 0.72rem;
-            background: rgba(0, 0, 0, 0.05);
-        }
-
-        /* Error table */
-        .error-table {
-            width: 100%;
-            font-size: 0.82rem;
-            border-collapse: collapse;
-            margin-bottom: 14px;
-        }
-
-        .error-table th {
-            text-align: left;
-            background: #fef2f2;
-            color: #991b1b;
-            padding: 8px 12px;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 1px solid #fecaca;
-        }
-
-        .error-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #fee2e2;
-            vertical-align: top;
-        }
-
-        .error-table .err-code {
-            display: inline-block;
-            font-family: 'JetBrains Mono', monospace;
-            background: #fee2e2;
-            color: #991b1b;
-            padding: 1px 7px;
-            border-radius: 4px;
-            font-size: 0.72rem;
-            font-weight: 700;
-        }
-
-        /* Param table */
-        .param-table {
-            width: 100%;
-            font-size: 0.84rem;
-            border-collapse: collapse;
-            margin-bottom: 14px;
-        }
-
-        .param-table th {
-            text-align: left;
-            background: #f8fafc;
-            padding: 8px 12px;
-            font-size: 0.72rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-muted);
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        .param-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #f1f5f9;
-            vertical-align: top;
-        }
-
-        .param-table .req {
-            color: #ef4444;
-            font-size: 0.7rem;
-            font-weight: 700;
-            margin-left: 4px;
-        }
-
-        .param-table .type-tag {
-            display: inline-block;
-            font-size: 0.7rem;
-            background: #f1f5f9;
-            color: #64748b;
-            padding: 1px 6px;
-            border-radius: 3px;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        /* Welcome panel */
-        .welcome-panel {
-            text-align: center;
-            padding: 60px 40px;
-        }
-
-        .welcome-panel .icon {
-            font-size: 3rem;
-            color: var(--grab-green);
-            margin-bottom: 12px;
-        }
-
-        .welcome-panel h2 {
-            font-weight: 800;
-            margin-bottom: 6px;
-        }
-
-        .welcome-panel p {
-            color: var(--text-secondary);
-            max-width: 500px;
-            margin: 0 auto 16px;
-        }
-
-        /* Sidebar scroll */
-        .sidebar::-webkit-scrollbar,
-        .main::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .sidebar::-webkit-scrollbar-thumb,
-        .main::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-
-        /* === No-key banner (sticky notice when user hasn't set API key) === */
-        .no-key-banner {
-            position: sticky;
-            top: 60px;
-            z-index: 9;
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            border-bottom: 1px solid #f59e0b;
-            padding: 10px 24px;
-            display: none;
-            align-items: center;
-            gap: 12px;
-            font-size: 0.82rem;
-            color: #78350f;
-            font-weight: 600;
-            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
-            animation: slideDownBanner 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .no-key-banner.visible { display: flex; }
-        .no-key-banner .nkb-icon {
-            font-size: 1.1rem;
-            animation: gentleShake 3s ease-in-out infinite;
-        }
-        .no-key-banner .nkb-text { flex: 1; }
-        .no-key-banner .nkb-text b { color: #92400e; }
-        .no-key-banner .nkb-btn {
-            background: #d97706;
-            color: #fff;
-            border: none;
-            padding: 7px 16px;
-            border-radius: 8px;
-            font-size: 0.78rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.15s;
-            box-shadow: 0 2px 6px rgba(217, 119, 6, 0.35);
-            white-space: nowrap;
-        }
-        .no-key-banner .nkb-btn:hover {
-            background: #b45309;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 10px rgba(217, 119, 6, 0.5);
-        }
-        @keyframes slideDownBanner {
-            from { transform: translateY(-100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes gentleShake {
-            0%, 100% { transform: rotate(0deg); }
-            10% { transform: rotate(-8deg); }
-            20% { transform: rotate(8deg); }
-            30% { transform: rotate(-6deg); }
-            40% { transform: rotate(6deg); }
-            50% { transform: rotate(0deg); }
-        }
-        /* Pulse-alert for My Key button */
-        .key-inspector-btn.pulse-alert {
-            animation: pulseAlert 0.6s cubic-bezier(0.4, 0, 0.2, 1) 3;
-        }
-        @keyframes pulseAlert {
-            0%, 100% { transform: scale(1); }
-            50% {
-                transform: scale(1.08);
-                box-shadow: 0 8px 24px rgba(239, 68, 68, 0.5), 0 0 0 6px rgba(239, 68, 68, 0.15);
-            }
-        }
-        /* No-key state on My Key button (needs-key) */
-        .key-inspector-btn.needs-key {
-            background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
-            color: #78350f !important;
-            border-color: #f59e0b !important;
-            animation: subtleBreathe 2.5s ease-in-out infinite;
-        }
-        .key-inspector-btn.needs-key i { color: #d97706 !important; }
-        @keyframes subtleBreathe {
-            0%, 100% { box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3); }
-            50% { box-shadow: 0 4px 16px rgba(245, 158, 11, 0.5); }
-        }
-
-        /* Direct-mode indicator on response */
-        .resp-body.direct-mode::before {
-            content: '🔑 Direct call — your API Key';
-            display: inline-block;
-            background: #dcfce7;
-            color: #166534;
-            font-size: 0.65rem;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 6px;
-            border: 1px solid #bbf7d0;
-            margin-bottom: 8px;
-        }
-
-        /* Mobile: hide button label on banner */
-        @media (max-width: 640px) {
-            .no-key-banner { padding: 8px 12px; font-size: 0.75rem; }
-            .no-key-banner .nkb-btn { padding: 6px 10px; font-size: 0.72rem; }
-            .no-key-banner .nkb-text b { display: block; }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/aws-api-docs.css') }}?v={{ filemtime(public_path('css/aws-api-docs.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/aws-api-builder.css') }}?v={{ filemtime(public_path('css/aws-api-builder.css')) }}">
 </head>
 
 <body>
@@ -1654,25 +63,53 @@
     {{-- Try it Live module — load awal supaya AWSAPI_TryIt available saat inline init() di setiap panel --}}
     <script src="{{ asset('javascript/docs/aws-api-try-it.js') }}"></script>
 
-    <header class="topbar">
-        <a href="/" class="brand" title="Home">
-            <span class="logo-dot">📚</span>
-            <span><span data-i18n="topbar_title">AWS Location Service Reference</span> <small data-i18n="topbar_subtitle">v0 (legacy) &amp; v2 (standalone)</small></span>
-        </a>
-        <input type="text" class="search-box" placeholder="🔍 Search operation..." id="searchBox" data-i18n-placeholder="search_placeholder">
+    {{-- Kepala halaman memakai komponen bersama (components/page-head). Halaman
+         ini tidak menggulir jendela — isinya yang bergulir di dalam .layout —
+         jadi kepala tetap melebar penuh; tingginya dibagikan lewat --head-h dan
+         dipakai .layout serta banner tanpa-kunci. --}}
+    <x-page-head :back="url('/')" back-label="Kembali ke beranda">
+        <x-slot:title><span data-i18n="topbar_title">AWS Location Service Documentation</span></x-slot:title>
+        <x-slot:subtitle><span data-i18n="topbar_subtitle">v2 (standalone, recommended) &amp; v0 (legacy)</span></x-slot:subtitle>
 
-        <!-- My API Key button (opens inspector modal) -->
-        <button type="button" id="btnKeyInspector" class="key-inspector-btn" data-i18n-title="key_inspector_title" title="Configure your API Key">
+        <x-slot:tools>
+            {{-- Kotak cari dibungkus supaya ikonnya jadi elemen sendiri, bukan
+                 emoji di dalam placeholder, dan bentuknya bisa mengikuti pil
+                 kontrol lain di kepala halaman. --}}
+            <div class="head-search">
+                <i class="bi bi-search"></i>
+                <input type="text" id="searchBox" placeholder="Search operation..." data-i18n-placeholder="search_placeholder" autocomplete="off">
+            </div>
+
+            {{-- Tema: terang / gelap / ikut sistem --}}
+            <div class="theme-switch" id="themeToggle">
+                <button type="button" data-theme-set="light" data-tip="Light mode" aria-label="Light mode"><i class="bi bi-sun"></i></button>
+                <button type="button" data-theme-set="dark" data-tip="Dark mode" aria-label="Dark mode"><i class="bi bi-moon"></i></button>
+                <button type="button" data-theme-set="system" data-tip="Follow system" aria-label="Follow system"><i class="bi bi-circle-half"></i></button>
+            </div>
+
+            {{-- Bahasa ditukar di browser lewat AWSAPI_applyI18n, jadi rodanya
+                 memakai <button> tanpa href. --}}
+            <div class="lang-wheel" id="langWheel" role="listbox" aria-label="Language">
+                <div class="lang-track" id="langTrack">
+                    <button type="button" class="lang-item" data-lang="en" data-tip="English">EN</button>
+                    <button type="button" class="lang-item" data-lang="id" data-tip="Indonesia">ID</button>
+                </div>
+            </div>
+        </x-slot:tools>
+
+        {{-- Bentuknya sama dengan tombol API Key di /tester-api: ikon saja,
+             keterangannya lewat tooltip, dan titik status di pojok. Label serta
+             pil masa berlaku tetap ada di DOM (disembunyikan) karena skrip
+             kunci masih menulis ke keduanya. --}}
+        <button type="button" id="btnKeyInspector" class="head-btn is-solid is-icon"
+            data-i18n-title="key_inspector_title" title="Configure your API Key"
+            data-tip="My Key" aria-label="My Key">
             <i class="bi bi-key-fill"></i>
-            <span id="keyInspectorLabel" data-i18n="key_inspector_btn">My Key</span>
+            <span class="head-btn-dot" id="keyInspectorDot"></span>
+            <span id="keyInspectorLabel" class="visually-hidden" data-i18n="key_inspector_btn">My Key</span>
             <span id="keyInspectorPill" class="key-pill" style="display:none;"></span>
         </button>
-
-        <div class="lang-toggle">
-            <button data-lang="id">ID</button>
-            <button data-lang="en">EN</button>
-        </div>
-    </header>
+    </x-page-head>
 
     <!-- Persistent no-key banner (shown when user hasn't configured API Key) -->
     <div class="no-key-banner" id="noKeyBanner" role="alert">
@@ -1686,102 +123,81 @@
     <!-- ====================== API KEY INSPECTOR MODAL ====================== -->
     <div id="keyInspectorModal" class="key-modal" style="display:none;">
         <div class="key-modal-card">
+            {{-- Bentuknya disamakan dengan gerbang API key di /tester-api: kepala
+                 hijau, catatan penyimpanan, lalu satu kolom key. Isian yang cuma
+                 dipakai halaman ini (nama, masa berlaku, daftar aksi, dua sakelar)
+                 dilipat ke bagian "Lanjutan" supaya alur utamanya sependek tester,
+                 tapi titik izin di sidebar dan lencana kedaluwarsa tetap hidup. --}}
+            {{-- Susunannya disalin dari gerbang API key di /tester-api supaya
+                 keduanya benar-benar sama: kepala hijau berikon perisai, kotak
+                 catatan ungu muda, satu kolom key bergaya input-group, panduan
+                 yang bisa dibuka, lalu tombol pil selebar modal. --}}
             <div class="key-modal-header">
-                <strong><i class="bi bi-key-fill me-2"></i><span data-i18n="key_inspector_title">Configure your API Key</span></strong>
-                <button type="button" class="key-modal-close" id="keyModalClose">×</button>
+                <div class="kmh-title">
+                    <i class="bi bi-shield-lock-fill"></i>
+                    <div>
+                        <strong data-i18n="key_inspector_title">Configure your API Key</strong>
+                        <small data-i18n="key_gate_subtitle">Enter your AWS Location Service API key to continue</small>
+                    </div>
+                </div>
+                <button type="button" class="key-modal-close" id="keyModalClose">&times;</button>
             </div>
+
             <div class="key-modal-body">
-                <p style="font-size:0.78rem;color:#6b7280;margin-bottom:14px;" data-i18n="key_inspector_intro">
-                    Paste your AWS Location Service API Key info to see which operations you can access. All data stays in your browser (localStorage).
-                </p>
-
-                <div class="key-form-row">
-                    <label data-i18n="key_field_name">Name</label>
-                    <input type="text" id="keyForm_name" placeholder="e.g. KFC, Transjakarta" maxlength="50">
-                </div>
-
-                <div class="key-form-row">
-                    <label data-i18n="key_field_region">Region</label>
-                    <input type="text" id="keyForm_region" value="ap-southeast-1" readonly tabindex="-1" style="background:#f3f4f6;color:#6b7280;cursor:not-allowed;">
-                    <small style="color:#9ca3af;font-size:0.7rem;display:block;margin-top:4px;" data-i18n="key_region_locked">Region locked — this project targets ap-southeast-1 (GrabMaps).</small>
-                </div>
-
-                <div class="key-form-row">
-                    <label data-i18n="key_field_key">API Key</label>
-                    <input type="text" id="keyForm_apiKey" placeholder="v1.public.eyJqdGki..." style="font-family:ui-monospace,monospace;font-size:0.78rem;">
-                </div>
-
-                <div class="key-form-row">
-                    <label data-i18n="key_field_expiration">Expiration (UTC)</label>
-                    <input type="datetime-local" id="keyForm_expiration">
-                </div>
-
-                <div class="key-form-row">
-                    <label><i class="bi bi-shield-fill-check me-1" style="color:#10b981;"></i> <span data-i18n="key_field_actions">Allowed Actions per Service</span></label>
-                    <small style="color:#9ca3af;font-size:0.7rem;display:block;margin-bottom:8px;" data-i18n="key_field_actions_hint">Tick the actions your API key has permission for. Operations marked with ❌ in the sidebar mean your key is denied.</small>
-
-                    <div class="key-actions-group">
-                        <strong>Maps <code style="font-weight:400;font-size:0.7rem;color:#6b7280;">geo-maps:*</code></strong>
-                        <div class="key-actions-grid" data-service="Maps">
-                            <label><input type="checkbox" data-action="GetTile"> GetTile</label>
-                            <label><input type="checkbox" data-action="GetStyleDescriptor"> GetStyleDescriptor</label>
-                            <label><input type="checkbox" data-action="GetGlyphs"> GetGlyphs</label>
-                            <label><input type="checkbox" data-action="GetSprites"> GetSprites</label>
-                            <label><input type="checkbox" data-action="GetStaticMap"> GetStaticMap</label>
-                        </div>
-                    </div>
-
-                    <div class="key-actions-group">
-                        <strong>Places <code style="font-weight:400;font-size:0.7rem;color:#6b7280;">geo-places:*</code></strong>
-                        <div class="key-actions-grid" data-service="Places">
-                            <label><input type="checkbox" data-action="SearchText"> SearchText</label>
-                            <label><input type="checkbox" data-action="Suggest"> Suggest</label>
-                            <label><input type="checkbox" data-action="ReverseGeocode"> ReverseGeocode</label>
-                            <label><input type="checkbox" data-action="GetPlace"> GetPlace</label>
-                            <label><input type="checkbox" data-action="Autocomplete"> Autocomplete</label>
-                            <label><input type="checkbox" data-action="Geocode"> Geocode</label>
-                            <label><input type="checkbox" data-action="SearchNearby"> SearchNearby</label>
-                        </div>
-                    </div>
-
-                    <div class="key-actions-group">
-                        <strong>Routes <code style="font-weight:400;font-size:0.7rem;color:#6b7280;">geo-routes:*</code></strong>
-                        <div class="key-actions-grid" data-service="Routes">
-                            <label><input type="checkbox" data-action="CalculateRoutes"> CalculateRoutes</label>
-                            <label><input type="checkbox" data-action="CalculateRouteMatrix"> CalculateRouteMatrix</label>
-                            <label><input type="checkbox" data-action="CalculateIsolines"> CalculateIsolines</label>
-                            <label><input type="checkbox" data-action="OptimizeWaypoints"> OptimizeWaypoints</label>
-                            <label><input type="checkbox" data-action="SnapToRoads"> SnapToRoads</label>
-                        </div>
+                <div class="key-note">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <div data-i18n="key_inspector_intro">
+                        Paste your AWS Location Service API Key info to see which operations you can access. All data stays in your browser (localStorage).
                     </div>
                 </div>
 
-                <div class="key-form-row">
-                    <label class="key-checkbox-row">
-                        <input type="checkbox" id="keyForm_useInTryIt">
-                        <span data-i18n="key_use_in_tryit">Use my key in code snippets (curl / JS / PHP)</span>
-                    </label>
+                <label class="key-label">
+                    <span data-i18n="key_field_key">AWS Location Service API Key</span> <span class="key-req">*</span>
+                </label>
+
+                <div class="key-input-group">
+                    <span class="kig-prefix"><i class="bi bi-key-fill"></i></span>
+                    <input type="password" id="keyForm_apiKey" placeholder="v1.public.xxxxxxxxxxxxxxxxxxx" autocomplete="off">
+                    <button type="button" class="kig-peek" id="keyPeekBtn" aria-label="Show / hide"><i class="bi bi-eye" id="keyPeekIcon"></i></button>
                 </div>
 
-                <div class="key-form-row" style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;">
-                    <label class="key-checkbox-row" style="font-weight:600!important;color:#92400e!important;font-size:0.78rem!important;">
-                        <input type="checkbox" id="keyForm_useForSend">
-                        <span><i class="bi bi-shield-fill-check me-1"></i> <span data-i18n="key_use_for_send"><b>Use my key for Send Request</b> — bypass proxy and call AWS directly to test your key's real permissions</span></span>
-                    </label>
-                    <small style="display:block;margin-top:6px;color:#a16207;font-size:0.7rem;line-height:1.4;" data-i18n="key_use_for_send_warn">⚠️ Your key will appear in browser Network tab. Useful for testing real allow/deny. Server-side usage logging skipped.</small>
-                </div>
+                <details class="key-how">
+                    <summary>
+                        <i class="bi bi-question-circle me-1"></i> <span data-i18n="key_how_to">How do I get an API key?</span>
+                    </summary>
+                    <div class="key-how-body">
+                        <ol>
+                            <li>Buka <a href="https://console.aws.amazon.com/location/" target="_blank" rel="noopener">AWS Console &rarr; Location Service</a></li>
+                            <li>Klik <b>API keys &rarr; Create API key</b></li>
+                            <li>Pilih region <b>ap-southeast-1</b> (Singapore)</li>
+                            <li>Centang resources yang dibutuhkan: Maps, Places, Routes</li>
+                            <li>Copy API key value (format: <code>v1.public.xxx...</code>)</li>
+                            <li>Paste di kolom di atas</li>
+                        </ol>
+                    </div>
+                </details>
             </div>
+
             <div class="key-modal-footer">
-                <button type="button" class="key-btn-secondary" id="keyClearBtn" data-i18n="key_clear">Clear & Reset</button>
-                <button type="button" class="key-btn-primary" id="keySaveBtn" data-i18n="key_save">Save</button>
+                <button type="button" class="key-btn-primary" id="keySaveBtn">
+                    <i class="bi bi-arrow-right-circle-fill me-1"></i> <span data-i18n="key_gate_continue">Continue</span>
+                </button>
             </div>
         </div>
+        </div>
+    </div>
     </div>
 
     <div class="layout">
         <!-- ========================== SIDEBAR ========================== -->
         <aside class="sidebar">
             <div id="sidebarSearchEmpty" style="display:none;padding:14px 12px;font-size:0.78rem;color:#9ca3af;text-align:center;" data-i18n="sidebar_search_empty">No operations found</div>
+
+            {{-- Daftar utama hanya memuat operasi yang benar-benar didukung
+                 GrabMaps di ap-southeast-1 — tujuh aksi yang sama dengan yang
+                 boleh dipilih saat membuat API key (config/geo_actions.php).
+                 Sisanya tidak dihapus, hanya dipindah ke kelompok tertutup di
+                 bawah supaya daftar ini tidak lagi kepanjangan. --}}
 
             <!-- Maps V2 -->
             <div class="service-group" data-service="maps">
@@ -1790,11 +206,7 @@
                     <span data-i18n="svc_maps">Maps</span>
                 </button>
                 <ul class="operations">
-                    <li><a class="op-link" data-op="maps-get-style-descriptor">GetStyleDescriptor </a></li>
                     <li><a class="op-link" data-op="maps-get-tile">GetTile </a></li>
-                    <li><a class="op-link" data-op="maps-get-glyphs">GetGlyphs </a></li>
-                    <li><a class="op-link" data-op="maps-get-sprites">GetSprites </a></li>
-                    <li><a class="op-link unavail" data-op="maps-get-static-map">GetStaticMap <span class="badge-soon">Soon</span></a></li>
                 </ul>
             </div>
 
@@ -1809,9 +221,6 @@
                     <li><a class="op-link" data-op="places-suggest">Suggest </a></li>
                     <li><a class="op-link" data-op="places-reverse-geocode">ReverseGeocode </a></li>
                     <li><a class="op-link" data-op="places-get-place">GetPlace </a></li>
-                    <li><a class="op-link unavail" data-op="places-autocomplete">Autocomplete <span class="badge-soon">Soon</span></a></li>
-                    <li><a class="op-link unavail" data-op="places-geocode">Geocode <span class="badge-soon">Soon</span></a></li>
-                    <li><a class="op-link unavail" data-op="places-search-nearby">SearchNearby <span class="badge-soon">Soon</span></a></li>
                 </ul>
             </div>
 
@@ -1824,9 +233,6 @@
                 <ul class="operations">
                     <li><a class="op-link" data-op="routes-calculate-routes">CalculateRoutes </a></li>
                     <li><a class="op-link" data-op="routes-calculate-route-matrix">CalculateRouteMatrix </a></li>
-                    <li><a class="op-link unavail" data-op="routes-calculate-isolines">CalculateIsolines <span class="badge-soon">Soon</span></a></li>
-                    <li><a class="op-link unavail" data-op="routes-optimize-waypoints">OptimizeWaypoints <span class="badge-soon">Soon</span></a></li>
-                    <li><a class="op-link unavail" data-op="routes-snap-to-roads">SnapToRoads <span class="badge-soon">Soon</span></a></li>
                 </ul>
             </div>
 
@@ -1860,7 +266,7 @@
             <div class="op-panel active" id="op-welcome">
                 <div class="welcome-panel">
                     <div class="icon"><i class="bi bi-book-half"></i></div>
-                    <h2 data-i18n="welcome_title">AWS Location Service Reference</h2>
+                    <h2 data-i18n="welcome_title">AWS Location Service Documentation</h2>
                     <p data-i18n="welcome_desc">Pilih operation di sidebar kiri untuk lihat detail endpoint, request body, response shape, dan perbandingan v0 ↔ v2.</p>
                     <p class="text-muted small" data-i18n="welcome_note">
                         Default provider di ap-southeast-1 = GrabMaps. Dokumentasi ini fokus untuk integrasi API.
@@ -1880,6 +286,8 @@
                             <li data-i18n-html="caveat_tolls">Routes return <code>Tolls</code> dan <code>MajorRoadLabels</code> — tapi AWS jarang populate field ini di SEA</li>
                             <li data-i18n-html="caveat_suggest_pos">Suggest tidak return <code>Position</code> by default — tambah <code>AdditionalFeatures: ['Core']</code></li>
                             <li data-i18n-html="caveat_places_extra">GetPlace: <code>Contacts</code>, <code>OpeningHours</code>, <code>Brand</code>, <code>FoodTypes</code> jarang populated di SEA</li>
+                            <li data-i18n-html="caveat_places_af">Places <code>AdditionalFeatures</code>: hanya <code>TimeZone</code> yang dilayani — <code>Contact</code>, <code>Access</code>, <code>Phonemes</code> membalas 400</li>
+                            <li data-i18n-html="caveat_places_unavail">Ditolak 400 di semua operasi Places: <code>PoliticalView</code>, <code>NextToken</code>, <code>MaxQueryRefinements</code>. <code>QueryId</code> tidak bisa didapat karena Suggest hanya mengembalikan item bertipe Place</li>
                         </ul>
                     </div>
                 </div>
@@ -1911,210 +319,347 @@
                 <h1>CalculateRoutes</h1>
                 <p class="op-desc" data-i18n="cr_desc">Hitung rute dari Origin ke Destination, dengan opsi waypoints, mode kendaraan, hindari toll/ferry, dan turn-by-turn instructions.</p>
 
+
                 <div class="ver-tabs">
                     <button data-version="v0">v0 Legacy</button>
                     <button data-version="v2" class="active">v2 Standalone</button>
                 </div>
 
                 <div class="ver-content">
-                <div data-version="v2" class="active">
+                    <div data-version="v2" class="active">
 
-                <div class="endpoint-line"><span class="method POST">POST</span><span>https://routes.geo.{region}.amazonaws.com/v2/routes?key=...</span></div>
+                        <div class="endpoint-line"><span class="method POST">POST</span><span>https://routes.geo.{region}.amazonaws.com/v2/routes?key=...</span></div>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> <span data-i18n="sec_request_syntax">Request Syntax</span></div>
-<pre><code class="language-json">{
-  "Origin": [ number, number ],
-  "Destination": [ number, number ],
-  "Waypoints": [ { "Position": [ number, number ], "StopDuration": number } ],
-  "TravelMode": "Car" | "Scooter" | "Pedestrian" | "Truck",
-  "TravelStepType": "Default" | "TurnByTurn",
-  "LegGeometryFormat": "Simple" | "FlexiblePolyline",
-  "InstructionsMeasurementSystem": "Metric" | "Imperial",
-  "Locale": "string",
-  "Avoid": {
-    "TollRoads": boolean,
-    "Ferries": boolean,
-    "ControlledAccessHighways": boolean,
-    "DirtRoads": boolean,
-    "TruckRoadTypes": [ "string" ],
-    "Areas": [ { "Geometry": { "Polygon": [...] } } ]
-  },
-  "DepartureTime": "string",
-  "ArrivalTime": "string",
-  "OptimizeRoutingFor": "FastestRoute" | "ShortestRoute",
-  "MaxAlternatives": 0..6
-}</code></pre>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Request Parameters</span></div>
-                <table class="param-table">
-                    <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>Origin</code></td><td><span class="type-tag">[lng, lat]</span></td><td><span class="req">YES</span></td><td data-i18n="cr_p_origin">Starting point</td></tr>
-                        <tr><td><code>Destination</code></td><td><span class="type-tag">[lng, lat]</span></td><td><span class="req">YES</span></td><td data-i18n="cr_p_dest">End point</td></tr>
-                        <tr><td><code>Waypoints</code></td><td><span class="type-tag">array</span></td><td>—</td><td data-i18n="cr_p_wp">Max 23 (excluding Origin &amp; Destination)</td></tr>
-                        <tr><td><code>TravelMode</code></td><td><span class="type-tag">enum</span></td><td>—</td><td data-i18n="note_travel_mode_v2">Default: Car. v0→v2 mapping: Motorcycle→Scooter, Walking→Pedestrian</td></tr>
-                        <tr><td><code>LegGeometryFormat</code></td><td><span class="type-tag">enum</span></td><td>—</td><td><code>Simple</code> = LineString array, <code>FlexiblePolyline</code> = encoded</td></tr>
-                        <tr><td><code>Avoid.TollRoads</code></td><td><span class="type-tag">boolean</span></td><td>—</td><td data-i18n="note_no_pedestrian">Not supported for Pedestrian</td></tr>
-                        <tr><td><code>DepartureTime</code></td><td><span class="type-tag">ISO 8601</span></td><td>—</td><td data-i18n="note_excl_arrival">Mutually exclusive with ArrivalTime</td></tr>
-                        <tr><td><code>OptimizeRoutingFor</code></td><td><span class="type-tag">enum</span></td><td>—</td><td data-i18n="note_default_fastest">Default: FastestRoute</td></tr>
-                        <tr><td><code>MaxAlternatives</code></td><td><span class="type-tag">0–6</span></td><td>—</td><td data-i18n="cr_p_maxalt">Request alternative routes. Response <code>Routes[]</code> = primary + alternatives. Actual count depends on geography (kadang AWS return lebih sedikit dari yang diminta).</td></tr>
-                        <tr><td><code>TravelStepType</code></td><td><span class="type-tag">enum</span></td><td>—</td><td data-i18n="cr_p_tst">Set ke <code>TurnByTurn</code> untuk dapat full turn-by-turn instructions (<code>VehicleLegDetails.TravelSteps[]</code> dengan Type/SteeringDirection/CurrentRoad/NextRoad).</td></tr>
-                    </tbody>
-                </table>
+                        {{-- Empat tab seperti operasi Places: perakit + hasil, lalu rujukan
+                             request, respons, dan error. --}}
+                        <div class="op-tabs" role="tablist">
+                            <button class="op-tab-btn is-on" data-tab="live" type="button"><i class="bi bi-play-circle"></i> <span data-i18n="tab_live">Live try</span></button>
+                            <button class="op-tab-btn" data-tab="request" type="button"><i class="bi bi-arrow-up-right"></i> <span data-i18n="tab_request">Request</span></button>
+                            <button class="op-tab-btn" data-tab="response" type="button"><i class="bi bi-arrow-down-left"></i> <span data-i18n="tab_response">Respons</span></button>
+                            <button class="op-tab-btn" data-tab="error" type="button"><i class="bi bi-exclamation-triangle"></i> <span data-i18n="tab_error">Error</span></button>
+                        </div>
 
-                <div class="alert-mini warn" style="margin-top:14px;">
-                    ⚠️ <span data-i18n-html="cr_region_caveats"><b>Region caveats (ap-southeast-1):</b> <code>Avoid.DirtRoads</code>, <code>Avoid.Tunnels</code>, <code>Avoid.UTurns</code> ditolak dengan FieldValidationFailed. Hanya <code>TollRoads</code>, <code>Ferries</code>, <code>ControlledAccessHighways</code> yang valid. Live <code>Traffic</code> parameter juga ditolak — <code>DepartureTime</code> akan honored lewat pola traffic historis per jam.</span>
-                </div>
+                        <div class="op-tab is-on" data-tab="live">
+                            <div data-builder="routes-calculate-routes"></div>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-shuffle"></i></span> <span data-i18n="sec_field_rules">Field Rules</span></div>
-                <div class="rules-grid">
-                    <div class="rule-card required">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-check-square-fill"></i></span> <span data-i18n="rule_required_qt">Required</span></div>
-                        <div class="field-list"><code>Origin</code> <code>Destination</code></div>
-                        <div class="rule-note" data-i18n="cr_required_note">Dua-duanya wajib. Format [lng, lat] valid.</div>
-                    </div>
-                    <div class="rule-card exclusive">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-x-octagon-fill"></i></span> <span data-i18n="rule_exclusive">Mutually exclusive</span></div>
-                        <div class="field-list"><code>DepartureTime</code> <span class="sep">XOR</span> <code>ArrivalTime</code></div>
-                        <div class="rule-note" data-i18n="cr_time_note">Pilih salah satu — kapan mau berangkat ATAU kapan harus tiba. Default = sekarang.</div>
-                    </div>
-                    <div class="rule-card combo">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-puzzle-fill"></i></span> <span data-i18n="cr_avoid_label">Avoid options</span></div>
-                        <div class="field-list"><code>TollRoads</code> <code>Ferries</code> <code>ControlledAccessHighways</code> <code>DirtRoads</code></div>
-                        <div class="rule-note" data-i18n="cr_avoid_note">Boleh dikombinasi semua. ⚠️ TollRoads=true tidak boleh untuk TravelMode Pedestrian (error 400).</div>
-                    </div>
-                    <div class="rule-card combo">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-layers-fill"></i></span> <span data-i18n="rule_independent">Independent</span></div>
-                        <div class="field-list"><code>TravelMode</code> <code>LegGeometryFormat</code> <code>Locale</code> <code>OptimizeRoutingFor</code></div>
-                    </div>
-                </div>
-
-                <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
-                <table class="error-table">
-                    <thead><tr><th data-i18n="err_status">Status</th><th data-i18n="err_trigger">Trigger</th><th data-i18n="err_message">AWS Message</th></tr></thead>
-                    <tbody>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n-html="cr_err_origin">Tanpa <code>Origin</code> atau <code>Destination</code></td><td><em>"Origin/Destination is required"</em></td></tr>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n-html="cr_err_pedestrian"><code>Avoid.TollRoads</code> dengan <code>TravelMode: Pedestrian</code></td><td><em>"TollRoads not supported for Pedestrian"</em></td></tr>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n-html="cr_err_waypoints">Waypoints &gt; 23</td><td><em>"...less than or equal to 23"</em></td></tr>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n-html="cr_err_time">Kirim <code>DepartureTime</code> + <code>ArrivalTime</code> bareng</td><td><em>"Only one of DepartureTime/ArrivalTime allowed"</em></td></tr>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n="cr_err_unreach">Origin/Destination tidak bisa di-reach (mis. tengah laut)</td><td><em>"No route found"</em></td></tr>
-                    </tbody>
-                </table>
-
-                <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> <span data-i18n="sec_response_syntax">Response Syntax</span></div>
-<pre><code class="language-json">{
-  "PricingBucket": "string",
-  "LegGeometryFormat": "string",
-  "Notices": [...],
-  "Routes": [
-    {
-      "Summary": { "Distance": number, "Duration": number },
-      "Legs": [
-        {
-          "Distance": number,
-          "Duration": number,
-          "Geometry": { "LineString": [ [lng, lat], ... ] },
-          "TravelMode": "string",
-          "Type": "Vehicle" | "Pedestrian" | "Ferry",
-          "VehicleLegDetails": {
-            "TravelSteps": [ { "Distance": number, "Duration": number, "Instruction": "string" } ]
-          }
-        }
-      ]
-    }
-  ]
-}</code></pre>
-
-                <div class="doc-section-h"><span class="ic purple"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_response_fields">Response Fields</span></div>
-                <table class="param-table">
-                    <thead><tr><th>Field</th><th>Type</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>Routes[0].Summary.Distance</code></td><td><span class="type-tag">number</span></td><td data-i18n-html="r_meter_not_km"><strong>Meters</strong> (not km like v0)</td></tr>
-                        <tr><td><code>Routes[0].Summary.Duration</code></td><td><span class="type-tag">number</span></td><td data-i18n-html="r_seconds_renamed">Seconds (previously <code>DurationSeconds</code>)</td></tr>
-                        <tr><td><code>Routes[0].Legs[].Geometry.LineString</code></td><td><span class="type-tag">array</span></td><td data-i18n="r_linestring">Array of [lng, lat] for MapLibre LineString</td></tr>
-                        <tr><td><code>Routes[0].Legs[].Type</code></td><td><span class="type-tag">enum</span></td><td data-i18n="r_legtype">Vehicle / Pedestrian / Ferry</td></tr>
-                        <tr><td><code>Routes[0].Legs[].VehicleLegDetails.TravelSteps</code></td><td><span class="type-tag">array</span></td><td data-i18n="r_steps">Turn-by-turn instructions (when TravelStepType=TurnByTurn)</td></tr>
-                    </tbody>
-                </table>
-
-                <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
-
-                <div class="alert-mini success" style="margin-bottom:14px;">
-                    🔒 <span data-i18n-html="proxy_safe_cr">Proxy ada 2 varian — pilih sesuai use case:<br>
-                    • <code>/api/v2/routes/calculate</code> = <b>native passthrough</b> — body langsung shape v2 (Origin/Destination/Waypoints[].Position). Try-It panel ini pakai endpoint ini.<br>
-                    • <code>/api/routes/calculate</code> = <b>v0-shape adapter</b> — terima body shape v0 lama (DeparturePosition/DestinationPosition/WaypointPositions) lalu translate ke v2 internally. Dipakai home page untuk backward compat.</span>
-                </div>
-
-                <div class="preset-row">
-                    <span class="preset-label"><i class="bi bi-bookmark-fill"></i>&nbsp;<span data-i18n="presets">Presets</span></span>
-                    <button class="preset-btn" data-preset="car">🚗 Car</button>
-                    <button class="preset-btn" data-preset="scooter">🛵 Scooter</button>
-                    <button class="preset-btn" data-preset="pedestrian">🚶 Pedestrian</button>
-                    <button class="preset-btn" data-preset="waypoints">🚦 <span data-i18n="cr_preset_wp">+ Waypoints</span></button>
-                    <button class="preset-btn" data-preset="alternatives">✨ <span data-i18n="cr_preset_alt">+ Alternatives</span></button>
-                    <button class="preset-btn" data-preset="turnbyturn">🧭 <span data-i18n="cr_preset_tbt">+ TurnByTurn</span></button>
-                    <button class="preset-btn" data-preset="full">🎛️ <span data-i18n="preset_all">All Features</span></button>
-                </div>
-
-                <div class="try-it">
-                    <div class="try-it-pane right" style="border-right:0;">
-                        <div class="try-it-pane-header">
-                            <span><i class="bi bi-code-slash"></i> Request Body <span class="json-status ok" id="cr-json-status">VALID</span></span>
-                            <div style="display:flex;gap:6px;">
-                                <button class="btn-copy" onclick="copyToClipboard('cr-req-preview', this)"><span data-i18n="btn_copy">📋 Copy</span></button>
+                            {{-- Mesin Try It: tersembunyi, dipakai builder untuk mengirim. --}}
+                            <div class="tryit-engine" hidden>
+                                <span class="json-status ok" id="cr-json-status">VALID</span>
                                 <button class="btn-copy" id="cr-format-btn" type="button"><span data-i18n="btn_format">✨ Format</span></button>
+                                <div class="try-it-url">
+                                    <div><span class="try-it-method">POST</span><span style="color:#fbbf24;">https://routes.geo.{{ env('AWS_REGION') }}.amazonaws.com/v2/routes</span></div>
+                                </div>
+                                <textarea class="json-editor" id="cr-req-preview" spellcheck="false"></textarea>
+                                <button class="btn-send" id="cr-run" type="button"><span data-i18n="btn_send">Send Request</span></button>
+                                <span id="cr-spinner"></span>
+                            </div>
+
+                            <div class="doc-section-h"><span class="ic orange"><i class="bi bi-broadcast"></i></span> <span data-i18n="bld_result">Hasil dari AWS</span></div>
+                            <div class="resp-bar">
+                                <span style="font-weight:700;color:var(--text-primary);">Response</span>
+                                <span class="status-pill idle" id="cr-status">— idle —</span>
+                                <span class="meta" id="cr-meta"></span>
+                            </div>
+                            <div id="cr-resp" class="resp-body empty" data-i18n="bld_resp_idle">Tekan "Kirim ke AWS" di perakit request untuk melihat balasan aslinya.</div>
+                        </div>
+
+                        <div class="op-tab" data-tab="request">
+                            <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> <span data-i18n="sec_request_syntax">Request Syntax</span></div>
+                            <pre><code class="language-json">{
+      "Origin": [ number, number ],
+      "Destination": [ number, number ],
+      "Waypoints": [ { "Position": [ number, number ], "StopDuration": number } ]   // StopDuration & PassThrough: 400 di region ini,
+      "TravelMode": "Car" | "Scooter" | "Pedestrian",   // tier: Core
+      "TravelStepType": "Default" | "TurnByTurn",
+      "LegGeometryFormat": "Simple" | "FlexiblePolyline",
+      "InstructionsMeasurementSystem": "Metric" | "Imperial",
+      "Locale": "string",
+      "Avoid": {
+        "TollRoads": boolean,
+        "Ferries": boolean,
+        "ControlledAccessHighways": boolean
+      },
+      "DepartureTime": "string",
+      "OptimizeRoutingFor": "FastestRoute" | "ShortestRoute",
+      "MaxAlternatives": 0..5
+    }</code></pre>
+                            <p class="syn-legend"><i class="bi bi-tag-fill"></i> <span data-i18n-html="syn_legend_routes_live">Hanya <code>TravelMode</code> yang memindahkan keranjang harga: <code>Car</code> dan <code>Pedestrian</code> masuk <b>Core</b>, <code>Scooter</code> masuk <b>Advanced</b> — tapi untuk pelanggan GrabMaps di region ini ikut dihitung <b>Core</b>. Pemicu <b>Premium</b> (tol dan <code>Intermodal</code>) tidak bisa dipanggil dari <code>ap-southeast-1</code>.</span></p>
+
+                            <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Request Parameters</span></div>
+                            <table class="param-table">
+                                <thead>
+                                    <tr>
+                                        <th>Field</th>
+                                        <th>Type</th>
+                                        <th>Required</th>
+                                        <th>Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>Origin</code></td>
+                                        <td><span class="type-tag">[lng, lat]</span></td>
+                                        <td><span class="req">YES</span></td>
+                                        <td data-i18n="cr_p_origin">Starting point</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Destination</code></td>
+                                        <td><span class="type-tag">[lng, lat]</span></td>
+                                        <td><span class="req">YES</span></td>
+                                        <td data-i18n="cr_p_dest">End point</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Waypoints</code></td>
+                                        <td><span class="type-tag">array</span></td>
+                                        <td>—</td>
+                                        <td data-i18n="cr_p_wp">Max 23 (excluding Origin &amp; Destination)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>TravelMode</code></td>
+                                        <td><span class="type-tag">enum</span></td>
+                                        <td>—</td>
+                                        <td data-i18n="note_travel_mode_v2">Default: Car. v0→v2 mapping: Motorcycle→Scooter, Walking→Pedestrian</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>LegGeometryFormat</code></td>
+                                        <td><span class="type-tag">enum</span></td>
+                                        <td>—</td>
+                                        <td><code>Simple</code> = LineString array, <code>FlexiblePolyline</code> = encoded</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Avoid.TollRoads</code></td>
+                                        <td><span class="type-tag">boolean</span></td>
+                                        <td>—</td>
+                                        <td data-i18n="note_no_pedestrian">Not supported for Pedestrian</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>DepartureTime</code></td>
+                                        <td><span class="type-tag">ISO 8601</span></td>
+                                        <td>—</td>
+                                        <td data-i18n="note_excl_arrival">Mutually exclusive with ArrivalTime</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>OptimizeRoutingFor</code></td>
+                                        <td><span class="type-tag">enum</span></td>
+                                        <td>—</td>
+                                        <td data-i18n="note_default_fastest">Default: FastestRoute</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>MaxAlternatives</code></td>
+                                        <td><span class="type-tag">0–6</span></td>
+                                        <td>—</td>
+                                        <td data-i18n="cr_n_alternatives">Request alternative routes. Response <code>Routes[]</code> = primary + alternatives. Actual count depends on geography (kadang AWS return lebih sedikit dari yang diminta).</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>TravelStepType</code></td>
+                                        <td><span class="type-tag">enum</span></td>
+                                        <td>—</td>
+                                        <td data-i18n="cr_p_tst">Set ke <code>TurnByTurn</code> untuk dapat full turn-by-turn instructions (<code>VehicleLegDetails.TravelSteps[]</code> dengan Type/SteeringDirection/CurrentRoad/NextRoad).</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div class="alert-mini warn" style="margin-top:14px;">
+                                ⚠️ <span data-i18n-html="cr_region_caveats"><b>Region caveats (ap-southeast-1):</b> <code>Avoid.DirtRoads</code>, <code>Avoid.Tunnels</code>, <code>Avoid.UTurns</code> ditolak dengan FieldValidationFailed. Hanya <code>TollRoads</code>, <code>Ferries</code>, <code>ControlledAccessHighways</code> yang valid. Live <code>Traffic</code> parameter juga ditolak — <code>DepartureTime</code> akan honored lewat pola traffic historis per jam.</span>
                             </div>
                         </div>
-                        <div class="try-it-url">
-                            <div><span class="try-it-method">POST</span><span style="color:#fbbf24;">https://routes.geo.{{ env('AWS_REGION') }}.amazonaws.com/v2/routes</span></div>
-                            <div><span class="try-it-method" style="background:#10b981;">VIA</span><span style="color:#86efac;">/api/v2/routes/calculate</span></div>
+
+                        <div class="op-tab" data-tab="response">
+                            <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> <span data-i18n="sec_response_syntax">Response Syntax</span></div>
+                            <pre><code class="language-json">{
+      "PricingBucket": "string",
+      "LegGeometryFormat": "string",
+      "Notices": [...],
+      "Routes": [
+        {
+          "Summary": { "Distance": number, "Duration": number },
+          "Legs": [
+            {
+              "Distance": number,
+              "Duration": number,
+              "Geometry": { "LineString": [ [lng, lat], ... ] },
+              "TravelMode": "string",
+              "Type": "Vehicle" | "Pedestrian" | "Ferry",
+              "VehicleLegDetails": {
+                "TravelSteps": [ { "Distance": number, "Duration": number, "Instruction": "string" } ]
+              }
+            }
+          ]
+        }
+      ]
+    }</code></pre>
+
+                            <div class="doc-section-h"><span class="ic purple"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_response_fields">Response Fields</span></div>
+                            <table class="param-table">
+                                <thead>
+                                    <tr>
+                                        <th>Field</th>
+                                        <th>Type</th>
+                                        <th>Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>Routes[0].Summary.Distance</code></td>
+                                        <td><span class="type-tag">number</span></td>
+                                        <td data-i18n-html="r_meter_not_km"><strong>Meters</strong> (not km like v0)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Routes[0].Summary.Duration</code></td>
+                                        <td><span class="type-tag">number</span></td>
+                                        <td data-i18n-html="r_seconds_renamed">Seconds (previously <code>DurationSeconds</code>)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Routes[0].Legs[].Geometry.LineString</code></td>
+                                        <td><span class="type-tag">array</span></td>
+                                        <td data-i18n="r_linestring">Array of [lng, lat] for MapLibre LineString</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Routes[0].Legs[].Type</code></td>
+                                        <td><span class="type-tag">enum</span></td>
+                                        <td data-i18n="r_legtype">Vehicle / Pedestrian / Ferry</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Routes[0].Legs[].VehicleLegDetails.TravelSteps</code></td>
+                                        <td><span class="type-tag">array</span></td>
+                                        <td data-i18n="r_steps">Turn-by-turn instructions (when TravelStepType=TurnByTurn)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                        <textarea class="json-editor" id="cr-req-preview" spellcheck="false"></textarea>
-                        <div class="send-row" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);">
-                            <button class="btn-send" id="cr-run" type="button"><i class="bi bi-play-fill"></i> <span data-i18n="btn_send">Send Request</span></button>
-                            <span id="cr-spinner" style="display:none;color:#cbd5e1;font-size:0.8rem;">⏳ <span data-i18n="loading">Loading</span>...</span>
+
+                        <div class="op-tab" data-tab="error">
+                            <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
+                            <table class="error-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="err_status">Status</th>
+                                        <th data-i18n="err_trigger">Trigger</th>
+                                        <th data-i18n="err_message">AWS Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="cr_err_origin">Tanpa <code>Origin</code> atau <code>Destination</code></td>
+                                        <td><em>"Origin/Destination is required"</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="cr_err_pedestrian"><code>Avoid.TollRoads</code> dengan <code>TravelMode: Pedestrian</code></td>
+                                        <td><em>"TollRoads not supported for Pedestrian"</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="cr_err_waypoints">Waypoints &gt; 23</td>
+                                        <td><em>"...less than or equal to 23"</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="cr_err_time">Kirim <code>DepartureTime</code> + <code>ArrivalTime</code> bareng</td>
+                                        <td><em>"Only one of DepartureTime/ArrivalTime allowed"</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n="cr_err_unreach">Origin/Destination tidak bisa di-reach (mis. tengah laut)</td>
+                                        <td><em>"No route found"</em></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-                </div>
 
-                <div class="resp-bar">
-                    <span style="font-weight:700;color:var(--text-primary);">Response</span>
-                    <span class="status-pill idle" id="cr-status">— idle —</span>
-                    <span class="meta" id="cr-meta"></span>
-                </div>
-                <div id="cr-resp" class="resp-body empty" data-i18n="resp_idle">Klik Send Request.</div>
+                        <script>
+                            AWSAPI_TryIt.init({
+                                prefix: 'cr',
+                                panelId: 'op-routes-calculate-routes',
+                                proxy: '/api/v2/routes/calculate',
+                                defaultPreset: 'car',
+                                // Custom meta: tampilin distance/duration dari Routes[0].Summary
+                                metaFormatter: (data, ms, ok) => {
+                                    const route = (data.Routes || [])[0];
+                                    return ok && route ?
+                                        `<b>${ms}ms</b> · <b>${(route.Summary.Distance/1000).toFixed(2)} km</b> · <b>${Math.round(route.Summary.Duration/60)} min</b>` :
+                                        `<b>${ms}ms</b> · error`;
+                                },
+                                presets: {
+                                    car: {
+                                        Origin: [106.8456, -6.2088],
+                                        Destination: [106.8270, -6.1751],
+                                        TravelMode: 'Car',
+                                        LegGeometryFormat: 'Simple',
+                                        InstructionsMeasurementSystem: 'Metric',
+                                        Locale: 'id'
+                                    },
+                                    scooter: {
+                                        Origin: [106.8456, -6.2088],
+                                        Destination: [106.8270, -6.1751],
+                                        TravelMode: 'Scooter',
+                                        LegGeometryFormat: 'Simple',
+                                        Locale: 'id'
+                                    },
+                                    pedestrian: {
+                                        Origin: [106.8456, -6.2088],
+                                        Destination: [106.8270, -6.1751],
+                                        TravelMode: 'Pedestrian',
+                                        LegGeometryFormat: 'Simple',
+                                        Locale: 'id'
+                                    },
+                                    waypoints: {
+                                        Origin: [106.8456, -6.2088],
+                                        Destination: [106.8270, -6.1751],
+                                        Waypoints: [{
+                                            Position: [106.8410, -6.1900]
+                                        }, {
+                                            Position: [106.8350, -6.1820]
+                                        }],
+                                        TravelMode: 'Car',
+                                        LegGeometryFormat: 'Simple',
+                                        Locale: 'id'
+                                    },
+                                    alternatives: {
+                                        Origin: [106.8456, -6.2088],
+                                        Destination: [106.8270, -6.1751],
+                                        TravelMode: 'Car',
+                                        LegGeometryFormat: 'Simple',
+                                        Locale: 'id',
+                                        MaxAlternatives: 2
+                                    },
+                                    turnbyturn: {
+                                        Origin: [106.8456, -6.2088],
+                                        Destination: [106.8270, -6.1751],
+                                        TravelMode: 'Car',
+                                        LegGeometryFormat: 'Simple',
+                                        InstructionsMeasurementSystem: 'Metric',
+                                        Locale: 'id',
+                                        TravelStepType: 'TurnByTurn'
+                                    },
+                                    full: {
+                                        Origin: [106.8456, -6.2088],
+                                        Destination: [106.8270, -6.1751],
+                                        TravelMode: 'Car',
+                                        LegGeometryFormat: 'Simple',
+                                        InstructionsMeasurementSystem: 'Metric',
+                                        Locale: 'id',
+                                        Avoid: {
+                                            TollRoads: true,
+                                            Ferries: false,
+                                            ControlledAccessHighways: false
+                                        },
+                                        OptimizeRoutingFor: 'FastestRoute',
+                                        TravelStepType: 'TurnByTurn',
+                                        MaxAlternatives: 2
+                                    }
+                                }
+                            });
+                        </script>
 
-                <script>
-                    AWSAPI_TryIt.init({
-                        prefix: 'cr',
-                        panelId: 'op-routes-calculate-routes',
-                        proxy: '/api/v2/routes/calculate',
-                        defaultPreset: 'car',
-                        // Custom meta: tampilin distance/duration dari Routes[0].Summary
-                        metaFormatter: (data, ms, ok) => {
-                            const route = (data.Routes || [])[0];
-                            return ok && route
-                                ? `<b>${ms}ms</b> · <b>${(route.Summary.Distance/1000).toFixed(2)} km</b> · <b>${Math.round(route.Summary.Duration/60)} min</b>`
-                                : `<b>${ms}ms</b> · error`;
-                        },
-                        presets: {
-                            car: { Origin: [106.8456, -6.2088], Destination: [106.8270, -6.1751], TravelMode: 'Car', LegGeometryFormat: 'Simple', InstructionsMeasurementSystem: 'Metric', Locale: 'id' },
-                            scooter: { Origin: [106.8456, -6.2088], Destination: [106.8270, -6.1751], TravelMode: 'Scooter', LegGeometryFormat: 'Simple', Locale: 'id' },
-                            pedestrian: { Origin: [106.8456, -6.2088], Destination: [106.8270, -6.1751], TravelMode: 'Pedestrian', LegGeometryFormat: 'Simple', Locale: 'id' },
-                            waypoints: { Origin: [106.8456, -6.2088], Destination: [106.8270, -6.1751], Waypoints: [{ Position: [106.8410, -6.1900] }, { Position: [106.8350, -6.1820] }], TravelMode: 'Car', LegGeometryFormat: 'Simple', Locale: 'id' },
-                            alternatives: { Origin: [106.8456, -6.2088], Destination: [106.8270, -6.1751], TravelMode: 'Car', LegGeometryFormat: 'Simple', Locale: 'id', MaxAlternatives: 2 },
-                            turnbyturn: { Origin: [106.8456, -6.2088], Destination: [106.8270, -6.1751], TravelMode: 'Car', LegGeometryFormat: 'Simple', InstructionsMeasurementSystem: 'Metric', Locale: 'id', TravelStepType: 'TurnByTurn' },
-                            full: { Origin: [106.8456, -6.2088], Destination: [106.8270, -6.1751], TravelMode: 'Car', LegGeometryFormat: 'Simple', InstructionsMeasurementSystem: 'Metric', Locale: 'id', Avoid: { TollRoads: true, Ferries: false, ControlledAccessHighways: false }, OptimizeRoutingFor: 'FastestRoute', TravelStepType: 'TurnByTurn', MaxAlternatives: 2 }
-                        }
-                    });
-                </script>
+                    </div> {{-- end v2 --}}
 
-                </div> {{-- end v2 --}}
-
-                <div data-version="v0">
-                    <div class="endpoint-line"><span class="method POST">POST</span><span>/routes/v0/calculators/{Calc}/calculate/route?key=...</span></div>
-                    <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> Request Body</div>
-<pre><code class="language-json">{
+                    <div data-version="v0">
+                        <div class="endpoint-line"><span class="method POST">POST</span><span>/routes/v0/calculators/{Calc}/calculate/route?key=...</span></div>
+                        <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> Request Body</div>
+                        <pre><code class="language-json">{
   "DeparturePosition": [106.84, -6.20],
   "DestinationPosition": [106.85, -6.24],
   "WaypointPositions": [[106.846, -6.21]],
@@ -2124,25 +669,25 @@
   "AvoidTolls": true,
   "DepartNow": true
 }</code></pre>
-                    <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> Response</div>
-<pre><code class="language-json">{
+                        <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> Response</div>
+                        <pre><code class="language-json">{
   "Summary": { "Distance": 5.2, "DurationSeconds": 720 },
   "Legs": [{ "Distance": 5.2, "DurationSeconds": 720,
              "Geometry": { "LineString": [[106.84,-6.20], ...] } }]
 }</code></pre>
-                    <div class="alert-mini warn" data-i18n-html="cr_v0_diff">
-                        <strong>Differences from v2:</strong>
-                        <ul style="margin:6px 0 0 18px;">
-                            <li><code>DeparturePosition</code> → <code>Origin</code>, <code>DestinationPosition</code> → <code>Destination</code></li>
-                            <li><code>WaypointPositions: [[lng,lat]]</code> → <code>Waypoints: [{ Position: [lng,lat] }]</code></li>
-                            <li><code>AvoidTolls: bool</code> → <code>Avoid: { TollRoads: bool }</code> (nested)</li>
-                            <li>TravelMode: <code>Motorcycle</code> → <code>Scooter</code>, <code>Walking</code> → <code>Pedestrian</code></li>
-                            <li>Distance v0 dalam <strong>kilometer</strong>, v2 <strong>meter</strong></li>
-                            <li><code>DurationSeconds</code> → <code>Duration</code></li>
-                            <li>Response wrapper: v0 langsung Summary/Legs, v2 ada <code>Routes[0]</code> array</li>
-                        </ul>
+                        <div class="alert-mini warn" data-i18n-html="cr_v0_diff">
+                            <strong>Differences from v2:</strong>
+                            <ul style="margin:6px 0 0 18px;">
+                                <li><code>DeparturePosition</code> → <code>Origin</code>, <code>DestinationPosition</code> → <code>Destination</code></li>
+                                <li><code>WaypointPositions: [[lng,lat]]</code> → <code>Waypoints: [{ Position: [lng,lat] }]</code></li>
+                                <li><code>AvoidTolls: bool</code> → <code>Avoid: { TollRoads: bool }</code> (nested)</li>
+                                <li>TravelMode: <code>Motorcycle</code> → <code>Scooter</code>, <code>Walking</code> → <code>Pedestrian</code></li>
+                                <li>Distance v0 dalam <strong>kilometer</strong>, v2 <strong>meter</strong></li>
+                                <li><code>DurationSeconds</code> → <code>Duration</code></li>
+                                <li>Response wrapper: v0 langsung Summary/Legs, v2 ada <code>Routes[0]</code> array</li>
+                            </ul>
+                        </div>
                     </div>
-                </div>
 
                 </div> {{-- end ver-content --}}
             </div>
@@ -2153,192 +698,257 @@
                 <h1>CalculateRouteMatrix</h1>
                 <p class="op-desc" data-i18n="crm_desc">Hitung jarak &amp; waktu untuk semua kombinasi origin × destination — efisien untuk "find nearest" use case.</p>
 
+
                 <div class="ver-tabs">
                     <button data-version="v0">v0 Legacy</button>
                     <button data-version="v2" class="active">v2 Standalone</button>
                 </div>
 
                 <div class="ver-content">
-                <div data-version="v2" class="active">
+                    <div data-version="v2" class="active">
 
-                <div class="endpoint-line"><span class="method POST">POST</span><span>https://routes.geo.{region}.amazonaws.com/v2/route-matrix?key=...</span></div>
+                        <div class="endpoint-line"><span class="method POST">POST</span><span>https://routes.geo.{region}.amazonaws.com/v2/route-matrix?key=...</span></div>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> <span data-i18n="sec_request_syntax">Request Syntax</span></div>
-<pre><code class="language-json">{
-  "Origins": [ { "Position": [ number, number ] } ],
-  "Destinations": [ { "Position": [ number, number ] } ],
-  "TravelMode": "Car" | "Scooter" | "Pedestrian" | "Truck",
-  "RoutingBoundary": {
-    "Unbounded": true,
-    "Geometry": { "AutoCircle": { "Margin": number, "MaxRadius": number } }
-  },
-  "Avoid": {
-    "TollRoads": boolean,
-    "Ferries": boolean
-  },
-  "DepartureTime": "string",
-  "OptimizeRoutingFor": "FastestRoute" | "ShortestRoute"
-}</code></pre>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Request Parameters</span></div>
-                <table class="param-table">
-                    <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>Origins</code></td><td><span class="type-tag">array</span></td><td><span class="req">YES</span></td><td>Array of <code>{ Position: [lng,lat] }</code></td></tr>
-                        <tr><td><code>Destinations</code></td><td><span class="type-tag">array</span></td><td><span class="req">YES</span></td><td>Array of <code>{ Position: [lng,lat] }</code></td></tr>
-                        <tr><td><code>RoutingBoundary</code></td><td><span class="type-tag">object</span></td><td><span class="req">YES</span></td><td>WAJIB di v2! <code>{ Unbounded: true }</code> untuk perilaku v0.</td></tr>
-                        <tr><td><code>TravelMode</code></td><td><span class="type-tag">enum</span></td><td>—</td><td data-i18n="note_default_car">Default: Car</td></tr>
-                        <tr><td><code>Avoid.TollRoads</code></td><td><span class="type-tag">boolean</span></td><td>—</td><td data-i18n="note_no_pedestrian">Not allowed for Pedestrian</td></tr>
-                    </tbody>
-                </table>
+                        {{-- Empat tab seperti operasi Places: perakit + hasil, lalu rujukan
+                             request, respons, dan error. --}}
+                        <div class="op-tabs" role="tablist">
+                            <button class="op-tab-btn is-on" data-tab="live" type="button"><i class="bi bi-play-circle"></i> <span data-i18n="tab_live">Live try</span></button>
+                            <button class="op-tab-btn" data-tab="request" type="button"><i class="bi bi-arrow-up-right"></i> <span data-i18n="tab_request">Request</span></button>
+                            <button class="op-tab-btn" data-tab="response" type="button"><i class="bi bi-arrow-down-left"></i> <span data-i18n="tab_response">Respons</span></button>
+                            <button class="op-tab-btn" data-tab="error" type="button"><i class="bi bi-exclamation-triangle"></i> <span data-i18n="tab_error">Error</span></button>
+                        </div>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-shuffle"></i></span> <span data-i18n="sec_field_rules">Field Rules</span></div>
-                <div class="rules-grid">
-                    <div class="rule-card required">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-check-square-fill"></i></span> <span data-i18n="rule_required_qt">Required</span></div>
-                        <div class="field-list"><code>Origins</code> <code>Destinations</code> <code>RoutingBoundary</code></div>
-                        <div class="rule-note" data-i18n="crm_required_note">Tiga-tiganya wajib. Beda dari v0 yang gak butuh RoutingBoundary.</div>
-                    </div>
-                    <div class="rule-card combo">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-grid-3x3"></i></span> <span data-i18n="crm_limit_label">Cell limit</span></div>
-                        <div class="field-list"><code>Origins.length × Destinations.length ≤ 700</code></div>
-                        <div class="rule-note" data-i18n="crm_limit_note">Max 700 sel per request. Mis. 7×100 atau 35×20. Pisah jadi multiple request kalau lebih.</div>
-                    </div>
-                </div>
+                        <div class="op-tab is-on" data-tab="live">
+                            <div data-builder="routes-calculate-route-matrix"></div>
 
-                <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
-                <table class="error-table">
-                    <thead><tr><th data-i18n="err_status">Status</th><th data-i18n="err_trigger">Trigger</th><th data-i18n="err_message">AWS Message</th></tr></thead>
-                    <tbody>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n-html="crm_err_boundary">Tanpa <code>RoutingBoundary</code></td><td><em>"RoutingBoundary is required"</em></td></tr>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n="crm_err_cells">Origins × Destinations &gt; 700</td><td><em>"Too many cells: max 700"</em></td></tr>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n="crm_err_pos">Position kosong di salah satu Origins/Destinations</td><td><em>"Position is required"</em></td></tr>
-                    </tbody>
-                </table>
-
-                <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> <span data-i18n="sec_response_syntax">Response Syntax</span></div>
-<pre><code class="language-json">{
-  "PricingBucket": "string",
-  "RouteMatrix": [
-    [
-      { "Distance": number, "Duration": number, "Error": null }
-    ]
-  ],
-  "ErrorCount": number
-}</code></pre>
-
-                <div class="doc-section-h"><span class="ic purple"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_response_fields">Response Fields</span></div>
-                <table class="param-table">
-                    <thead><tr><th>Field</th><th>Type</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>RouteMatrix[i][j].Distance</code></td><td><span class="type-tag">number</span></td><td><strong>Meter</strong> (v0: km)</td></tr>
-                        <tr><td><code>RouteMatrix[i][j].Duration</code></td><td><span class="type-tag">number</span></td><td>Detik (v0: <code>DurationSeconds</code>)</td></tr>
-                        <tr><td><code>RouteMatrix[i][j].Error</code></td><td><span class="type-tag">object|null</span></td><td data-i18n-html="r_cell_error">Per-cell error (e.g. unreachable). <code>null</code> if OK.</td></tr>
-                    </tbody>
-                </table>
-
-                <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
-
-                <div class="alert-mini success" style="margin-bottom:14px;">
-                    🔒 <span data-i18n="proxy_safe_crm">Aman — routing lewat <code>/api/routes/matrix</code> (Laravel proxy).</span>
-                </div>
-
-                <div class="alert-mini success" style="margin-bottom:14px;">
-                    🔒 <span data-i18n="crm_proxy_note">Aman — proxy <code>/api/routes/matrix</code> sekarang pakai <strong>v2 adapter</strong> di backend: terima payload v0-shape (DeparturePositions/DestinationPositions) lalu translate ke v2 (<code>/v2/route-matrix</code>) + adapt response balik ke v0-shape (Distance dalam km, DurationSeconds). Untuk native v2, lihat tab v2 atau panggil AWS langsung dengan API Key.</span>
-                </div>
-
-                <div class="preset-row">
-                    <span class="preset-label"><i class="bi bi-bookmark-fill"></i>&nbsp;<span data-i18n="presets">Presets</span></span>
-                    <button class="preset-btn" data-preset="v2_basic">📦 v2 Body</button>
-                    <button class="preset-btn" data-preset="v0_basic">📜 <span data-i18n="crm_preset_v0">v0 Body (proxy)</span></button>
-                </div>
-
-                <div class="try-it">
-                    <div class="try-it-pane right" style="border-right:0;">
-                        <div class="try-it-pane-header">
-                            <span><i class="bi bi-code-slash"></i> Request Body <span class="json-status ok" id="crm-json-status">VALID</span></span>
-                            <div style="display:flex;gap:6px;">
-                                <button class="btn-copy" onclick="copyToClipboard('crm-req-preview', this)"><span data-i18n="btn_copy">📋 Copy</span></button>
+                            {{-- Mesin Try It: tersembunyi, dipakai builder untuk mengirim. --}}
+                            <div class="tryit-engine" hidden>
+                                <span class="json-status ok" id="crm-json-status">VALID</span>
                                 <button class="btn-copy" id="crm-format-btn" type="button"><span data-i18n="btn_format">✨ Format</span></button>
+                                <div class="try-it-url">
+                                    <div><span class="try-it-method">POST</span><span style="color:#fbbf24;">https://routes.geo.{{ env('AWS_REGION') }}.amazonaws.com/v2/route-matrix</span></div>
+                                </div>
+                                <textarea class="json-editor" id="crm-req-preview" spellcheck="false"></textarea>
+                                <button class="btn-send" id="crm-run" type="button"><span data-i18n="btn_send">Send Request</span></button>
+                                <span id="crm-spinner"></span>
                             </div>
+
+                            <div class="doc-section-h"><span class="ic orange"><i class="bi bi-broadcast"></i></span> <span data-i18n="bld_result">Hasil dari AWS</span></div>
+                            <div class="resp-bar">
+                                <span style="font-weight:700;color:var(--text-primary);">Response</span>
+                                <span class="status-pill idle" id="crm-status">— idle —</span>
+                                <span class="meta" id="crm-meta"></span>
+                            </div>
+                            <div id="crm-resp" class="resp-body empty" data-i18n="bld_resp_idle">Tekan "Kirim ke AWS" di perakit request untuk melihat balasan aslinya.</div>
                         </div>
-                        <div class="try-it-url">
-                            <div><span class="try-it-method">POST</span><span style="color:#fbbf24;">https://routes.geo.{{ env('AWS_REGION') }}.amazonaws.com/v2/route-matrix</span></div>
-                            <div><span class="try-it-method" style="background:#10b981;">VIA</span><span style="color:#86efac;">/api/routes/matrix</span></div>
+
+                        <div class="op-tab" data-tab="request">
+                            <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> <span data-i18n="sec_request_syntax">Request Syntax</span></div>
+                            <pre><code class="language-json">{
+      "Origins": [ { "Position": [ number, number ] } ],
+      "Destinations": [ { "Position": [ number, number ] } ],
+      "TravelMode": "Car" | "Scooter" | "Pedestrian",   // tier: Core
+      "RoutingBoundary": {
+        "Unbounded": true,
+        "Geometry": { "AutoCircle": { "Margin": number, "MaxRadius": number } }
+      },
+      "Avoid": {
+        "TollRoads": boolean,
+        "Ferries": boolean
+      },
+      "DepartureTime": "string",
+      "OptimizeRoutingFor": "FastestRoute" | "ShortestRoute"
+    }</code></pre>
+                            <p class="syn-legend"><i class="bi bi-tag-fill"></i> <span data-i18n-html="syn_legend_routes_live">Hanya <code>TravelMode</code> yang memindahkan keranjang harga: <code>Car</code> dan <code>Pedestrian</code> masuk <b>Core</b>, <code>Scooter</code> masuk <b>Advanced</b> — tapi untuk pelanggan GrabMaps di region ini ikut dihitung <b>Core</b>. Pemicu <b>Premium</b> (tol dan <code>Intermodal</code>) tidak bisa dipanggil dari <code>ap-southeast-1</code>.</span></p>
+
+                            <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Request Parameters</span></div>
+                            <table class="param-table">
+                                <thead>
+                                    <tr>
+                                        <th>Field</th>
+                                        <th>Type</th>
+                                        <th>Required</th>
+                                        <th>Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>Origins</code></td>
+                                        <td><span class="type-tag">array</span></td>
+                                        <td><span class="req">YES</span></td>
+                                        <td>Array of <code>{ Position: [lng,lat] }</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Destinations</code></td>
+                                        <td><span class="type-tag">array</span></td>
+                                        <td><span class="req">YES</span></td>
+                                        <td>Array of <code>{ Position: [lng,lat] }</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>RoutingBoundary</code></td>
+                                        <td><span class="type-tag">object</span></td>
+                                        <td><span class="req">YES</span></td>
+                                        <td>WAJIB di v2! <code>{ Unbounded: true }</code> untuk perilaku v0.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>TravelMode</code></td>
+                                        <td><span class="type-tag">enum</span></td>
+                                        <td>—</td>
+                                        <td data-i18n="note_default_car">Default: Car</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Avoid.TollRoads</code></td>
+                                        <td><span class="type-tag">boolean</span></td>
+                                        <td>—</td>
+                                        <td data-i18n="note_no_pedestrian">Not allowed for Pedestrian</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                        <textarea class="json-editor" id="crm-req-preview" spellcheck="false"></textarea>
-                        <div class="send-row" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);">
-                            <button class="btn-send" id="crm-run" type="button"><i class="bi bi-play-fill"></i> <span data-i18n="btn_send">Send Request</span></button>
-                            <span id="crm-spinner" style="display:none;color:#cbd5e1;font-size:0.8rem;">⏳ <span data-i18n="loading">Loading</span>...</span>
+
+                        <div class="op-tab" data-tab="response">
+                            <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> <span data-i18n="sec_response_syntax">Response Syntax</span></div>
+                            <pre><code class="language-json">{
+      "PricingBucket": "string",
+      "RouteMatrix": [
+        [
+          { "Distance": number, "Duration": number, "Error": null }
+        ]
+      ],
+      "ErrorCount": number
+    }</code></pre>
+
+                            <div class="doc-section-h"><span class="ic purple"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_response_fields">Response Fields</span></div>
+                            <table class="param-table">
+                                <thead>
+                                    <tr>
+                                        <th>Field</th>
+                                        <th>Type</th>
+                                        <th>Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>RouteMatrix[i][j].Distance</code></td>
+                                        <td><span class="type-tag">number</span></td>
+                                        <td><strong>Meter</strong> (v0: km)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>RouteMatrix[i][j].Duration</code></td>
+                                        <td><span class="type-tag">number</span></td>
+                                        <td>Detik (v0: <code>DurationSeconds</code>)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>RouteMatrix[i][j].Error</code></td>
+                                        <td><span class="type-tag">object|null</span></td>
+                                        <td data-i18n-html="r_cell_error">Per-cell error (e.g. unreachable). <code>null</code> if OK.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-                </div>
 
-                <div class="resp-bar">
-                    <span style="font-weight:700;color:var(--text-primary);">Response</span>
-                    <span class="status-pill idle" id="crm-status">— idle —</span>
-                    <span class="meta" id="crm-meta"></span>
-                </div>
-                <div id="crm-resp" class="resp-body empty" data-i18n="resp_idle">Klik Send Request.</div>
+                        <div class="op-tab" data-tab="error">
+                            <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
+                            <table class="error-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="err_status">Status</th>
+                                        <th data-i18n="err_trigger">Trigger</th>
+                                        <th data-i18n="err_message">AWS Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="crm_err_boundary">Tanpa <code>RoutingBoundary</code></td>
+                                        <td><em>"RoutingBoundary is required"</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n="crm_err_cells">Origins × Destinations &gt; 700</td>
+                                        <td><em>"Too many cells: max 700"</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n="crm_err_pos">Position kosong di salah satu Origins/Destinations</td>
+                                        <td><em>"Position is required"</em></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
 
-                <script>
-                    AWSAPI_TryIt.init({
-                        prefix: 'crm',
-                        panelId: 'op-routes-calculate-route-matrix',
-                        proxy: '/api/routes/matrix',
-                        defaultPreset: 'v0_basic',
-                        // Custom meta: tampilin total cells dari matrix
-                        metaFormatter: (data, ms, ok) => {
-                            const m = data.RouteMatrix || [];
-                            const cells = m.reduce((a, row) => a + row.length, 0);
-                            return ok ? `<b>${ms}ms</b> · <b>${cells}</b> cells` : `<b>${ms}ms</b> · error`;
-                        },
-                        presets: {
-                            v2_basic: {
-                                Origins: [{ Position: [106.8456, -6.2088] }],
-                                Destinations: [{ Position: [106.8270, -6.1751] }, { Position: [106.8410, -6.1900] }],
-                                TravelMode: 'Car',
-                                RoutingBoundary: { Unbounded: true }
-                            },
-                            v0_basic: {
-                                DeparturePositions: [[106.8456, -6.2088]],
-                                DestinationPositions: [[106.8270, -6.1751], [106.8410, -6.1900]],
-                                TravelMode: 'Car',
-                                DistanceUnit: 'Kilometers'
-                            }
-                        }
-                    });
-                </script>
+                        <script>
+                            AWSAPI_TryIt.init({
+                                prefix: 'crm',
+                                panelId: 'op-routes-calculate-route-matrix',
+                                proxy: '/api/routes/matrix',
+                                defaultPreset: 'v0_basic',
+                                // Custom meta: tampilin total cells dari matrix
+                                metaFormatter: (data, ms, ok) => {
+                                    const m = data.RouteMatrix || [];
+                                    const cells = m.reduce((a, row) => a + row.length, 0);
+                                    return ok ? `<b>${ms}ms</b> · <b>${cells}</b> cells` : `<b>${ms}ms</b> · error`;
+                                },
+                                presets: {
+                                    v2_basic: {
+                                        Origins: [{
+                                            Position: [106.8456, -6.2088]
+                                        }],
+                                        Destinations: [{
+                                            Position: [106.8270, -6.1751]
+                                        }, {
+                                            Position: [106.8410, -6.1900]
+                                        }],
+                                        TravelMode: 'Car',
+                                        RoutingBoundary: {
+                                            Unbounded: true
+                                        }
+                                    },
+                                    v0_basic: {
+                                        DeparturePositions: [
+                                            [106.8456, -6.2088]
+                                        ],
+                                        DestinationPositions: [
+                                            [106.8270, -6.1751],
+                                            [106.8410, -6.1900]
+                                        ],
+                                        TravelMode: 'Car',
+                                        DistanceUnit: 'Kilometers'
+                                    }
+                                }
+                            });
+                        </script>
 
-                </div> {{-- end v2 --}}
+                    </div> {{-- end v2 --}}
 
-                <div data-version="v0">
-                    <div class="endpoint-line"><span class="method POST">POST</span><span>/routes/v0/calculators/{Calc}/calculate/route-matrix?key=...</span></div>
-                    <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> Request Body</div>
-<pre><code class="language-json">{
+                    <div data-version="v0">
+                        <div class="endpoint-line"><span class="method POST">POST</span><span>/routes/v0/calculators/{Calc}/calculate/route-matrix?key=...</span></div>
+                        <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> Request Body</div>
+                        <pre><code class="language-json">{
   "DeparturePositions": [[106.84, -6.20]],
   "DestinationPositions": [[106.85,-6.24], [106.86,-6.25]],
   "TravelMode": "Car",
   "DistanceUnit": "Kilometers"
 }</code></pre>
-                    <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> Response (km, DurationSeconds)</div>
-<pre><code class="language-json">{
+                        <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> Response (km, DurationSeconds)</div>
+                        <pre><code class="language-json">{
   "RouteMatrix": [[
     { "Distance": 1.2, "DurationSeconds": 240 },
     { "Distance": 2.5, "DurationSeconds": 480 }
   ]]
 }</code></pre>
-                    <div class="alert-mini warn" data-i18n-html="crm_v0_diff">
-                        <strong>Differences from v2:</strong>
-                        <ul style="margin:6px 0 0 18px;">
-                            <li><code>DeparturePositions: [[lng,lat]]</code> → <code>Origins: [{ Position: [lng,lat] }]</code></li>
-                            <li><code>DestinationPositions: [[lng,lat]]</code> → <code>Destinations: [{ Position: [lng,lat] }]</code></li>
-                            <li>v2 wajib <code>RoutingBoundary</code> (v0 tidak)</li>
-                            <li>Distance: v0 km → v2 meter</li>
-                            <li><code>DurationSeconds</code> → <code>Duration</code></li>
-                        </ul>
+                        <div class="alert-mini warn" data-i18n-html="crm_v0_diff">
+                            <strong>Differences from v2:</strong>
+                            <ul style="margin:6px 0 0 18px;">
+                                <li><code>DeparturePositions: [[lng,lat]]</code> → <code>Origins: [{ Position: [lng,lat] }]</code></li>
+                                <li><code>DestinationPositions: [[lng,lat]]</code> → <code>Destinations: [{ Position: [lng,lat] }]</code></li>
+                                <li>v2 wajib <code>RoutingBoundary</code> (v0 tidak)</li>
+                                <li>Distance: v0 km → v2 meter</li>
+                                <li><code>DurationSeconds</code> → <code>Duration</code></li>
+                            </ul>
+                        </div>
                     </div>
-                </div>
 
                 </div> {{-- end ver-content --}}
             </div>
@@ -2467,42 +1077,82 @@
                 </div>
 
                 <div class="ver-content">
-                <div data-version="v2" class="active">
+                    <div data-version="v2" class="active">
 
-                <div class="endpoint-line"><span class="method GET">GET</span><span>https://maps.geo.{region}.amazonaws.com/v2/styles/{Style}/descriptor?key=...</span></div>
+                        <div class="endpoint-line"><span class="method GET">GET</span><span>https://maps.geo.{region}.amazonaws.com/v2/styles/{Style}/descriptor?key=...</span></div>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Query Parameters</span></div>
-                <table class="param-table">
-                    <thead><tr><th data-i18n="th_param">Param</th><th data-i18n="th_values">Values</th><th data-i18n="th_note">Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>{Style}</code><span class="req">PATH</span></td><td><span class="type-tag">enum</span> Standard | Monochrome | Hybrid | Satellite</td><td data-i18n-html="gsd_p_style_note">In <code>ap-southeast-1</code>: only Standard &amp; Monochrome (GrabMaps provider)</td></tr>
-                        <tr><td><code>key</code><span class="req">REQ</span></td><td><span class="type-tag">string</span></td><td data-i18n="note_api_key">API key</td></tr>
-                        <tr><td><code>color-scheme</code></td><td><span class="type-tag">enum</span> Light | Dark</td><td data-i18n="note_only_std_mono">Only for Standard / Monochrome</td></tr>
-                        <tr><td><code>political-view</code></td><td><span class="type-tag">string</span> ISO-3</td><td data-i18n="note_iso3_examples">IDN, MYS, ARG, MAR, etc.</td></tr>
-                    </tbody>
-                </table>
+                        <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Query Parameters</span></div>
+                        <table class="param-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="th_param">Param</th>
+                                    <th data-i18n="th_values">Values</th>
+                                    <th data-i18n="th_note">Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>{Style}</code><span class="req">PATH</span></td>
+                                    <td><span class="type-tag">enum</span> Standard | Monochrome | Hybrid | Satellite</td>
+                                    <td data-i18n-html="gsd_p_style_note">In <code>ap-southeast-1</code>: only Standard &amp; Monochrome (GrabMaps provider)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>key</code><span class="req">REQ</span></td>
+                                    <td><span class="type-tag">string</span></td>
+                                    <td data-i18n="note_api_key">API key</td>
+                                </tr>
+                                <tr>
+                                    <td><code>color-scheme</code></td>
+                                    <td><span class="type-tag">enum</span> Light | Dark</td>
+                                    <td data-i18n="note_only_std_mono">Only for Standard / Monochrome</td>
+                                </tr>
+                                <tr>
+                                    <td><code>political-view</code></td>
+                                    <td><span class="type-tag">string</span> ISO-3</td>
+                                    <td data-i18n="note_iso3_examples">IDN, MYS, ARG, MAR, etc.</td>
+                                </tr>
+                            </tbody>
+                        </table>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-shuffle"></i></span> <span data-i18n="sec_field_rules">Field Rules</span></div>
-                <div class="rules-grid">
-                    <div class="rule-card combo">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-puzzle-fill"></i></span> <span data-i18n="gsd_rule_header">Style + Color compatibility</span></div>
-                        <div class="field-list" data-i18n-html="gsd_rule_fields"><code>Standard</code> + <code>Light/Dark</code> ✓<br><code>Monochrome</code> + <code>Light/Dark</code> ✓<br><code>Hybrid</code>/<code>Satellite</code> + <code>color-scheme</code> ❌</div>
-                        <div class="rule-note" data-i18n="gsd_rule_note">Raster styles (Hybrid/Satellite) don't accept color-scheme — sending it returns error 400.</div>
-                    </div>
-                </div>
+                        <div class="doc-section-h"><span class="ic blue"><i class="bi bi-shuffle"></i></span> <span data-i18n="sec_field_rules">Field Rules</span></div>
+                        <div class="rules-grid">
+                            <div class="rule-card combo">
+                                <div class="rule-header"><span class="ic"><i class="bi bi-puzzle-fill"></i></span> <span data-i18n="gsd_rule_header">Style + Color compatibility</span></div>
+                                <div class="field-list" data-i18n-html="gsd_rule_fields"><code>Standard</code> + <code>Light/Dark</code> ✓<br><code>Monochrome</code> + <code>Light/Dark</code> ✓<br><code>Hybrid</code>/<code>Satellite</code> + <code>color-scheme</code> ❌</div>
+                                <div class="rule-note" data-i18n="gsd_rule_note">Raster styles (Hybrid/Satellite) don't accept color-scheme — sending it returns error 400.</div>
+                            </div>
+                        </div>
 
-                <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
-                <table class="error-table">
-                    <thead><tr><th data-i18n="err_status">Status</th><th data-i18n="err_trigger">Trigger</th><th data-i18n="err_message">AWS Message</th></tr></thead>
-                    <tbody>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n="gsd_e_style">Style not available in region (e.g. Satellite in ap-southeast-1)</td><td><em>"Satellite is not a supported map style"</em></td></tr>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n-html="gsd_e_color"><code>color-scheme</code> used on Hybrid/Satellite</td><td><em>"color-scheme not applicable"</em></td></tr>
-                        <tr><td><span class="err-code">403</span></td><td data-i18n-html="gsd_e_perm">API Key lacks <code>geo-maps:GetStyleDescriptor</code></td><td><em>"explicit deny"</em></td></tr>
-                    </tbody>
-                </table>
+                        <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
+                        <table class="error-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="err_status">Status</th>
+                                    <th data-i18n="err_trigger">Trigger</th>
+                                    <th data-i18n="err_message">AWS Message</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="err-code">400</span></td>
+                                    <td data-i18n="gsd_e_style">Style not available in region (e.g. Satellite in ap-southeast-1)</td>
+                                    <td><em>"Satellite is not a supported map style"</em></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="err-code">400</span></td>
+                                    <td data-i18n-html="gsd_e_color"><code>color-scheme</code> used on Hybrid/Satellite</td>
+                                    <td><em>"color-scheme not applicable"</em></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="err-code">403</span></td>
+                                    <td data-i18n-html="gsd_e_perm">API Key lacks <code>geo-maps:GetStyleDescriptor</code></td>
+                                    <td><em>"explicit deny"</em></td>
+                                </tr>
+                            </tbody>
+                        </table>
 
-                <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> <span data-i18n="sec_response_json">Response (JSON)</span></div>
-<pre><code class="language-json">{
+                        <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> <span data-i18n="sec_response_json">Response (JSON)</span></div>
+                        <pre><code class="language-json">{
   "version": 8,
   "name": "Standard",
   "sources": {
@@ -2512,88 +1162,94 @@
   "glyphs": "https://maps.geo.../v2/glyphs/Standard/{fontstack}/{range}?key=...",
   "layers": [ ... ]
 }</code></pre>
-                <p style="font-size:0.85rem;color:var(--text-muted);" data-i18n="gsd_response_note">Style descriptor is a complete MapLibre recipe — it contains URLs for GetTile / GetGlyphs / GetSprites. MapLibre auto-fetches all three.</p>
+                        <p style="font-size:0.85rem;color:var(--text-muted);" data-i18n="gsd_response_note">Style descriptor is a complete MapLibre recipe — it contains URLs for GetTile / GetGlyphs / GetSprites. MapLibre auto-fetches all three.</p>
 
-                <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
+                        <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
 
-                <div class="alert-mini info" style="margin-bottom:14px;" data-i18n="gsd_try_hint">
-                    💡 Pick style + color + political-view → the MapLibre map below auto re-renders with the new style descriptor.
-                </div>
+                        <div class="alert-mini info" style="margin-bottom:14px;" data-i18n="gsd_try_hint">
+                            💡 Pick style + color + political-view → the MapLibre map below auto re-renders with the new style descriptor.
+                        </div>
 
-                <div class="preset-row">
-                    <span class="preset-label"><i class="bi bi-bookmark-fill"></i>&nbsp;<span data-i18n="presets">Presets</span></span>
-                    <button class="preset-btn" data-style="Standard" data-color="Light">☀️ Standard Light</button>
-                    <button class="preset-btn" data-style="Standard" data-color="Dark">🌙 Standard Dark</button>
-                    <button class="preset-btn" data-style="Monochrome" data-color="Light">⚪ Monochrome Light</button>
-                    <button class="preset-btn" data-style="Monochrome" data-color="Dark">⚫ Monochrome Dark</button>
-                </div>
+                        <div class="preset-row">
+                            <span class="preset-label"><i class="bi bi-bookmark-fill"></i>&nbsp;<span data-i18n="presets">Presets</span></span>
+                            <button class="preset-btn" data-style="Standard" data-color="Light">☀️ Standard Light</button>
+                            <button class="preset-btn" data-style="Standard" data-color="Dark">🌙 Standard Dark</button>
+                            <button class="preset-btn" data-style="Monochrome" data-color="Light">⚪ Monochrome Light</button>
+                            <button class="preset-btn" data-style="Monochrome" data-color="Dark">⚫ Monochrome Dark</button>
+                        </div>
 
-                <div id="gsd-map" style="width:100%;height:380px;border-radius:10px;border:1px solid var(--border-light);margin-bottom:12px;"></div>
-                <div class="resp-bar">
-                    <span style="font-weight:700;" data-i18n="label_url">URL</span>
-                    <code id="gsd-url" style="flex:1;word-break:break-all;font-size:0.74rem;background:transparent;padding:0;"></code>
-                    <button class="btn-copy" id="gsd-copy-url" style="background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;" data-i18n="btn_copy">📋 Copy</button>
-                </div>
+                        <div id="gsd-map" style="width:100%;height:380px;border-radius:10px;border:1px solid var(--border-light);margin-bottom:12px;"></div>
+                        <div class="resp-bar">
+                            <span style="font-weight:700;" data-i18n="label_url">URL</span>
+                            <code id="gsd-url" style="flex:1;word-break:break-all;font-size:0.74rem;background:transparent;padding:0;"></code>
+                            <button class="btn-copy" id="gsd-copy-url" style="background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;" data-i18n="btn_copy">📋 Copy</button>
+                        </div>
 
-                <script>
-                (function() {
-                    const REGION = "{{ env('AWS_REGION') }}";
-                    const API_KEY = "{{ env('AWS_API_KEY') }}";
-                    let map = null;
-                    let curStyle = 'Standard', curColor = 'Light';
-                    function buildUrl() {
-                        const params = ['key=' + API_KEY, 'color-scheme=' + curColor];
-                        return `https://maps.geo.${REGION}.amazonaws.com/v2/styles/${curStyle}/descriptor?` + params.join('&');
-                    }
-                    function render() {
-                        const url = buildUrl();
-                        document.getElementById('gsd-url').textContent = url.replace(API_KEY, '***');
-                        if (!map) {
-                            map = new maplibregl.Map({
-                                container: 'gsd-map',
-                                style: url,
-                                center: [106.8456, -6.2088],
-                                zoom: 11
-                            });
-                        } else {
-                            map.setStyle(url);
-                        }
-                    }
-                    document.querySelectorAll('#op-maps-get-style-descriptor .preset-btn').forEach(b => {
-                        b.addEventListener('click', () => {
-                            curStyle = b.dataset.style; curColor = b.dataset.color;
-                            render();
-                        });
-                    });
-                    document.getElementById('gsd-copy-url').addEventListener('click', e => {
-                        navigator.clipboard.writeText(buildUrl().replace(API_KEY, '***'));
-                        e.currentTarget.innerHTML = '✓ Copied';
-                        setTimeout(() => e.currentTarget.innerHTML = '📋 Copy', 1500);
-                    });
-                    // Render saat panel pertama kali ditampilkan
-                    const observer = new MutationObserver(() => {
-                        if (document.getElementById('op-maps-get-style-descriptor').classList.contains('active') && !map) {
-                            render();
-                        }
-                    });
-                    observer.observe(document.getElementById('op-maps-get-style-descriptor'), { attributes: true });
-                    if (document.getElementById('op-maps-get-style-descriptor').classList.contains('active')) render();
-                })();
-                </script>
+                        <script>
+                            (function() {
+                                const REGION = "{{ env('AWS_REGION') }}";
+                                const API_KEY = "{{ env('AWS_API_KEY') }}";
+                                let map = null;
+                                let curStyle = 'Standard',
+                                    curColor = 'Light';
 
-                </div> {{-- end v2 --}}
+                                function buildUrl() {
+                                    const params = ['key=' + API_KEY, 'color-scheme=' + curColor];
+                                    return `https://maps.geo.${REGION}.amazonaws.com/v2/styles/${curStyle}/descriptor?` + params.join('&');
+                                }
 
-                <div data-version="v0">
-                    <div class="endpoint-line"><span class="method GET">GET</span><span>/maps/v0/maps/{MapName}/style-descriptor?key=...</span></div>
-                    <div class="alert-mini warn" data-i18n-html="gsd_v0_diff">
-                        <strong>Differences from v2:</strong>
-                        <ul style="margin:6px 0 0 18px;">
-                            <li>Pakai <code>{MapName}</code> custom resource (harus dibuat dulu di Console)</li>
-                            <li>Tidak ada <code>color-scheme</code> / <code>political-view</code> param</li>
-                            <li>Provider lock per resource — gak bisa switch style runtime</li>
-                        </ul>
+                                function render() {
+                                    const url = buildUrl();
+                                    document.getElementById('gsd-url').textContent = url.replace(API_KEY, '***');
+                                    if (!map) {
+                                        map = new maplibregl.Map({
+                                            container: 'gsd-map',
+                                            style: url,
+                                            center: [106.8456, -6.2088],
+                                            zoom: 11
+                                        });
+                                    } else {
+                                        map.setStyle(url);
+                                    }
+                                }
+                                document.querySelectorAll('#op-maps-get-style-descriptor .preset-btn').forEach(b => {
+                                    b.addEventListener('click', () => {
+                                        curStyle = b.dataset.style;
+                                        curColor = b.dataset.color;
+                                        render();
+                                    });
+                                });
+                                document.getElementById('gsd-copy-url').addEventListener('click', e => {
+                                    navigator.clipboard.writeText(buildUrl().replace(API_KEY, '***'));
+                                    e.currentTarget.innerHTML = '✓ Copied';
+                                    setTimeout(() => e.currentTarget.innerHTML = '📋 Copy', 1500);
+                                });
+                                // Render saat panel pertama kali ditampilkan
+                                const observer = new MutationObserver(() => {
+                                    if (document.getElementById('op-maps-get-style-descriptor').classList.contains('active') && !map) {
+                                        render();
+                                    }
+                                });
+                                observer.observe(document.getElementById('op-maps-get-style-descriptor'), {
+                                    attributes: true
+                                });
+                                if (document.getElementById('op-maps-get-style-descriptor').classList.contains('active')) render();
+                            })();
+                        </script>
+
+                    </div> {{-- end v2 --}}
+
+                    <div data-version="v0">
+                        <div class="endpoint-line"><span class="method GET">GET</span><span>/maps/v0/maps/{MapName}/style-descriptor?key=...</span></div>
+                        <div class="alert-mini warn" data-i18n-html="gsd_v0_diff">
+                            <strong>Differences from v2:</strong>
+                            <ul style="margin:6px 0 0 18px;">
+                                <li>Pakai <code>{MapName}</code> custom resource (harus dibuat dulu di Console)</li>
+                                <li>Tidak ada <code>color-scheme</code> / <code>political-view</code> param</li>
+                                <li>Provider lock per resource — gak bisa switch style runtime</li>
+                            </ul>
+                        </div>
                     </div>
-                </div>
 
                 </div> {{-- end ver-content --}}
             </div>
@@ -2610,139 +1266,258 @@
                 </div>
 
                 <div class="ver-content">
-                <div data-version="v2" class="active">
+                    <div data-version="v2" class="active">
 
-                <div class="endpoint-line"><span class="method GET">GET</span><span>https://maps.geo.{region}.amazonaws.com/v2/tiles/{Style}/{ColorScheme}/{Variant}/{z}/{x}/{y}?key=...</span></div>
+                        <div class="endpoint-line"><span class="method GET">GET</span><span>https://maps.geo.{region}.amazonaws.com/v2/tiles/{Tileset}/{z}/{x}/{y}?key=...</span></div>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Path / Query Parameters</span></div>
-                <table class="param-table">
-                    <thead><tr><th>Param</th><th>Type</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>{Style}</code></td><td><span class="type-tag">path</span></td><td data-i18n="note_styles_all">Standard | Monochrome | Hybrid | Satellite</td></tr>
-                        <tr><td><code>{ColorScheme}</code></td><td><span class="type-tag">path</span></td><td data-i18n="note_light_dark">Light | Dark | Default</td></tr>
-                        <tr><td><code>{Variant}</code></td><td><span class="type-tag">path</span></td><td data-i18n="note_default_only">Default (for now)</td></tr>
-                        <tr><td><code>{z}/{x}/{y}</code></td><td><span class="type-tag">path int</span></td><td data-i18n="gt_p_zxy">Tile coordinate (z 0-22, x/y per zoom level)</td></tr>
-                        <tr><td><code>key</code></td><td><span class="type-tag">query</span></td><td data-i18n="note_api_key">API key</td></tr>
-                    </tbody>
-                </table>
+                        <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> <span data-i18n="sec_request_syntax">Request Syntax</span></div>
+                        <pre><code class="language-bash">GET https://maps.geo.{region}.amazonaws.com/v2/tiles/vector.basemap/{z}/{x}/{y}
+      ?key=&lt;API_KEY&gt;</code></pre>
+                        <p class="syn-legend"><i class="bi bi-tag-fill"></i> <span data-i18n-html="syn_legend_tile">Maps cuma punya satu harga per 1.000 tile — tidak ada tier di operasi ini. Nama tileset diambil dari field <code>tiles</code> di style descriptor.</span></p>
 
-                <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
-                <table class="error-table">
-                    <thead><tr><th data-i18n="err_status">Status</th><th data-i18n="err_trigger">Trigger</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n="gt_e_400_short">z/x/y out of valid range</td><td data-i18n="gt_e_400_note">E.g. y <td>Mis. y &gt; 2^z - 1</td>gt; 2^z - 1</td></tr>
-                        <tr><td><span class="err-code">404</span></td><td data-i18n="gt_e_404_short">Tile not available in this area</td><td data-i18n="gt_e_404_note">E.g. coordinate outside provider coverage</td></tr>
-                        <tr><td><span class="err-code">403</span></td><td data-i18n-html="gt_e_perm">API Key lacks <code>geo-maps:GetTile</code></td><td data-i18n="note_perm_missing">Permission missing</td></tr>
-                    </tbody>
-                </table>
+                        <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Path / Query Parameters</span></div>
+                        <table class="param-table">
+                            <thead>
+                                <tr>
+                                    <th>Param</th>
+                                    <th>Type</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>{Tileset}</code></td>
+                                    <td><span class="type-tag">path</span></td>
+                                    <td data-i18n-html="gt_p_tileset"><code>vector.basemap</code> — nama tileset, diambil dari field <code>tiles</code> di style descriptor. Gaya dan color scheme ditentukan descriptor-nya, bukan URL tile ini.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>{z}/{x}/{y}</code></td>
+                                    <td><span class="type-tag">path int</span></td>
+                                    <td data-i18n="gt_p_zxy">Tile coordinate (z 0-22, x/y per zoom level)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>key</code></td>
+                                    <td><span class="type-tag">query</span></td>
+                                    <td data-i18n="note_api_key">API key</td>
+                                </tr>
+                            </tbody>
+                        </table>
 
-                <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> Response Content-Type</div>
-                <table class="param-table">
-                    <thead><tr><th>Style</th><th>Content-Type</th><th>Format</th></tr></thead>
-                    <tbody>
-                        <tr><td>Standard / Monochrome</td><td><code>application/x-protobuf</code></td><td data-i18n="gt_r_vector">Vector tile (PBF) — rendered by MapLibre client-side</td></tr>
-                        <tr><td>Hybrid / Satellite</td><td><code>image/png</code> atau <code>image/jpeg</code></td><td data-i18n="gt_r_raster">Raster tile, rendered as-is</td></tr>
-                    </tbody>
-                </table>
+                        <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
+                        <table class="error-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="err_status">Status</th>
+                                    <th data-i18n="err_trigger">Trigger</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="err-code">400</span></td>
+                                    <td data-i18n="gt_e_400_short">z/x/y out of valid range</td>
+                                    <td data-i18n-html="gt_e_400_note">E.g. y &gt; 2^z - 1</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="err-code">404</span></td>
+                                    <td data-i18n="gt_e_404_short">Tile not available in this area</td>
+                                    <td data-i18n="gt_e_404_note">E.g. coordinate outside provider coverage</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="err-code">403</span></td>
+                                    <td data-i18n-html="gt_e_perm">API Key lacks <code>geo-maps:GetTile</code></td>
+                                    <td data-i18n="note_perm_missing">Permission missing</td>
+                                </tr>
+                            </tbody>
+                        </table>
 
-                <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
-                <div class="alert-mini info" style="margin-bottom:14px;" data-i18n="gt_try_hint">
-                    💡 Use the z/x/y picker to view a specific tile. Vector tile (PBF) cannot be previewed directly — use MapLibre to render it.
-                </div>
+                        <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> Response Content-Type</div>
+                        <table class="param-table">
+                            <thead>
+                                <tr>
+                                    <th>Style</th>
+                                    <th>Content-Type</th>
+                                    <th>Format</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Standard / Monochrome</td>
+                                    <td><code>application/x-protobuf</code></td>
+                                    <td data-i18n="gt_r_vector">Vector tile (PBF) — rendered by MapLibre client-side</td>
+                                </tr>
+                                <tr>
+                                    <td>Hybrid / Satellite</td>
+                                    <td><code>image/png</code> atau <code>image/jpeg</code></td>
+                                    <td data-i18n="gt_r_raster">Raster tile, rendered as-is</td>
+                                </tr>
+                            </tbody>
+                        </table>
 
-                <div class="preset-row">
-                    <span class="preset-label">z/x/y</span>
-                    <input id="gt-z" type="number" value="11" min="0" max="22" style="width:60px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
-                    <input id="gt-x" type="number" value="1656" style="width:80px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
-                    <input id="gt-y" type="number" value="1057" style="width:80px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
-                    <select id="gt-style" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
-                        <option>Standard</option>
-                        <option>Monochrome</option>
-                    </select>
-                    <button class="preset-btn" id="gt-apply">Apply</button>
-                </div>
-                <div class="resp-bar">
-                    <span style="font-weight:700;">URL</span>
-                    <code id="gt-url" style="flex:1;word-break:break-all;font-size:0.74rem;background:transparent;padding:0;"></code>
-                    <button class="btn-copy" id="gt-open" style="background:#3b82f6;color:#fff;border:0;">↗ Open</button>
-                </div>
-                <p style="font-size:0.78rem;color:var(--text-muted);">⬆️ Klik <strong>Open</strong> untuk download tile. Vector PBF (Standard/Monochrome) terlihat sebagai binary file. Raster (Satellite/Hybrid) terlihat sebagai gambar.</p>
+                        <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
+                        <div class="alert-mini info" style="margin-bottom:14px;" data-i18n="gt_try_hint">
+                            💡 Use the z/x/y picker to view a specific tile. Vector tile (PBF) cannot be previewed directly — use MapLibre to render it.
+                        </div>
 
-                <script>
-                (function() {
-                    // Read ONLY from user's My Key Inspector — env key stays server-side.
-                    function resolveCreds() {
-                        const uk = window.AWSAPI_UserKey;
-                        if (uk && uk.apiKey) {
-                            return { region: uk.region || 'ap-southeast-1', apiKey: uk.apiKey };
-                        }
-                        return { region: 'ap-southeast-1', apiKey: '' };
-                    }
+                        <div class="preset-row">
+                            <span class="preset-label" title="Contoh: Jakarta pada zoom 11">z/x/y</span>
+                            <input id="gt-z" type="number" value="11" min="0" max="22" style="width:60px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
+                            <input id="gt-x" type="number" value="1631" style="width:80px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
+                            <input id="gt-y" type="number" value="1059" style="width:80px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
+                            {{-- Tileset, bukan gaya: URL tile tidak mengenal Standard/Monochrome.
+                                 Nama ini yang muncul di field `tiles` style descriptor. --}}
+                            <select id="gt-tileset" style="min-width:150px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
+                                <option>vector.basemap</option>
+                            </select>
+                            <button class="preset-btn is-primary" id="gt-apply" data-i18n="gt_apply">Apply</button>
+                        </div>
+                        <div class="resp-bar">
+                            <span style="font-weight:700;">URL</span>
+                            <code id="gt-url" style="flex:1;word-break:break-all;font-size:0.74rem;background:transparent;padding:0;"></code>
+                            <button class="btn-copy" id="gt-test" style="background:#00B14F;color:#fff;border:0;" data-i18n="gt_test">▶ Test</button>
+                            <button class="btn-copy" id="gt-open" style="background:#3b82f6;color:#fff;border:0;">↗ Open</button>
+                        </div>
+                        <div id="gt-result" class="alert-mini" style="display:none;"></div>
+                        <p style="font-size:0.78rem;color:var(--text-muted);" data-i18n-html="gt_try_note">⬆️ <strong>Test</strong> mengambil tile dan melaporkan status, tipe, serta ukurannya di sini. <strong>Open</strong> membuka URL-nya langsung — tile vektor akan terunduh sebagai berkas biner, dan Chrome memblokirnya kalau halaman ini masih diakses lewat HTTP.</p>
 
-                    function build() {
-                        const { region, apiKey } = resolveCreds();
-                        const z = document.getElementById('gt-z').value;
-                        const x = document.getElementById('gt-x').value;
-                        const y = document.getElementById('gt-y').value;
-                        const s = document.getElementById('gt-style').value;
-                        return {
-                            url: `https://maps.geo.${region}.amazonaws.com/v2/tiles/${s}/Default/Default/${z}/${x}/${y}?key=${apiKey}`,
-                            hasKey: !!apiKey
-                        };
-                    }
+                        <script>
+                            (function() {
+                                // Read ONLY from user's My Key Inspector — env key stays server-side.
+                                function resolveCreds() {
+                                    const uk = window.AWSAPI_UserKey;
+                                    if (uk && uk.apiKey) {
+                                        return {
+                                            region: uk.region || 'ap-southeast-1',
+                                            apiKey: uk.apiKey
+                                        };
+                                    }
+                                    return {
+                                        region: 'ap-southeast-1',
+                                        apiKey: ''
+                                    };
+                                }
 
-                    function refresh() {
-                        const { url, hasKey } = build();
-                        const el = document.getElementById('gt-url');
-                        const btn = document.getElementById('gt-open');
-                        // Mask displayed key (last 20 chars) but keep real URL for Open
-                        el.textContent = hasKey
-                            ? url.replace(/key=.+$/, 'key=' + '•'.repeat(6) + '…' + url.slice(-6))
-                            : url.replace(/key=$/, 'key=(not set)');
-                        // Toggle button state
-                        if (hasKey) {
-                            btn.disabled = false;
-                            btn.style.opacity = '';
-                            btn.style.cursor = 'pointer';
-                            btn.title = 'Open tile URL in a new tab';
-                        } else {
-                            btn.disabled = true;
-                            btn.style.opacity = '0.5';
-                            btn.style.cursor = 'not-allowed';
-                            btn.title = 'Set your API Key first via the 🔑 My Key button at the top';
-                        }
-                    }
+                                function build() {
+                                    const {
+                                        region,
+                                        apiKey
+                                    } = resolveCreds();
+                                    const z = document.getElementById('gt-z').value;
+                                    const x = document.getElementById('gt-x').value;
+                                    const y = document.getElementById('gt-y').value;
+                                    // Jalur tile yang benar adalah /v2/tiles/{tileset}/{z}/{x}/{y}.
+                                    // Bentuk lama /v2/tiles/{Style}/{ColorScheme}/{Variant}/... tidak
+                                    // dilayani AWS dan membalas 403 "Missing Authentication Token".
+                                    const s = document.getElementById('gt-tileset').value;
+                                    return {
+                                        url: `https://maps.geo.${region}.amazonaws.com/v2/tiles/${s}/${z}/${x}/${y}?key=${apiKey}`,
+                                        hasKey: !!apiKey
+                                    };
+                                }
 
-                    ['gt-z','gt-x','gt-y','gt-style'].forEach(id => document.getElementById(id).addEventListener('input', refresh));
-                    document.getElementById('gt-apply').addEventListener('click', refresh);
-                    document.getElementById('gt-open').addEventListener('click', () => {
-                        const { url, hasKey } = build();
-                        if (!hasKey) {
-                            alert('Set your API Key first — click the 🔑 My Key button at the top of the page, paste your key, and check "Use in Try it Live".');
-                            return;
-                        }
-                        window.open(url, '_blank', 'noopener');
-                    });
+                                function refresh() {
+                                    const {
+                                        url,
+                                        hasKey
+                                    } = build();
+                                    const el = document.getElementById('gt-url');
+                                    const btn = document.getElementById('gt-open');
+                                    // Mask displayed key (last 20 chars) but keep real URL for Open
+                                    el.textContent = hasKey ?
+                                        url.replace(/key=.+$/, 'key=' + '•'.repeat(6) + '…' + url.slice(-6)) :
+                                        url.replace(/key=$/, 'key=(not set)');
+                                    // Toggle button state
+                                    if (hasKey) {
+                                        btn.disabled = false;
+                                        btn.style.opacity = '';
+                                        btn.style.cursor = 'pointer';
+                                        btn.title = 'Open tile URL in a new tab';
+                                    } else {
+                                        btn.disabled = true;
+                                        btn.style.opacity = '0.5';
+                                        btn.style.cursor = 'not-allowed';
+                                        btn.title = 'Set your API Key first via the 🔑 My Key button at the top';
+                                    }
+                                }
 
-                    // React to My Key Inspector updates
-                    window.addEventListener('AWSAPI_UserKeyChanged', refresh);
-                    document.addEventListener('DOMContentLoaded', refresh);
-                    refresh();
-                })();
-                </script>
+                                ['gt-z', 'gt-x', 'gt-y', 'gt-tileset'].forEach(id => document.getElementById(id).addEventListener('input', refresh));
+                                document.getElementById('gt-apply').addEventListener('click', refresh);
+                                // Mengunduh tile lewat window.open() diblokir Chrome kalau halamannya
+                                // masih HTTP ("Insecure download blocked"), dan berkas PBF-nya sendiri
+                                // tidak bisa dilihat. Jadi tombol utama sekarang mengambil tile lewat
+                                // fetch dan melaporkan hasilnya di halaman.
+                                document.getElementById('gt-test').addEventListener('click', async () => {
+                                    const { url, hasKey } = build();
+                                    const box = document.getElementById('gt-result');
+                                    box.style.display = 'block';
 
-                </div> {{-- end v2 --}}
+                                    if (!hasKey) {
+                                        box.className = 'alert-mini danger';
+                                        box.textContent = '🔒 Isi API Key dulu lewat tombol kunci di kanan atas.';
+                                        return;
+                                    }
 
-                <div data-version="v0">
-                    <div class="endpoint-line"><span class="method GET">GET</span><span>/maps/v0/maps/{MapName}/tiles/{z}/{x}/{y}?key=...</span></div>
-                    <div class="alert-mini warn" data-i18n-html="gt_v0_diff">
-                        <strong>Differences from v2:</strong>
-                        <ul style="margin:6px 0 0 18px;">
-                            <li>Path lebih sederhana: <code>{MapName}/tiles/{z}/{x}/{y}</code></li>
-                            <li>Tidak ada Style/ColorScheme/Variant — provider locked di resource</li>
-                        </ul>
+                                    box.className = 'alert-mini info';
+                                    box.textContent = '⏳ Mengambil tile...';
+                                    const t0 = performance.now();
+                                    try {
+                                        const res = await fetch(url);
+                                        const buf = await res.arrayBuffer();
+                                        const ms = Math.round(performance.now() - t0);
+                                        const kb = (buf.byteLength / 1024).toFixed(1);
+
+                                        if (!res.ok) {
+                                            box.className = 'alert-mini danger';
+                                            box.innerHTML = `❌ <b>${res.status} ${res.statusText}</b> — ${new TextDecoder().decode(buf).slice(0, 160)}`;
+                                            return;
+                                        }
+
+                                        // Tile di atas laut balasannya sah tapi nyaris kosong; itu
+                                        // sumber kebingungan "kok hasilnya tidak ada".
+                                        const kosong = buf.byteLength < 500;
+                                        box.className = kosong ? 'alert-mini warn' : 'alert-mini success';
+                                        box.innerHTML = `${kosong ? '⚠️' : '✅'} <b>${res.status} OK</b> · `
+                                            + `${res.headers.get('content-type') || 'binary'} · <b>${kb} KB</b> · ${ms} ms`
+                                            + (kosong
+                                                ? ' — tile sah tapi nyaris kosong. Koordinat ini kemungkinan di atas laut atau di luar cakupan.'
+                                                : ' — tile berisi data. Vector PBF perlu MapLibre untuk digambar.');
+                                    } catch (e) {
+                                        box.className = 'alert-mini danger';
+                                        box.textContent = '❌ Permintaan gagal: ' + e.message;
+                                    }
+                                });
+
+                                document.getElementById('gt-open').addEventListener('click', () => {
+                                    const {
+                                        url,
+                                        hasKey
+                                    } = build();
+                                    if (!hasKey) {
+                                        alert('Set your API Key first — click the 🔑 My Key button at the top of the page, paste your key, and check "Use in Try it Live".');
+                                        return;
+                                    }
+                                    window.open(url, '_blank', 'noopener');
+                                });
+
+                                // React to My Key Inspector updates
+                                window.addEventListener('AWSAPI_UserKeyChanged', refresh);
+                                document.addEventListener('DOMContentLoaded', refresh);
+                                refresh();
+                            })();
+                        </script>
+
+                    </div> {{-- end v2 --}}
+
+                    <div data-version="v0">
+                        <div class="endpoint-line"><span class="method GET">GET</span><span>/maps/v0/maps/{MapName}/tiles/{z}/{x}/{y}?key=...</span></div>
+                        <div class="alert-mini warn" data-i18n-html="gt_v0_diff">
+                            <strong>Differences from v2:</strong>
+                            <ul style="margin:6px 0 0 18px;">
+                                <li>Path lebih sederhana: <code>{MapName}/tiles/{z}/{x}/{y}</code></li>
+                                <li>Tidak ada Style/ColorScheme/Variant — provider locked di resource</li>
+                            </ul>
+                        </div>
                     </div>
-                </div>
 
                 </div> {{-- end ver-content --}}
             </div>
@@ -2759,89 +1534,132 @@
                 </div>
 
                 <div class="ver-content">
-                <div data-version="v2" class="active">
+                    <div data-version="v2" class="active">
 
-                <div class="endpoint-line"><span class="method GET">GET</span><span>https://maps.geo.{region}.amazonaws.com/v2/glyphs/{Style}/{fontstack}/{range}?key=...</span></div>
+                        <div class="endpoint-line"><span class="method GET">GET</span><span>https://maps.geo.{region}.amazonaws.com/v2/glyphs/{Style}/{fontstack}/{range}?key=...</span></div>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Path Parameters</span></div>
-                <table class="param-table">
-                    <thead><tr><th>Param</th><th>Type</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>{Style}</code></td><td><span class="type-tag">path</span></td><td data-i18n="note_styles_v2">Standard | Monochrome</td></tr>
-                        <tr><td><code>{fontstack}</code></td><td><span class="type-tag">path</span></td><td>Nama font (mis. <code>Noto Sans Regular</code>) — URL-encoded</td></tr>
-                        <tr><td><code>{range}</code></td><td><span class="type-tag">path</span></td><td>Unicode range, 256 chars per chunk: <code>0-255</code>, <code>256-511</code>, dst.</td></tr>
-                    </tbody>
-                </table>
+                        <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Path Parameters</span></div>
+                        <table class="param-table">
+                            <thead>
+                                <tr>
+                                    <th>Param</th>
+                                    <th>Type</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>{Style}</code></td>
+                                    <td><span class="type-tag">path</span></td>
+                                    <td data-i18n="note_styles_v2">Standard | Monochrome</td>
+                                </tr>
+                                <tr>
+                                    <td><code>{fontstack}</code></td>
+                                    <td><span class="type-tag">path</span></td>
+                                    <td>Nama font (mis. <code>Noto Sans Regular</code>) — URL-encoded</td>
+                                </tr>
+                                <tr>
+                                    <td><code>{range}</code></td>
+                                    <td><span class="type-tag">path</span></td>
+                                    <td>Unicode range, 256 chars per chunk: <code>0-255</code>, <code>256-511</code>, dst.</td>
+                                </tr>
+                            </tbody>
+                        </table>
 
-                <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> Response Content-Type</div>
-                <p><code>application/x-protobuf</code> — binary PBF berisi font glyphs. Di-decode sama MapLibre untuk render label di map.</p>
+                        <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> Response Content-Type</div>
+                        <p><code>application/x-protobuf</code> — binary PBF berisi font glyphs. Di-decode sama MapLibre untuk render label di map.</p>
 
-                <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
-                <table class="error-table">
-                    <thead><tr><th data-i18n="err_status">Status</th><th data-i18n="err_trigger">Trigger</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><span class="err-code">404</span></td><td data-i18n="gg_e_404_short">Fontstack not available</td><td data-i18n="gg_e_404_note">See available fonts in the style descriptor</td></tr>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n="gg_e_400_short">Invalid range</td><td data-i18n="gg_e_400_note">Max range usually up to 65279 (basic Unicode)</td></tr>
-                        <tr><td><span class="err-code">403</span></td><td data-i18n="note_perm_missing">Permission missing</td><td><code>geo-maps:GetGlyphs</code> gak di-grant</td></tr>
-                    </tbody>
-                </table>
+                        <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
+                        <table class="error-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="err_status">Status</th>
+                                    <th data-i18n="err_trigger">Trigger</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="err-code">404</span></td>
+                                    <td data-i18n="gg_e_404_short">Fontstack not available</td>
+                                    <td data-i18n="gg_e_404_note">See available fonts in the style descriptor</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="err-code">400</span></td>
+                                    <td data-i18n="gg_e_400_short">Invalid range</td>
+                                    <td data-i18n="gg_e_400_note">Max range usually up to 65279 (basic Unicode)</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="err-code">403</span></td>
+                                    <td data-i18n="note_perm_missing">Permission missing</td>
+                                    <td><code>geo-maps:GetGlyphs</code> gak di-grant</td>
+                                </tr>
+                            </tbody>
+                        </table>
 
-                <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
-                <div class="alert-mini info" style="margin-bottom:14px;" data-i18n="gg_try_hint">
-                    💡 Glyphs PBF cannot be previewed directly. Shown here: URL builder + open button to download the file.
-                </div>
+                        <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
+                        <div class="alert-mini info" style="margin-bottom:14px;" data-i18n="gg_try_hint">
+                            💡 Glyphs PBF cannot be previewed directly. Shown here: URL builder + open button to download the file.
+                        </div>
 
-                <div class="preset-row">
-                    <span class="preset-label">Style</span>
-                    <select id="gg-style" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
-                        <option>Standard</option><option>Monochrome</option>
-                    </select>
-                    <span class="preset-label">Font</span>
-                    <select id="gg-font" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
-                        <option>Noto Sans Regular</option>
-                        <option>Noto Sans Bold</option>
-                        <option>Noto Sans Italic</option>
-                    </select>
-                    <span class="preset-label">Range</span>
-                    <select id="gg-range" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
-                        <option>0-255</option><option>256-511</option><option>4096-4351</option>
-                    </select>
-                </div>
-                <div class="resp-bar">
-                    <span style="font-weight:700;">URL</span>
-                    <code id="gg-url" style="flex:1;word-break:break-all;font-size:0.74rem;background:transparent;padding:0;"></code>
-                    <button class="btn-copy" id="gg-open" style="background:#3b82f6;color:#fff;border:0;">↗ Open</button>
-                </div>
+                        <div class="preset-row">
+                            <span class="preset-label">Style</span>
+                            <select id="gg-style" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
+                                <option>Standard</option>
+                                <option>Monochrome</option>
+                            </select>
+                            <span class="preset-label">Font</span>
+                            <select id="gg-font" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
+                                <option>Noto Sans Regular</option>
+                                <option>Noto Sans Bold</option>
+                                <option>Noto Sans Italic</option>
+                            </select>
+                            <span class="preset-label">Range</span>
+                            <select id="gg-range" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
+                                <option>0-255</option>
+                                <option>256-511</option>
+                                <option>4096-4351</option>
+                            </select>
+                        </div>
+                        <div class="resp-bar">
+                            <span style="font-weight:700;">URL</span>
+                            <code id="gg-url" style="flex:1;word-break:break-all;font-size:0.74rem;background:transparent;padding:0;"></code>
+                            <button class="btn-copy" id="gg-open" style="background:#3b82f6;color:#fff;border:0;">↗ Open</button>
+                        </div>
 
-                <script>
-                (function() {
-                    const REGION = "{{ env('AWS_REGION') }}";
-                    const API_KEY = "{{ env('AWS_API_KEY') }}";
-                    function build() {
-                        const s = document.getElementById('gg-style').value;
-                        const f = encodeURIComponent(document.getElementById('gg-font').value);
-                        const r = document.getElementById('gg-range').value;
-                        return `https://maps.geo.${REGION}.amazonaws.com/v2/glyphs/${s}/${f}/${r}?key=${API_KEY}`;
-                    }
-                    function refresh() { document.getElementById('gg-url').textContent = build().replace(API_KEY, '***'); }
-                    ['gg-style','gg-font','gg-range'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
-                    document.getElementById('gg-open').addEventListener('click', () => window.open(build(), '_blank'));
-                    refresh();
-                })();
-                </script>
+                        <script>
+                            (function() {
+                                const REGION = "{{ env('AWS_REGION') }}";
+                                const API_KEY = "{{ env('AWS_API_KEY') }}";
 
-                </div> {{-- end v2 --}}
+                                function build() {
+                                    const s = document.getElementById('gg-style').value;
+                                    const f = encodeURIComponent(document.getElementById('gg-font').value);
+                                    const r = document.getElementById('gg-range').value;
+                                    return `https://maps.geo.${REGION}.amazonaws.com/v2/glyphs/${s}/${f}/${r}?key=${API_KEY}`;
+                                }
 
-                <div data-version="v0">
-                    <div class="endpoint-line"><span class="method GET">GET</span><span>/maps/v0/maps/{MapName}/glyphs/{fontstack}/{range}?key=...</span></div>
-                    <div class="alert-mini warn" data-i18n-html="gg_v0_diff">
-                        <strong>Differences from v2:</strong>
-                        <ul style="margin:6px 0 0 18px;">
-                            <li>Path: <code>{MapName}/glyphs/{fontstack}/{range}</code> (tanpa Style)</li>
-                            <li>Font set tergantung MapName resource</li>
-                        </ul>
+                                function refresh() {
+                                    document.getElementById('gg-url').textContent = build().replace(API_KEY, '***');
+                                }
+                                ['gg-style', 'gg-font', 'gg-range'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
+                                document.getElementById('gg-open').addEventListener('click', () => window.open(build(), '_blank'));
+                                refresh();
+                            })();
+                        </script>
+
+                    </div> {{-- end v2 --}}
+
+                    <div data-version="v0">
+                        <div class="endpoint-line"><span class="method GET">GET</span><span>/maps/v0/maps/{MapName}/glyphs/{fontstack}/{range}?key=...</span></div>
+                        <div class="alert-mini warn" data-i18n-html="gg_v0_diff">
+                            <strong>Differences from v2:</strong>
+                            <ul style="margin:6px 0 0 18px;">
+                                <li>Path: <code>{MapName}/glyphs/{fontstack}/{range}</code> (tanpa Style)</li>
+                                <li>Font set tergantung MapName resource</li>
+                            </ul>
+                        </div>
                     </div>
-                </div>
 
                 </div> {{-- end ver-content --}}
             </div>
@@ -2858,100 +1676,146 @@
                 </div>
 
                 <div class="ver-content">
-                <div data-version="v2" class="active">
+                    <div data-version="v2" class="active">
 
-                <div class="endpoint-line"><span class="method GET">GET</span><span>https://maps.geo.{region}.amazonaws.com/v2/sprites/{Style}/{ColorScheme}/{Variant}/{file}?key=...</span></div>
+                        <div class="endpoint-line"><span class="method GET">GET</span><span>https://maps.geo.{region}.amazonaws.com/v2/sprites/{Style}/{ColorScheme}/{Variant}/{file}?key=...</span></div>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Path Parameters</span></div>
-                <table class="param-table">
-                    <thead><tr><th>Param</th><th>Type</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>{Style}</code></td><td><span class="type-tag">path</span></td><td data-i18n="note_styles_v2">Standard | Monochrome</td></tr>
-                        <tr><td><code>{ColorScheme}</code></td><td><span class="type-tag">path</span></td><td data-i18n="note_light_dark">Light | Dark | Default</td></tr>
-                        <tr><td><code>{Variant}</code></td><td><span class="type-tag">path</span></td><td data-i18n="note_default">Default</td></tr>
-                        <tr><td><code>{file}</code></td><td><span class="type-tag">path</span></td><td><code>sprites.json</code> | <code>sprites.png</code> | <code>sprites@2x.json</code> | <code>sprites@2x.png</code></td></tr>
-                    </tbody>
-                </table>
+                        <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Path Parameters</span></div>
+                        <table class="param-table">
+                            <thead>
+                                <tr>
+                                    <th>Param</th>
+                                    <th>Type</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>{Style}</code></td>
+                                    <td><span class="type-tag">path</span></td>
+                                    <td data-i18n="note_styles_v2">Standard | Monochrome</td>
+                                </tr>
+                                <tr>
+                                    <td><code>{ColorScheme}</code></td>
+                                    <td><span class="type-tag">path</span></td>
+                                    <td data-i18n="note_light_dark">Light | Dark | Default</td>
+                                </tr>
+                                <tr>
+                                    <td><code>{Variant}</code></td>
+                                    <td><span class="type-tag">path</span></td>
+                                    <td data-i18n="note_default">Default</td>
+                                </tr>
+                                <tr>
+                                    <td><code>{file}</code></td>
+                                    <td><span class="type-tag">path</span></td>
+                                    <td><code>sprites.json</code> | <code>sprites.png</code> | <code>sprites@2x.json</code> | <code>sprites@2x.png</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
 
-                <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> Response Content-Type</div>
-                <table class="param-table">
-                    <thead><tr><th>File</th><th>Content-Type</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>sprites.json</code></td><td><code>application/json</code></td><td data-i18n="gsp_r_json">Manifest: coordinates &amp; size of each icon in the sheet</td></tr>
-                        <tr><td><code>sprites.png</code></td><td><code>image/png</code></td><td data-i18n="gsp_r_png">Sheet image — all icons in one PNG</td></tr>
-                        <tr><td><code>sprites@2x.png</code></td><td><code>image/png</code></td><td data-i18n="gsp_r_2x">@2x version for retina display</td></tr>
-                    </tbody>
-                </table>
+                        <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> Response Content-Type</div>
+                        <table class="param-table">
+                            <thead>
+                                <tr>
+                                    <th>File</th>
+                                    <th>Content-Type</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>sprites.json</code></td>
+                                    <td><code>application/json</code></td>
+                                    <td data-i18n="gsp_r_json">Manifest: coordinates &amp; size of each icon in the sheet</td>
+                                </tr>
+                                <tr>
+                                    <td><code>sprites.png</code></td>
+                                    <td><code>image/png</code></td>
+                                    <td data-i18n="gsp_r_png">Sheet image — all icons in one PNG</td>
+                                </tr>
+                                <tr>
+                                    <td><code>sprites@2x.png</code></td>
+                                    <td><code>image/png</code></td>
+                                    <td data-i18n="gsp_r_2x">@2x version for retina display</td>
+                                </tr>
+                            </tbody>
+                        </table>
 
-                <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
-                <div class="alert-mini info" style="margin-bottom:14px;" data-i18n="gsp_try_hint">
-                    💡 PNG sprites can be previewed directly. JSON manifest can be fetched to inspect structure.
-                </div>
+                        <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
+                        <div class="alert-mini info" style="margin-bottom:14px;" data-i18n="gsp_try_hint">
+                            💡 PNG sprites can be previewed directly. JSON manifest can be fetched to inspect structure.
+                        </div>
 
-                <div class="preset-row">
-                    <span class="preset-label">Style</span>
-                    <select id="gsp-style" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
-                        <option>Standard</option><option>Monochrome</option>
-                    </select>
-                    <span class="preset-label">Color</span>
-                    <select id="gsp-color" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
-                        <option>Light</option><option>Dark</option>
-                    </select>
-                    <span class="preset-label">File</span>
-                    <select id="gsp-file" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
-                        <option>sprites.png</option><option>sprites@2x.png</option><option>sprites.json</option>
-                    </select>
-                </div>
-                <div class="resp-bar">
-                    <span style="font-weight:700;">URL</span>
-                    <code id="gsp-url" style="flex:1;word-break:break-all;font-size:0.74rem;background:transparent;padding:0;"></code>
-                    <button class="btn-copy" id="gsp-open" style="background:#3b82f6;color:#fff;border:0;">↗ Open</button>
-                </div>
-                <div id="gsp-preview" style="margin-top:14px;padding:14px;background:#f8fafc;border:1px solid var(--border-light);border-radius:8px;text-align:center;">
-                    <img id="gsp-img" style="max-width:100%;background:#fff;border-radius:6px;" alt="Sprite preview">
-                </div>
+                        <div class="preset-row">
+                            <span class="preset-label">Style</span>
+                            <select id="gsp-style" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
+                                <option>Standard</option>
+                                <option>Monochrome</option>
+                            </select>
+                            <span class="preset-label">Color</span>
+                            <select id="gsp-color" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
+                                <option>Light</option>
+                                <option>Dark</option>
+                            </select>
+                            <span class="preset-label">File</span>
+                            <select id="gsp-file" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:5px;font-size:0.84rem;">
+                                <option>sprites.png</option>
+                                <option>sprites@2x.png</option>
+                                <option>sprites.json</option>
+                            </select>
+                        </div>
+                        <div class="resp-bar">
+                            <span style="font-weight:700;">URL</span>
+                            <code id="gsp-url" style="flex:1;word-break:break-all;font-size:0.74rem;background:transparent;padding:0;"></code>
+                            <button class="btn-copy" id="gsp-open" style="background:#3b82f6;color:#fff;border:0;">↗ Open</button>
+                        </div>
+                        <div id="gsp-preview" style="margin-top:14px;padding:14px;background:#f8fafc;border:1px solid var(--border-light);border-radius:8px;text-align:center;">
+                            <img id="gsp-img" style="max-width:100%;background:#fff;border-radius:6px;" alt="Sprite preview">
+                        </div>
 
-                <script>
-                (function() {
-                    const REGION = "{{ env('AWS_REGION') }}";
-                    const API_KEY = "{{ env('AWS_API_KEY') }}";
-                    function build() {
-                        const s = document.getElementById('gsp-style').value;
-                        const c = document.getElementById('gsp-color').value;
-                        const f = document.getElementById('gsp-file').value;
-                        return `https://maps.geo.${REGION}.amazonaws.com/v2/sprites/${s}/${c}/Default/${f}?key=${API_KEY}`;
-                    }
-                    function refresh() {
-                        const url = build();
-                        document.getElementById('gsp-url').textContent = url.replace(API_KEY, '***');
-                        const file = document.getElementById('gsp-file').value;
-                        const imgEl = document.getElementById('gsp-img');
-                        if (file.endsWith('.png')) {
-                            imgEl.src = url;
-                            imgEl.style.display = '';
-                        } else {
-                            imgEl.style.display = 'none';
-                        }
-                    }
-                    ['gsp-style','gsp-color','gsp-file'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
-                    document.getElementById('gsp-open').addEventListener('click', () => window.open(build(), '_blank'));
-                    refresh();
-                })();
-                </script>
+                        <script>
+                            (function() {
+                                const REGION = "{{ env('AWS_REGION') }}";
+                                const API_KEY = "{{ env('AWS_API_KEY') }}";
 
-                </div> {{-- end v2 --}}
+                                function build() {
+                                    const s = document.getElementById('gsp-style').value;
+                                    const c = document.getElementById('gsp-color').value;
+                                    const f = document.getElementById('gsp-file').value;
+                                    return `https://maps.geo.${REGION}.amazonaws.com/v2/sprites/${s}/${c}/Default/${f}?key=${API_KEY}`;
+                                }
 
-                <div data-version="v0">
-                    <div class="endpoint-line"><span class="method GET">GET</span><span>/maps/v0/maps/{MapName}/sprites?key=...</span></div>
-                    <div class="alert-mini warn" data-i18n-html="gsp_v0_diff">
-                        <strong>Differences from v2:</strong>
-                        <ul style="margin:6px 0 0 18px;">
-                            <li>Path: <code>{MapName}/sprites</code> (tanpa Style/Color/Variant/file split)</li>
-                            <li>v0 punya endpoint terpisah untuk JSON vs PNG (mis. <code>/sprites?json=true</code>)</li>
-                            <li>Sprite set lock per provider</li>
-                        </ul>
+                                function refresh() {
+                                    const url = build();
+                                    document.getElementById('gsp-url').textContent = url.replace(API_KEY, '***');
+                                    const file = document.getElementById('gsp-file').value;
+                                    const imgEl = document.getElementById('gsp-img');
+                                    if (file.endsWith('.png')) {
+                                        imgEl.src = url;
+                                        imgEl.style.display = '';
+                                    } else {
+                                        imgEl.style.display = 'none';
+                                    }
+                                }
+                                ['gsp-style', 'gsp-color', 'gsp-file'].forEach(id => document.getElementById(id).addEventListener('change', refresh));
+                                document.getElementById('gsp-open').addEventListener('click', () => window.open(build(), '_blank'));
+                                refresh();
+                            })();
+                        </script>
+
+                    </div> {{-- end v2 --}}
+
+                    <div data-version="v0">
+                        <div class="endpoint-line"><span class="method GET">GET</span><span>/maps/v0/maps/{MapName}/sprites?key=...</span></div>
+                        <div class="alert-mini warn" data-i18n-html="gsp_v0_diff">
+                            <strong>Differences from v2:</strong>
+                            <ul style="margin:6px 0 0 18px;">
+                                <li>Path: <code>{MapName}/sprites</code> (tanpa Style/Color/Variant/file split)</li>
+                                <li>v0 punya endpoint terpisah untuk JSON vs PNG (mis. <code>/sprites?json=true</code>)</li>
+                                <li>Sprite set lock per provider</li>
+                            </ul>
+                        </div>
                     </div>
-                </div>
 
                 </div> {{-- end ver-content --}}
             </div>
@@ -3043,27 +1907,81 @@
 
                         <div class="endpoint-line"><span class="method POST">POST</span><span>https://places.geo.{region}.amazonaws.com/v2/search-text?key=...</span></div>
 
-                        {{-- ====================== REQUEST ====================== --}}
+                        {{-- Empat langkah kerja satu operasi dipisah jadi tab, bukan
+                             ditumpuk: yang dibaca orang biasanya cuma satu di antaranya.
+                             Menekan "Kirim ke AWS" otomatis memindahkan tab ke Hasil. --}}
+                        <div class="op-tabs" role="tablist">
+                            <button class="op-tab-btn is-on" data-tab="live" type="button"><i class="bi bi-play-circle"></i> <span data-i18n="tab_live">Live try</span></button>
+                            <button class="op-tab-btn" data-tab="request" type="button"><i class="bi bi-arrow-up-right"></i> <span data-i18n="tab_request">Request</span></button>
+                            <button class="op-tab-btn" data-tab="response" type="button"><i class="bi bi-arrow-down-left"></i> <span data-i18n="tab_response">Respons</span></button>
+                            <button class="op-tab-btn" data-tab="error" type="button"><i class="bi bi-exclamation-triangle"></i> <span data-i18n="tab_error">Error</span></button>
+                        </div>
+
+                        <div class="op-tab is-on" data-tab="live">
+                            {{-- Builder menggantikan tiga bagian sekaligus: kartu tier, blok
+                                 Request Syntax statis, dan kartu Field Rules. Aturannya kini
+                                 jadi bentuk kontrolnya sendiri, dan keranjang harganya
+                                 dihitung ulang tiap pilihan berubah. Skemanya ada di
+                                 public/javascript/docs/aws-api-schemas.js. --}}
+                            <div data-builder="places-search-text"></div>
+
+                            {{-- Panel Try It lama sudah tidak ditampilkan: JSON-nya dirakit
+                                 builder di atas. Elemennya tetap ada (tersembunyi) karena
+                                 AWSAPI_TryIt memakainya sebagai mesin — editor tempat JSON
+                                 ditulis, tombol yang diklik builder, penanda status, dan URL
+                                 AWS untuk mode panggilan langsung dengan key sendiri. --}}
+                            <div class="tryit-engine" hidden>
+                                <span class="json-status ok" id="st-json-status">VALID</span>
+                                <button class="btn-copy" id="st-format-btn" type="button"><span data-i18n="btn_format">✨ Format</span></button>
+                                {{-- Bentuk sarangnya harus tetap .try-it-url > div > span kedua:
+                                     itu yang dibaca getAwsUrlRaw() untuk menemukan URL AWS. --}}
+                                <div class="try-it-url">
+                                    <div>
+                                        <span class="try-it-method">POST</span>
+                                        <span style="color:#fbbf24;">https://places.geo.{{ env('AWS_REGION') }}.amazonaws.com/v2/search-text?key=***</span>
+                                    </div>
+                                </div>
+                                <textarea class="json-editor" id="st-req-preview" spellcheck="false"></textarea>
+                                <button class="btn-send" id="st-run" type="button"><span data-i18n="btn_send">Send Request</span></button>
+                                <span id="st-spinner"></span>
+                            </div>
+
+                            {{-- Hasil panggilan tinggal di tab yang sama dengan perakitnya:
+                                 begitu tombol kirim ditekan, balasannya muncul tepat di
+                                 bawah formulir, bukan di tab sebelah. --}}
+                            <div class="doc-section-h"><span class="ic orange"><i class="bi bi-broadcast"></i></span> <span data-i18n="bld_result">Hasil dari AWS</span></div>
+                            {{-- Response area --}}
+                            <div class="resp-bar">
+                                <span style="font-weight:700;color:var(--text-primary);">Response</span>
+                                <span class="status-pill idle" id="st-status">— idle —</span>
+                                <span class="meta" id="st-meta"></span>
+                                <button class="btn-copy" id="st-resp-copy" style="margin-left:auto;background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;display:none;"><span data-i18n="btn_copy_response">📋 Copy Response</span></button>
+                            </div>
+                            <div id="st-resp" class="resp-body empty" data-i18n="bld_resp_idle">Tekan "Kirim ke AWS" di perakit request untuk melihat balasan aslinya.</div>
+                        </div>
+
+                        {{-- Rujukan bentuk request: sintaks lengkap beserta seluruh
+                             parameter, termasuk yang ditolak ap-southeast-1 supaya tetap
+                             ketahuan ada. Yang bisa dipakai langsung ada di tab Live try. --}}
+                        <div class="op-tab" data-tab="request">
                         <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> <span data-i18n="sec_request_syntax">Request Syntax</span></div>
                         <pre><code class="language-json">{
-                            "QueryText": "string",
-                            "QueryId": "string",
-                            "MaxResults": number,
-                            "BiasPosition": [ number, number ],
-                            "Filter": {
-                                "BoundingBox": [ number, number, number, number ],
-                                "Circle": {
-                                "Center": [ number, number ],
-                                "Radius": number
-                                },
-                                "IncludeCountries": [ "string" ]
-                            },
-                            "AdditionalFeatures": [ "string" ],
-                            "Language": "string",
-                            "PoliticalView": "string",
-                            "IntendedUse": "string",
-                            "NextToken": "string"
-                            }</code></pre>
+  "QueryText": "string",
+  "MaxResults": number,
+  "BiasPosition": [ number, number ],
+  "Filter": {
+    "BoundingBox": [ number, number, number, number ],
+    "Circle": {
+      "Center": [ number, number ],
+      "Radius": number
+    },
+    "IncludeCountries": [ "string" ]
+  },
+  "AdditionalFeatures": [ "TimeZone" ],      // tier: Advanced
+  "Language": "string",
+  "IntendedUse": "SingleUse" | "Storage"     // tier: Stored
+}</code></pre>
+                        <p class="syn-legend"><i class="bi bi-tag-fill"></i> <span data-i18n-html="syn_legend_places_live">Baris yang diberi pil tier menentukan keranjang harga. Tanpa satu pun penanda, panggilan masuk <b>Core</b>; <b>Stored</b> hanya kalau <code>IntendedUse</code> diisi <code>Storage</code>.</span></p>
 
                         <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Request Parameters</span></div>
                         <table class="param-table">
@@ -3079,25 +1997,19 @@
                                 <tr>
                                     <td><code>QueryText</code></td>
                                     <td><span class="type-tag">string</span></td>
-                                    <td><span class="req">YES*</span></td>
+                                    <td><span class="req">YES</span></td>
                                     <td data-i18n-html="st_p_querytext">Free-form keyword (1-200 char). *Required: one of <code>QueryText</code> or <code>QueryId</code>.</td>
-                                </tr>
-                                <tr>
-                                    <td><code>QueryId</code></td>
-                                    <td><span class="type-tag">string</span></td>
-                                    <td>—</td>
-                                    <td data-i18n="st_p_queryid">Alternative: ID from a previous Suggest result</td>
                                 </tr>
                                 <tr>
                                     <td><code>MaxResults</code></td>
                                     <td><span class="type-tag">number</span></td>
                                     <td>—</td>
-                                    <td data-i18n="note_max_20">1–20, default 20</td>
+                                    <td data-i18n="note_max_20">1–100, default 20</td>
                                 </tr>
                                 <tr>
                                     <td><code>BiasPosition</code></td>
                                     <td><span class="type-tag">[lng, lat]</span></td>
-                                    <td>—</td>
+                                    <td><span class="req">YES*</span></td>
                                     <td data-i18n-html="st_p_bias">Bias ranking + reference for the <code>Distance</code> field. <strong>Exactly 1</strong> of BiasPosition / Filter.BoundingBox / Filter.Circle.<br><strong>📌 Use this if you need Distance</strong> — Filter.Circle/BoundingBox don't trigger Distance in <code>ap-southeast-1</code>.</td>
                                 </tr>
                                 <tr>
@@ -3122,7 +2034,7 @@
                                     <td><code>AdditionalFeatures</code></td>
                                     <td><span class="type-tag">array&lt;string&gt;</span></td>
                                     <td>—</td>
-                                    <td><code>Contact</code> | <code>TimeZone</code> | <code>Phonemes</code> | <code>Access</code></td>
+                                    <td><span class="tier-pill tier-advanced">Advanced</span> <span data-i18n-html="st_p_addfeat_full"><code>Contact</code> | <code>TimeZone</code> | <code>Phonemes</code> | <code>Access</code>. Di <code>ap-southeast-1</code> hanya <code>TimeZone</code> yang dilayani.</span></td>
                                 </tr>
                                 <tr>
                                     <td><code>Language</code></td>
@@ -3131,301 +2043,176 @@
                                     <td data-i18n-html="note_bcp47">BCP 47 (e.g. <code>id</code>, <code>en</code>)</td>
                                 </tr>
                                 <tr>
-                                    <td><code>PoliticalView</code></td>
-                                    <td><span class="type-tag">string</span></td>
-                                    <td>—</td>
-                                    <td data-i18n-html="note_iso3_single">ISO-3 country code (e.g. <code>IDN</code>)</td>
-                                </tr>
-                                <tr>
                                     <td><code>IntendedUse</code></td>
                                     <td><span class="type-tag">string</span></td>
                                     <td>—</td>
-                                    <td data-i18n-html="note_intended_use"><code>SingleUse</code> (default) | <code>Storage</code></td>
-                                </tr>
-                                <tr>
-                                    <td><code>NextToken</code></td>
-                                    <td><span class="type-tag">string</span></td>
-                                    <td>—</td>
-                                    <td data-i18n="note_pagination">Pagination cursor</td>
+                                    <td><span class="tier-pill tier-stored">Stored</span> <span data-i18n-html="note_intended_use"><code>SingleUse</code> (default) | <code>Storage</code></span></td>
                                 </tr>
                             </tbody>
                         </table>
 
-                        {{-- ====================== FIELD RULES ====================== --}}
-                        <div class="doc-section-h"><span class="ic blue"><i class="bi bi-shuffle"></i></span> <span data-i18n="sec_field_rules">Field Rules — yang bisa &amp; tidak bisa di-combo</span></div>
-
-                        <div class="rules-grid">
-                            <div class="rule-card required">
-                                <div class="rule-header">
-                                    <span class="ic"><i class="bi bi-check-square-fill"></i></span>
-                                    <span data-i18n="rule_required">Required (one-of)</span>
-                                </div>
-                                <div class="field-list">
-                                    <code>QueryText</code>
-                                    <span class="sep">OR</span>
-                                    <code>QueryId</code>
-                                </div>
-                                <div class="rule-note" data-i18n="rule_required_note">One of these must be in the body. Both can be sent but AWS picks based on internal priority.</div>
-                            </div>
-
-                            <div class="rule-card exclusive">
-                                <div class="rule-header">
-                                    <span class="ic"><i class="bi bi-x-octagon-fill"></i></span>
-                                    <span data-i18n="rule_exclusive">Mutually exclusive (exactly one)</span>
-                                </div>
-                                <div class="field-list">
-                                    <code>BiasPosition</code>
-                                    <span class="sep">XOR</span>
-                                    <code>Filter.BoundingBox</code>
-                                    <span class="sep">XOR</span>
-                                    <code>Filter.Circle</code>
-                                </div>
-                                <div class="rule-note" data-i18n-html="rule_exclusive_note">
-                                    Sending 2 or more = 400 error <em>"Exactly one of..."</em>. Sending none → no spatial bias (global results).<br>
-                                    💡 <strong>Trade-off:</strong>
-                                    <br>· <code>BiasPosition</code> → ranking-bias + <code>Distance</code> field in response
-                                    <br>· <code>Filter.Circle</code> / <code>BoundingBox</code> → hard geographic cut-off but <strong>no Distance</strong> (empirical in <code>ap-southeast-1</code>)
-                                </div>
-                            </div>
-
-                            <div class="rule-card combo">
-                                <div class="rule-header">
-                                    <span class="ic"><i class="bi bi-puzzle-fill"></i></span>
-                                    <span data-i18n="rule_combo">Can be combined</span>
-                                </div>
-                                <div class="field-list">
-                                    <code>Filter.IncludeCountries</code>
-                                    <span class="sep">+</span>
-                                    <code>BiasPosition</code>/<code>Circle</code>/<code>BoundingBox</code>
-                                </div>
-                                <div class="rule-note" data-i18n="rule_combo_note">IncludeCountries is an additive filter (AND), not exclusive — can be combined with any spatial filter.</div>
-                            </div>
-
-                            <div class="rule-card combo">
-                                <div class="rule-header">
-                                    <span class="ic"><i class="bi bi-layers-fill"></i></span>
-                                    <span data-i18n="rule_independent">Independent (use freely)</span>
-                                </div>
-                                <div class="field-list">
-                                    <code>MaxResults</code>
-                                    <code>Language</code>
-                                    <code>PoliticalView</code>
-                                    <code>AdditionalFeatures</code>
-                                    <code>IntendedUse</code>
-                                    <code>NextToken</code>
-                                </div>
-                                <div class="rule-note" data-i18n="rule_independent_note">These fields have no conflict constraints with each other. Use any combination or none at all.</div>
-                            </div>
+                        
                         </div>
 
-                        {{-- ====================== COMMON ERRORS ====================== --}}
-                        <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors &amp; Validation</span></div>
+                        <div class="op-tab" data-tab="response">
+                            <div class="resp-sample"><i class="bi bi-eye"></i> <span data-i18n="bld_resp_sample">Contoh bentuk balasan — tekan "Kirim ke AWS" untuk balasan asli.</span></div>
+                            <pre style="margin:0;background:transparent;"><code class="language-json">{
+      "ResultItems": [
+        {
+          "PlaceId": "AQAAAC0A2MtBKefVps2gjOatU5vuegwizzHZ2R53...",
+          "PlaceType": "PointOfInterest",
+          "Title": "Silang Monas Jakarta Pusat",
+          "Address": {
+            "Label": "Silang Monas, Gambir, Daerah Khusus Ibukota Jakarta, 10110",
+            "Country": { "Code2": "ID", "Code3": "IDN", "Name": "Indonesia" },
+            "Locality": "DKI Jakarta",
+            "District": "Gambir",
+            "SubDistrict": "Gambir",
+            "PostalCode": "10110",
+            "Street": "Jalan Medan Merdeka Barat",
+            "AddressNumber": "12"
+          },
+          "Position": [ 106.826, -6.175 ],
+          "MapView": [ 106.824, -6.177, 106.828, -6.173 ],
+          "Distance": 640,
+          "Categories": [
+            { "Id": "monument", "Name": "Monument", "LocalizedName": "monumen", "Primary": true }
+          ],
+          "TimeZone": { "Name": "Asia/Jakarta", "Offset": "UTC+07:00", "OffsetSeconds": 25200 }
+        }
+      ]
+    }</code></pre>
 
-                        <table class="error-table">
-                            <thead>
-                                <tr>
-                                    <th data-i18n="err_status">Status</th>
-                                    <th data-i18n="err_trigger">Trigger</th>
-                                    <th data-i18n="err_message">AWS Message</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><span class="err-code">400</span></td>
-                                    <td data-i18n-html="err_t1">2+ of <code>BiasPosition</code> / <code>Filter.BoundingBox</code> / <code>Filter.Circle</code> sent together</td>
-                                    <td><em>"Exactly one of the following fields must be set: BiasPosition, Filter.BoundingBox, Filter.Circle."</em></td>
-                                </tr>
-                                <tr>
-                                    <td><span class="err-code">400</span></td>
-                                    <td data-i18n-html="err_t2">No <code>QueryText</code> and no <code>QueryId</code></td>
-                                    <td><em>"Either QueryText or QueryId is required."</em></td>
-                                </tr>
-                                <tr>
-                                    <td><span class="err-code">400</span></td>
-                                    <td data-i18n-html="err_t3"><code>MaxResults</code> &gt; 20</td>
-                                    <td><em>"Member must have value less than or equal to 20"</em></td>
-                                </tr>
-                                <tr>
-                                    <td><span class="err-code">400</span></td>
-                                    <td data-i18n-html="err_t4"><code>Filter.Circle.Radius</code> &gt; 50000</td>
-                                    <td><em>"Member must have value less than or equal to 50000"</em></td>
-                                </tr>
-                                <tr>
-                                    <td><span class="err-code">400</span></td>
-                                    <td data-i18n-html="err_t5">Wrong coordinate format (e.g. <code>[lat, lng]</code> instead of <code>[lng, lat]</code>)</td>
-                                    <td data-i18n-html="err_m5"><em>Weird / empty result</em> — AWS doesn't validate ranges, coords are accepted as-is</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="err-code">400</span></td>
-                                    <td data-i18n-html="err_t6"><code>Filter.IncludeCountries</code> not ISO-3 (e.g. "Indonesia" or "ID")</td>
-                                    <td><em>"Validation failed: country code must be 3 letters"</em></td>
-                                </tr>
-                                <tr>
-                                    <td><span class="err-code">403</span></td>
-                                    <td data-i18n-html="err_t7">API Key lacks action <code>geo-places:SearchText</code></td>
-                                    <td><em>"User is not authorized to access this resource with an explicit deny"</em></td>
-                                </tr>
-                                <tr>
-                                    <td><span class="err-code">403</span></td>
-                                    <td data-i18n-html="err_t8">API Key wrong or missing <code>?key=</code></td>
-                                    <td><em>"The security token included in the request is invalid"</em></td>
-                                </tr>
-                                <tr>
-                                    <td><span class="err-code">429</span></td>
-                                    <td data-i18n="err_t9">Rate limit exceeded (default 50 TPS)</td>
-                                    <td data-i18n-html="err_m9"><em>"Rate exceeded"</em> — implement retry with backoff</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                            <p class="syn-legend"><i class="bi bi-info-circle"></i> <span data-i18n-html="st_resp_note"></span></p>
 
-                        {{-- ====================== RESPONSE ====================== --}}
-                        <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> <span data-i18n="sec_response_syntax">Response Syntax</span></div>
-                        <pre><code class="language-json">{
-                            "PricingBucket": "string",
-                            "NextToken": "string",
-                            "ResultItems": [
-                                {
-                                "PlaceId": "string",
-                                "PlaceType": "string",
-                                "Title": "string",
-                                "Address": {
-                                    "Label": "string",
-                                    "Country": { "Code2": "string", "Name": "string" },
-                                    "Region": { "Code": "string", "Name": "string" },
-                                    "Locality": "string",
-                                    "PostalCode": "string"
-                                },
-                                "Position": [ number, number ],
-                                "MapView": [ number, number, number, number ],
-                                "Distance": number,
-                                "Categories": [ { "Id": "string", "Name": "string", "Primary": boolean } ],
-                                "TimeZone": { "Name": "string", "OffsetSeconds": number }
-                                }
-                            ]
-                            }</code></pre>
-
-                        <div class="doc-section-h"><span class="ic purple"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_response_fields">Response Fields</span></div>
-                        <table class="param-table">
-                            <thead>
-                                <tr>
-                                    <th>Field</th>
-                                    <th>Type</th>
-                                    <th>Note</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>ResultItems[].PlaceId</code></td>
-                                    <td><span class="type-tag">string</span></td>
-                                    <td data-i18n="r_placeid">Unique AWS ID — use with GetPlace to fetch full detail</td>
-                                </tr>
-                                <tr>
-                                    <td><code>ResultItems[].PlaceType</code></td>
-                                    <td><span class="type-tag">string</span></td>
-                                    <td data-i18n="r_placetype_examples">PointOfInterest | Address | Street | District | Region | etc.</td>
-                                </tr>
-                                <tr>
-                                    <td><code>ResultItems[].Title</code></td>
-                                    <td><span class="type-tag">string</span></td>
-                                    <td data-i18n="r_title">Main display name</td>
-                                </tr>
-                                <tr>
-                                    <td><code>ResultItems[].Position</code></td>
-                                    <td><span class="type-tag">[lng, lat]</span></td>
-                                    <td data-i18n="r_position">Center coordinate of the place</td>
-                                </tr>
-                                <tr>
-                                    <td><code>ResultItems[].Distance</code></td>
-                                    <td><span class="type-tag">number</span></td>
-                                    <td data-i18n-html="r_distance_long">
-                                        <strong>Meters</strong> from reference point.<br>
-                                        ⚠️ <strong>Empirical in <code>ap-southeast-1</code>:</strong> this field only appears when the request uses <code>BiasPosition</code>. When using <code>Filter.Circle</code> or <code>Filter.BoundingBox</code>, the <code>Distance</code> field is <strong>absent</strong> from the response.<br>
-                                        Workaround: compute Haversine in JS from <code>Position</code> to the origin.
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><code>ResultItems[].Address</code></td>
-                                    <td><span class="type-tag">object</span></td>
-                                    <td data-i18n="r_address">Structured address (label + components)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>ResultItems[].MapView</code></td>
-                                    <td><span class="type-tag">[w,s,e,n]</span></td>
-                                    <td data-i18n="r_mapview">Bounding box for fitting the map</td>
-                                </tr>
-                                <tr>
-                                    <td><code>ResultItems[].Categories</code></td>
-                                    <td><span class="type-tag">array</span></td>
-                                    <td>Kategori AWS (mis. <code>transit_station_bus</code>)</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        {{-- ====================== TRY IT LIVE (V2 only) ====================== --}}
-                        <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
-
-                        {{-- Preset buttons — kombinasi valid sesuai field rules --}}
-                        <div class="preset-row">
-                            <span class="preset-label"><i class="bi bi-bookmark-fill"></i>&nbsp;<span data-i18n="presets">Presets</span></span>
-                            <button class="preset-btn" data-preset="bias">📍 BiasPosition <span class="pico" data-i18n="preset_simple">simple</span></button>
-                            <button class="preset-btn" data-preset="circle">⭕ Filter.Circle <span class="pico" data-i18n="preset_radius">radius 2km</span></button>
-                            <button class="preset-btn" data-preset="bbox">🟦 Filter.BoundingBox <span class="pico">Jakarta</span></button>
-                            <button class="preset-btn" data-preset="minimal">📝 <span data-i18n="preset_minimal">Minimal</span> <span class="pico">QueryText only</span></button>
-                            <button class="preset-btn" data-preset="full">🎛️ <span data-i18n="preset_all">All Features</span> <span class="pico">+TimeZone</span></button>
-                            <button class="preset-btn" data-preset="error">💥 <span data-i18n="preset_error">Error case</span> <span class="pico" data-i18n="preset_error_desc">2 spatial filters</span></button>
+                            <table class="param-table">
+                                <thead>
+                                    <tr>
+                                        <th>Field</th>
+                                        <th>Type</th>
+                                        <th>Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>ResultItems[].PlaceId</code></td>
+                                        <td><span class="type-tag">string</span></td>
+                                        <td data-i18n="r_placeid">Unique AWS ID — use with GetPlace to fetch full detail</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>ResultItems[].PlaceType</code></td>
+                                        <td><span class="type-tag">string</span></td>
+                                        <td data-i18n="r_placetype_examples">PointOfInterest | Address | Street | District | Region | etc.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>ResultItems[].Title</code></td>
+                                        <td><span class="type-tag">string</span></td>
+                                        <td data-i18n="r_title">Main display name</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>ResultItems[].Position</code></td>
+                                        <td><span class="type-tag">[lng, lat]</span></td>
+                                        <td data-i18n="r_position">Center coordinate of the place</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>ResultItems[].Distance</code></td>
+                                        <td><span class="type-tag">number</span></td>
+                                        <td data-i18n-html="r_distance_long">
+                                            <strong>Meters</strong> from reference point.<br>
+                                            ⚠️ <strong>Empirical in <code>ap-southeast-1</code>:</strong> this field only appears when the request uses <code>BiasPosition</code>. When using <code>Filter.Circle</code> or <code>Filter.BoundingBox</code>, the <code>Distance</code> field is <strong>absent</strong> from the response.<br>
+                                            Workaround: compute Haversine in JS from <code>Position</code> to the origin.
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>ResultItems[].Address</code></td>
+                                        <td><span class="type-tag">object</span></td>
+                                        <td data-i18n="r_address">Structured address (label + components)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>ResultItems[].MapView</code></td>
+                                        <td><span class="type-tag">[w,s,e,n]</span></td>
+                                        <td data-i18n="r_mapview">Bounding box for fitting the map</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>ResultItems[].Categories</code></td>
+                                        <td><span class="type-tag">array</span></td>
+                                        <td>Kategori AWS (mis. <code>transit_station_bus</code>)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
 
-                        <div class="try-it">
-                            <div class="try-it-pane right" style="border-right:0;">
-                                <div class="try-it-pane-header">
-                                    <span>
-                                        <i class="bi bi-code-slash"></i> Request Body
-                                        <span class="json-status ok" id="st-json-status">VALID</span>
-                                    </span>
-                                    <div style="display:flex;gap:6px;">
-                                        <button class="btn-copy" onclick="copyToClipboard('st-req-preview', this)"><span data-i18n="btn_copy">📋 Copy</span></button>
-                                        <button class="btn-copy" id="st-format-btn" type="button"><span data-i18n="btn_format">✨ Format</span></button>
-                                    </div>
-                                </div>
-                                <div class="try-it-url" style="display:flex;flex-direction:column;gap:4px;">
-                                    <div>
-                                        <span class="try-it-method">POST</span>
-                                        <span style="color:#fbbf24;">https://places.geo.{{ env('AWS_REGION') }}.amazonaws.com/v2/search-text?key=***</span>
-                                        <span style="color:#64748b;font-size:0.7rem;margin-left:6px;">(canonical AWS URL — reference)</span>
-                                    </div>
-                                </div>
-                                <textarea class="json-editor" id="st-req-preview" spellcheck="false"></textarea>
-                                <div class="send-row" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);">
-                                    <button class="btn-send" id="st-run" type="button">
-                                        <i class="bi bi-play-fill"></i> <span data-i18n="btn_send">Send Request</span>
-                                    </button>
-                                    <span id="st-spinner" style="display:none;color:#cbd5e1;font-size:0.8rem;">
-                                        <i class="bi bi-arrow-repeat" style="animation:spin 1s linear infinite;"></i> Calling AWS...
-                                    </span>
-                                </div>
-                            </div>
+                        <div class="op-tab" data-tab="error">
+                            {{-- ====================== COMMON ERRORS ====================== --}}
+
+                            <table class="error-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="err_status">Status</th>
+                                        <th data-i18n="err_trigger">Trigger</th>
+                                        <th data-i18n="err_message">AWS Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="err_t1">2+ of <code>BiasPosition</code> / <code>Filter.BoundingBox</code> / <code>Filter.Circle</code> sent together</td>
+                                        <td><em>"Exactly one of the following fields must be set: BiasPosition, Filter.BoundingBox, Filter.Circle."</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="err_t2">No <code>QueryText</code> and no <code>QueryId</code></td>
+                                        <td><em>"Either QueryText or QueryId is required."</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="err_t3"><code>MaxResults</code> &gt; 20</td>
+                                        <td><em>"Member must have value less than or equal to 20"</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="err_t4"><code>Filter.Circle.Radius</code> &gt; 50000</td>
+                                        <td><em>"Member must have value less than or equal to 50000"</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="err_t5">Wrong coordinate format (e.g. <code>[lat, lng]</code> instead of <code>[lng, lat]</code>)</td>
+                                        <td data-i18n-html="err_m5"><em>Weird / empty result</em> — AWS doesn't validate ranges, coords are accepted as-is</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="err_t6"><code>Filter.IncludeCountries</code> not ISO-3 (e.g. "Indonesia" or "ID")</td>
+                                        <td><em>"Validation failed: country code must be 3 letters"</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">403</span></td>
+                                        <td data-i18n-html="err_t7">API Key lacks action <code>geo-places:SearchText</code></td>
+                                        <td><em>"User is not authorized to access this resource with an explicit deny"</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">403</span></td>
+                                        <td data-i18n-html="err_t8">API Key wrong or missing <code>?key=</code></td>
+                                        <td><em>"The security token included in the request is invalid"</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">429</span></td>
+                                        <td data-i18n="err_t9">Rate limit exceeded (default 50 TPS)</td>
+                                        <td data-i18n-html="err_m9"><em>"Rate exceeded"</em> — implement retry with backoff</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
 
-                        {{-- Response area --}}
-                        <div class="resp-bar">
-                            <span style="font-weight:700;color:var(--text-primary);">Response</span>
-                            <span class="status-pill idle" id="st-status">— idle —</span>
-                            <span class="meta" id="st-meta"></span>
-                            <button class="btn-copy" id="st-resp-copy" style="margin-left:auto;background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;display:none;"><span data-i18n="btn_copy_response">📋 Copy Response</span></button>
-                        </div>
-                        <div id="st-resp" class="resp-body empty" data-i18n="resp_idle">Klik Send Request di atas untuk lihat live response dari AWS.</div>
 
-                        <style>
-                            @keyframes spin {
-                                from {
-                                    transform: rotate(0)
-                                }
 
-                                to {
-                                    transform: rotate(360deg)
-                                }
-                            }
-                        </style>
+
+                        {{-- ====================== HASIL PANGGILAN (V2 only) ====================== --}}
+
+
+                        {{-- Arti tiap field dilipat: yang dicari orang biasanya balasan
+                             nyata di atas, bukan tabel. --}}
+
+
 
                         <script>
                             // SearchText — Try it Live (logic generic ada di aws-api-try-it.js)
@@ -3435,12 +2222,61 @@
                                 proxy: '/api/places/search',
                                 defaultPreset: 'bias',
                                 presets: {
-                                    bias: { QueryText: 'halte TransJakarta', BiasPosition: [106.8456, -6.2088], MaxResults: 5, Language: 'id', Filter: { IncludeCountries: ['IDN'] } },
-                                    circle: { QueryText: 'halte TransJakarta', Filter: { Circle: { Center: [106.8456, -6.2088], Radius: 2000 }, IncludeCountries: ['IDN'] }, MaxResults: 10, Language: 'id' },
-                                    bbox: { QueryText: 'stasiun', Filter: { BoundingBox: [106.689, -6.371, 106.971, -6.089], IncludeCountries: ['IDN'] }, MaxResults: 10, Language: 'id' },
-                                    minimal: { QueryText: 'Monas Jakarta' },
-                                    full: { QueryText: 'halte TransJakarta', BiasPosition: [106.8456, -6.2088], Filter: { IncludeCountries: ['IDN'] }, MaxResults: 10, Language: 'id', PoliticalView: 'IDN', AdditionalFeatures: ['TimeZone'], IntendedUse: 'SingleUse' },
-                                    error: { QueryText: 'halte', BiasPosition: [106.8456, -6.2088], Filter: { Circle: { Center: [106.8456, -6.2088], Radius: 2000 } } }
+                                    bias: {
+                                        QueryText: 'halte TransJakarta',
+                                        BiasPosition: [106.8456, -6.2088],
+                                        MaxResults: 5,
+                                        Language: 'id',
+                                        Filter: {
+                                            IncludeCountries: ['IDN']
+                                        }
+                                    },
+                                    circle: {
+                                        QueryText: 'halte TransJakarta',
+                                        Filter: {
+                                            Circle: {
+                                                Center: [106.8456, -6.2088],
+                                                Radius: 2000
+                                            },
+                                            IncludeCountries: ['IDN']
+                                        },
+                                        MaxResults: 10,
+                                        Language: 'id'
+                                    },
+                                    bbox: {
+                                        QueryText: 'stasiun',
+                                        Filter: {
+                                            BoundingBox: [106.689, -6.371, 106.971, -6.089],
+                                            IncludeCountries: ['IDN']
+                                        },
+                                        MaxResults: 10,
+                                        Language: 'id'
+                                    },
+                                    minimal: {
+                                        QueryText: 'Monas Jakarta'
+                                    },
+                                    full: {
+                                        QueryText: 'halte TransJakarta',
+                                        BiasPosition: [106.8456, -6.2088],
+                                        Filter: {
+                                            IncludeCountries: ['IDN']
+                                        },
+                                        MaxResults: 10,
+                                        Language: 'id',
+                                        PoliticalView: 'IDN',
+                                        AdditionalFeatures: ['TimeZone'],
+                                        IntendedUse: 'SingleUse'
+                                    },
+                                    error: {
+                                        QueryText: 'halte',
+                                        BiasPosition: [106.8456, -6.2088],
+                                        Filter: {
+                                            Circle: {
+                                                Center: [106.8456, -6.2088],
+                                                Radius: 2000
+                                            }
+                                        }
+                                    }
                                 }
                             });
                         </script>
@@ -3498,7 +2334,8 @@
             <div class="op-panel" id="op-places-suggest">
                 <div class="breadcrumb-mini">Places V2 / Suggest</div>
                 <h1>Suggest</h1>
-                <p class="op-desc" data-i18n="sg_desc">Type-ahead autocomplete — return Place hits + Query refinement. Pakai untuk dropdown live di search bar.</p>
+                <p class="op-desc" data-i18n-html="sg_desc">Autocomplete ketik-langsung untuk dropdown. Di <code>ap-southeast-1</code> yang kembali selalu Place — saran perbaikan kueri butuh <code>MaxQueryRefinements</code> yang ditolak di sini.</p>
+
 
                 <div class="ver-tabs">
                     <button data-version="v0">v0 Legacy</button>
@@ -3506,201 +2343,305 @@
                 </div>
 
                 <div class="ver-content">
-                <div data-version="v2" class="active">
+                    <div data-version="v2" class="active">
 
-                <div class="endpoint-line"><span class="method POST">POST</span><span>https://places.geo.{region}.amazonaws.com/v2/suggest?key=...</span></div>
+                        <div class="endpoint-line"><span class="method POST">POST</span><span>https://places.geo.{region}.amazonaws.com/v2/suggest?key=...</span></div>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> <span data-i18n="sec_request_syntax">Request Syntax</span></div>
-<pre><code class="language-json">{
-  "QueryText": "string",
-  "MaxResults": number,
-  "BiasPosition": [ number, number ],
-  "Filter": {
-    "BoundingBox": [ number, number, number, number ],
-    "Circle": { "Center": [ number, number ], "Radius": number },
-    "IncludeCountries": [ "string" ]
-  },
-  "AdditionalFeatures": [ "string" ],
-  "Language": "string",
-  "PoliticalView": "string",
-  "MaxQueryRefinements": number,
-  "IntendedUse": "string"
-}</code></pre>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Request Parameters</span></div>
-                <table class="param-table">
-                    <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>QueryText</code></td><td><span class="type-tag">string</span></td><td><span class="req">YES</span></td><td>1–200 char. Partial keyword OK (autocomplete).</td></tr>
-                        <tr><td><code>MaxResults</code></td><td><span class="type-tag">number</span></td><td>—</td><td data-i18n="note_max_10">1–10, default 5</td></tr>
-                        <tr><td><code>BiasPosition</code></td><td><span class="type-tag">[lng, lat]</span></td><td>—</td><td><strong>Exactly 1</strong> dari Bias / Filter.Circle / Filter.BoundingBox.</td></tr>
-                        <tr><td><code>Filter.Circle</code></td><td><span class="type-tag">object</span></td><td>—</td><td><code>Center: [lng,lat]</code>, <code>Radius: meter</code> (max 50000)</td></tr>
-                        <tr><td><code>Filter.BoundingBox</code></td><td><span class="type-tag">[w,s,e,n]</span></td><td>—</td><td>west, south, east, north</td></tr>
-                        <tr><td><code>Filter.IncludeCountries</code></td><td><span class="type-tag">array</span></td><td>—</td><td data-i18n="note_iso3_codes">ISO-3 codes</td></tr>
-                        <tr><td><code>MaxQueryRefinements</code></td><td><span class="type-tag">number</span></td><td>—</td><td data-i18n="sg_p_refine">Max items with SuggestResultItemType=Query</td></tr>
-                        <tr><td><code>Language</code></td><td><span class="type-tag">string</span></td><td>—</td><td data-i18n-html="note_bcp47_id">BCP 47 (e.g. <code>id</code>)</td></tr>
-                        <tr><td><code>AdditionalFeatures</code></td><td><span class="type-tag">array</span></td><td>—</td><td data-i18n-html="sg_p_addfeat">Valid: <code>Core</code>, <code>TimeZone</code>, <code>Phonemes</code>. <b>Tip:</b> tambah <code>"Core"</code> untuk unlock field <code>Position</code> di response — tanpa ini Suggest gak return koordinat (jadi distance ke marker user gak bisa dihitung client-side).</td></tr>
-                    </tbody>
-                </table>
+                        {{-- Empat tab seperti SearchText: perakit + hasil, lalu rujukan
+                             request, respons, dan error. --}}
+                        <div class="op-tabs" role="tablist">
+                            <button class="op-tab-btn is-on" data-tab="live" type="button"><i class="bi bi-play-circle"></i> <span data-i18n="tab_live">Live try</span></button>
+                            <button class="op-tab-btn" data-tab="request" type="button"><i class="bi bi-arrow-up-right"></i> <span data-i18n="tab_request">Request</span></button>
+                            <button class="op-tab-btn" data-tab="response" type="button"><i class="bi bi-arrow-down-left"></i> <span data-i18n="tab_response">Respons</span></button>
+                            <button class="op-tab-btn" data-tab="error" type="button"><i class="bi bi-exclamation-triangle"></i> <span data-i18n="tab_error">Error</span></button>
+                        </div>
 
-                <div class="alert-mini warn" style="margin-top:14px;">
-                    💡 <span data-i18n-html="sg_position_tip"><b>Penting untuk autocomplete dengan distance:</b> response Suggest <b>tidak include</b> <code>Position</code> by default. Kirim <code>"AdditionalFeatures": ["Core"]</code> untuk dapat lat/lng tiap suggestion — supaya bisa compute distance dari current marker/map center langsung di client.</span>
-                </div>
+                        <div class="op-tab is-on" data-tab="live">
+                            <div data-builder="places-suggest"></div>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-shuffle"></i></span> <span data-i18n="sec_field_rules">Field Rules</span></div>
-                <div class="rules-grid">
-                    <div class="rule-card required">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-check-square-fill"></i></span> <span data-i18n="rule_required_qt">Required</span></div>
-                        <div class="field-list"><code>QueryText</code></div>
-                        <div class="rule-note" data-i18n="sg_required_note">Wajib ada QueryText (min 1 karakter). Suggest tidak menerima QueryId seperti SearchText.</div>
-                    </div>
-                    <div class="rule-card exclusive">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-x-octagon-fill"></i></span> <span data-i18n="rule_exclusive">Mutually exclusive</span></div>
-                        <div class="field-list"><code>BiasPosition</code> <span class="sep">XOR</span> <code>Filter.BoundingBox</code> <span class="sep">XOR</span> <code>Filter.Circle</code></div>
-                        <div class="rule-note" data-i18n-html="rule_exclusive_note">Pakai 2+ = error 400.</div>
-                    </div>
-                    <div class="rule-card combo">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-funnel-fill"></i></span> <span data-i18n="sg_response_filter">Response filter (client-side)</span></div>
-                        <div class="field-list"><code>SuggestResultItemType</code></div>
-                        <div class="rule-note" data-i18n="sg_response_filter_note">Filter SuggestResultItemType === "Place" untuk actual place; "Query" = refinement keyword saja.</div>
-                    </div>
-                    <div class="rule-card combo">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-layers-fill"></i></span> <span data-i18n="rule_independent">Independent</span></div>
-                        <div class="field-list"><code>MaxResults</code> <code>Language</code> <code>PoliticalView</code> <code>MaxQueryRefinements</code></div>
-                    </div>
-                </div>
-
-                <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
-                <table class="error-table">
-                    <thead><tr><th data-i18n="err_status">Status</th><th data-i18n="err_trigger">Trigger</th><th data-i18n="err_message">AWS Message</th></tr></thead>
-                    <tbody>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n-html="err_t1">2+ spatial filter</td><td><em>"Exactly one of..."</em></td></tr>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n-html="sg_err_qt">Empty <code>QueryText</code></td><td><em>"QueryText: Member must have length greater than or equal to 1"</em></td></tr>
-                        <tr><td><span class="err-code">400</span></td><td><code>MaxResults</code> &gt; 10</td><td><em>"...less than or equal to 10"</em></td></tr>
-                        <tr><td><span class="err-code">403</span></td><td data-i18n-html="sg_err_perm">Action <code>geo-places:Suggest</code> tidak di-grant</td><td><em>"explicit deny"</em></td></tr>
-                    </tbody>
-                </table>
-
-                <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> <span data-i18n="sec_response_syntax">Response Syntax</span></div>
-<pre><code class="language-json">{
-  "PricingBucket": "string",
-  "ResultItems": [
-    {
-      "Title": "string",
-      "SuggestResultItemType": "Place" | "Query",
-      "Highlights": { "Title": [...] },
-      "Place": {
-        "PlaceId": "string",
-        "PlaceType": "string",
-        "Address": { "Label": "string" },
-        "Position": [ number, number ],
-        "Distance": number,
-        "Categories": [ ... ]
-      },
-      "Query": { "QueryId": "string", "QueryType": "string" }
-    }
-  ]
-}</code></pre>
-
-                <div class="doc-section-h"><span class="ic purple"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_response_fields">Response Fields</span></div>
-                <table class="param-table">
-                    <thead><tr><th>Field</th><th>Type</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>SuggestResultItemType</code></td><td><span class="type-tag">enum</span></td><td><code>Place</code> = actual hit, <code>Query</code> = refinement keyword</td></tr>
-                        <tr><td><code>Place.Position</code></td><td><span class="type-tag">[lng,lat]</span></td><td data-i18n="r_pos_place_only">Only for SuggestResultItemType=Place</td></tr>
-                        <tr><td><code>Place.Distance</code></td><td><span class="type-tag">number</span></td><td data-i18n="r_distance_bias_only">Meters (only when using BiasPosition)</td></tr>
-                        <tr><td><code>Highlights.Title</code></td><td><span class="type-tag">array</span></td><td data-i18n="r_highlights">Range index for highlighting matched keywords</td></tr>
-                        <tr><td><code>Query.QueryId</code></td><td><span class="type-tag">string</span></td><td data-i18n="r_queryid">Pass to SearchText as QueryId for full search</td></tr>
-                    </tbody>
-                </table>
-
-                <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
-
-                <div class="alert-mini success" style="margin-bottom:14px;">
-                    🔒 <span data-i18n="proxy_safe">Aman — routing lewat <code>/api/places/suggestions</code> (Laravel proxy). API key di server.</span>
-                </div>
-
-                <div class="preset-row">
-                    <span class="preset-label"><i class="bi bi-bookmark-fill"></i>&nbsp;<span data-i18n="presets">Presets</span></span>
-                    <button class="preset-btn" data-preset="bias">📍 BiasPosition</button>
-                    <button class="preset-btn" data-preset="with_position">📐 <span data-i18n="sg_preset_position">+ Position (Core)</span></button>
-                    <button class="preset-btn" data-preset="circle">⭕ Filter.Circle</button>
-                    <button class="preset-btn" data-preset="minimal">📝 <span data-i18n="preset_minimal">Minimal</span></button>
-                    <button class="preset-btn" data-preset="full">🎛️ <span data-i18n="preset_all">All Features</span></button>
-                </div>
-
-                <div class="try-it">
-                    <div class="try-it-pane right" style="border-right:0;">
-                        <div class="try-it-pane-header">
-                            <span><i class="bi bi-code-slash"></i> Request Body <span class="json-status ok" id="sg-json-status">VALID</span></span>
-                            <div style="display:flex;gap:6px;">
-                                <button class="btn-copy" onclick="copyToClipboard('sg-req-preview', this)"><span data-i18n="btn_copy">📋 Copy</span></button>
+                            {{-- Mesin Try It: tersembunyi, dipakai builder untuk mengirim. --}}
+                            <div class="tryit-engine" hidden>
+                                <span class="json-status ok" id="sg-json-status">VALID</span>
                                 <button class="btn-copy" id="sg-format-btn" type="button"><span data-i18n="btn_format">✨ Format</span></button>
+                                <div class="try-it-url">
+                                    <div><span class="try-it-method">POST</span><span style="color:#fbbf24;">https://places.geo.{{ env('AWS_REGION') }}.amazonaws.com/v2/suggest</span></div>
+                                </div>
+                                <textarea class="json-editor" id="sg-req-preview" spellcheck="false"></textarea>
+                                <button class="btn-send" id="sg-run" type="button"><span data-i18n="btn_send">Send Request</span></button>
+                                <span id="sg-spinner"></span>
+                            </div>
+
+                            <div class="doc-section-h"><span class="ic orange"><i class="bi bi-broadcast"></i></span> <span data-i18n="bld_result">Hasil dari AWS</span></div>
+                            <div class="resp-bar">
+                                <span style="font-weight:700;color:var(--text-primary);">Response</span>
+                                <span class="status-pill idle" id="sg-status">— idle —</span>
+                                <span class="meta" id="sg-meta"></span>
+                            </div>
+                            <div id="sg-resp" class="resp-body empty" data-i18n="bld_resp_idle">Tekan "Kirim ke AWS" di perakit request untuk melihat balasan aslinya.</div>
+                        </div>
+
+                        <div class="op-tab" data-tab="request">
+                            <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> <span data-i18n="sec_request_syntax">Request Syntax</span></div>
+                            <pre><code class="language-json">{
+      "QueryText": "string",
+      "MaxResults": number,
+      "BiasPosition": [ number, number ],
+      "Filter": {
+        "BoundingBox": [ number, number, number, number ],
+        "Circle": { "Center": [ number, number ], "Radius": number },
+        "IncludeCountries": [ "string" ]
+      },
+      "AdditionalFeatures": [ "Core" | "TimeZone" ],   // tier: Core/Advanced
+      "Language": "string"
+    }</code></pre>
+                            <p class="syn-legend"><i class="bi bi-tag-fill"></i> <span data-i18n-html="syn_legend_suggest_live">Baris yang diberi pil tier menentukan keranjang harga. Tanpa <code>AdditionalFeatures</code>, panggilan masuk <b>Label</b> — keranjang termurah. Suggest tidak menerima <code>IntendedUse: "Storage"</code>, jadi tidak ada tier Stored di sini.</span></p>
+
+                            <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Request Parameters</span></div>
+                            <table class="param-table">
+                                <thead>
+                                    <tr>
+                                        <th>Field</th>
+                                        <th>Type</th>
+                                        <th>Required</th>
+                                        <th>Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>QueryText</code></td>
+                                        <td><span class="type-tag">string</span></td>
+                                        <td><span class="req">YES</span></td>
+                                        <td>1–200 char. Partial keyword OK (autocomplete).</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>MaxResults</code></td>
+                                        <td><span class="type-tag">number</span></td>
+                                        <td>—</td>
+                                        <td data-i18n="sg_n_maxresults">1–100, bawaan 5</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>BiasPosition</code></td>
+                                        <td><span class="type-tag">[lng, lat]</span></td>
+                                        <td>—</td>
+                                        <td><strong>Exactly 1</strong> dari Bias / Filter.Circle / Filter.BoundingBox.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Filter.Circle</code></td>
+                                        <td><span class="type-tag">object</span></td>
+                                        <td>—</td>
+                                        <td><code>Center: [lng,lat]</code>, <code>Radius: meter</code> (max 50000)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Filter.BoundingBox</code></td>
+                                        <td><span class="type-tag">[w,s,e,n]</span></td>
+                                        <td>—</td>
+                                        <td>west, south, east, north</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Filter.IncludeCountries</code></td>
+                                        <td><span class="type-tag">array</span></td>
+                                        <td>—</td>
+                                        <td data-i18n="note_iso3_codes">ISO-3 codes</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Language</code></td>
+                                        <td><span class="type-tag">string</span></td>
+                                        <td>—</td>
+                                        <td data-i18n-html="note_bcp47_id">BCP 47 (e.g. <code>id</code>)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>AdditionalFeatures</code></td>
+                                        <td><span class="type-tag">array</span></td>
+                                        <td>—</td>
+                                        <td><span class="tier-pill tier-core">Core</span><span class="tier-pill tier-advanced">Advanced</span> <span data-i18n-html="sg_p_addfeat">Valid: <code>Core</code>, <code>TimeZone</code>, <code>Phonemes</code>. <b>Tip:</b> tambah <code>"Core"</code> untuk unlock field <code>Position</code> di response — tanpa ini Suggest gak return koordinat (jadi distance ke marker user gak bisa dihitung client-side).</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div class="alert-mini warn" style="margin-top:14px;">
+                                💡 <span data-i18n-html="sg_position_tip"><b>Penting untuk autocomplete dengan distance:</b> response Suggest <b>tidak include</b> <code>Position</code> by default. Kirim <code>"AdditionalFeatures": ["Core"]</code> untuk dapat lat/lng tiap suggestion — supaya bisa compute distance dari current marker/map center langsung di client.</span>
                             </div>
                         </div>
-                        <div class="try-it-url">
-                            <div><span class="try-it-method">POST</span><span style="color:#fbbf24;">https://places.geo.{{ env('AWS_REGION') }}.amazonaws.com/v2/suggest</span></div>
-                            <div><span class="try-it-method" style="background:#10b981;">VIA</span><span style="color:#86efac;">/api/places/suggestions</span></div>
+
+                        <div class="op-tab" data-tab="response">
+                            <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> <span data-i18n="sec_response_syntax">Response Syntax</span></div>
+                            <pre><code class="language-json">{
+      "ResultItems": [
+        {
+          "Title": "string",
+          "SuggestResultItemType": "Place",
+          "Highlights": {                              // hanya dengan AdditionalFeatures: ["Core"]
+            "Title": [ { "StartIndex": number, "EndIndex": number, "Value": "string" } ],
+            "Address": { "Label": [ { "StartIndex": number, "EndIndex": number, "Value": "string" } ] }
+          },
+          "Place": {
+            "PlaceId": "string",
+            "PlaceType": "string",
+            "Address": { "Label": "string", "Country": { ... }, "Locality": "string", "Street": "string" },
+            "Position": [ number, number ],               // AdditionalFeatures: ["Core"]
+            "Distance": number,                           // AdditionalFeatures: ["Core"]
+            "MapView": [ number, number, number, number ],
+            "Categories": [ { "Id": "string", "Name": "string", "LocalizedName": "string", "Primary": boolean } ],
+            "TimeZone": { "Name": "string", "Offset": "string", "OffsetSeconds": number }
+          }
+        }
+      ]
+    }</code></pre>
+
+                            <p class="syn-legend"><i class="bi bi-info-circle"></i> <span data-i18n-html="sg_resp_note"><code>ResultItems</code> satu-satunya kunci di badan respons; <code>PricingBucket</code> dikirim sebagai header <code>x-amz-geo-pricing-bucket</code>. <code>SuggestResultItemType</code> selalu <code>Place</code> — item <code>Query</code> butuh <code>MaxQueryRefinements</code> yang ditolak 400 di <code>ap-southeast-1</code>.</span></p>
+
+                            <div class="doc-section-h"><span class="ic purple"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_response_fields">Response Fields</span></div>
+                            <table class="param-table">
+                                <thead>
+                                    <tr>
+                                        <th>Field</th>
+                                        <th>Type</th>
+                                        <th>Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>SuggestResultItemType</code></td>
+                                        <td><span class="type-tag">enum</span></td>
+                                        <td><code>Place</code> = actual hit, <code>Query</code> = refinement keyword</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Place.Position</code></td>
+                                        <td><span class="type-tag">[lng,lat]</span></td>
+                                        <td data-i18n="r_pos_place_only">Only for SuggestResultItemType=Place</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Place.Distance</code></td>
+                                        <td><span class="type-tag">number</span></td>
+                                        <td data-i18n="r_distance_bias_only">Meters (only when using BiasPosition)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Highlights.Title</code></td>
+                                        <td><span class="type-tag">array</span></td>
+                                        <td data-i18n="r_highlights">Range index for highlighting matched keywords</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Query.QueryId</code></td>
+                                        <td><span class="type-tag">string</span></td>
+                                        <td data-i18n="r_queryid">Pass to SearchText as QueryId for full search</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                        <textarea class="json-editor" id="sg-req-preview" spellcheck="false"></textarea>
-                        <div class="send-row" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);">
-                            <button class="btn-send" id="sg-run" type="button"><i class="bi bi-play-fill"></i> <span data-i18n="btn_send">Send Request</span></button>
-                            <span id="sg-spinner" style="display:none;color:#cbd5e1;font-size:0.8rem;">⏳ <span data-i18n="loading">Loading</span>...</span>
+
+                        <div class="op-tab" data-tab="error">
+                            <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
+                            <table class="error-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="err_status">Status</th>
+                                        <th data-i18n="err_trigger">Trigger</th>
+                                        <th data-i18n="err_message">AWS Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="err_t1">2+ spatial filter</td>
+                                        <td><em>"Exactly one of..."</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="sg_err_qt">Empty <code>QueryText</code></td>
+                                        <td><em>"QueryText: Member must have length greater than or equal to 1"</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td><code>MaxResults</code> &gt; 100</td>
+                                        <td><em>"...less than or equal to 10"</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">403</span></td>
+                                        <td data-i18n-html="sg_err_perm">Action <code>geo-places:Suggest</code> tidak di-grant</td>
+                                        <td><em>"explicit deny"</em></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-                </div>
 
-                <div class="resp-bar">
-                    <span style="font-weight:700;color:var(--text-primary);">Response</span>
-                    <span class="status-pill idle" id="sg-status">— idle —</span>
-                    <span class="meta" id="sg-meta"></span>
-                </div>
-                <div id="sg-resp" class="resp-body empty" data-i18n="resp_idle">Klik Send Request di atas.</div>
+                        <script>
+                            AWSAPI_TryIt.init({
+                                prefix: 'sg',
+                                panelId: 'op-places-suggest',
+                                proxy: '/api/places/suggestions',
+                                defaultPreset: 'bias',
+                                presets: {
+                                    bias: {
+                                        QueryText: 'halte',
+                                        BiasPosition: [106.8456, -6.2088],
+                                        MaxResults: 5,
+                                        Language: 'id'
+                                    },
+                                    with_position: {
+                                        QueryText: 'halte',
+                                        BiasPosition: [106.8456, -6.2088],
+                                        MaxResults: 5,
+                                        Language: 'id',
+                                        AdditionalFeatures: ['Core']
+                                    },
+                                    circle: {
+                                        QueryText: 'halte',
+                                        Filter: {
+                                            Circle: {
+                                                Center: [106.8456, -6.2088],
+                                                Radius: 2000
+                                            },
+                                            IncludeCountries: ['IDN']
+                                        },
+                                        MaxResults: 5,
+                                        Language: 'id'
+                                    },
+                                    minimal: {
+                                        QueryText: 'mon'
+                                    },
+                                    full: {
+                                        QueryText: 'halte',
+                                        BiasPosition: [106.8456, -6.2088],
+                                        MaxResults: 10,
+                                        Language: 'id',
+                                        PoliticalView: 'IDN',
+                                        MaxQueryRefinements: 2,
+                                        AdditionalFeatures: ['Core'],
+                                        IntendedUse: 'SingleUse'
+                                    }
+                                }
+                            });
+                        </script>
 
-                <script>
-                    AWSAPI_TryIt.init({
-                        prefix: 'sg',
-                        panelId: 'op-places-suggest',
-                        proxy: '/api/places/suggestions',
-                        defaultPreset: 'bias',
-                        presets: {
-                            bias: { QueryText: 'halte', BiasPosition: [106.8456, -6.2088], MaxResults: 5, Language: 'id' },
-                            with_position: { QueryText: 'halte', BiasPosition: [106.8456, -6.2088], MaxResults: 5, Language: 'id', AdditionalFeatures: ['Core'] },
-                            circle: { QueryText: 'halte', Filter: { Circle: { Center: [106.8456, -6.2088], Radius: 2000 }, IncludeCountries: ['IDN'] }, MaxResults: 5, Language: 'id' },
-                            minimal: { QueryText: 'mon' },
-                            full: { QueryText: 'halte', BiasPosition: [106.8456, -6.2088], MaxResults: 10, Language: 'id', PoliticalView: 'IDN', MaxQueryRefinements: 2, AdditionalFeatures: ['Core'], IntendedUse: 'SingleUse' }
-                        }
-                    });
-                </script>
+                    </div> {{-- end v2 --}}
 
-                </div> {{-- end v2 --}}
-
-                <div data-version="v0">
-                    <div class="endpoint-line"><span class="method POST">POST</span><span>/places/v0/indexes/{Idx}/search/suggestions?key=...</span></div>
-                    <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> Request Body</div>
-<pre><code class="language-json">{
+                    <div data-version="v0">
+                        <div class="endpoint-line"><span class="method POST">POST</span><span>/places/v0/indexes/{Idx}/search/suggestions?key=...</span></div>
+                        <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> Request Body</div>
+                        <pre><code class="language-json">{
   "Text": "halte tj",
   "BiasPosition": [106.84, -6.20],
   "MaxResults": 5,
   "FilterCountries": ["IDN"]
 }</code></pre>
-                    <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> Response</div>
-<pre><code class="language-json">{
+                        <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> Response</div>
+                        <pre><code class="language-json">{
   "Summary": { "Text": "halte tj" },
   "Results": [
     { "Text": "Halte Transjakarta Halimun", "PlaceId": "AQABA..." }
   ]
 }</code></pre>
-                    <div class="alert-mini warn" data-i18n-html="sg_v0_diff">
-                        <strong>Differences from v2:</strong>
-                        <ul style="margin:6px 0 0 18px;">
-                            <li><code>Text</code> → <code>QueryText</code></li>
-                            <li><code>FilterCountries</code> → <code>Filter.IncludeCountries</code></li>
-                            <li><code>Results[].Text</code> → <code>ResultItems[].Title</code></li>
-                            <li>v0 tidak return Position di Suggest — harus call GetPlace</li>
-                        </ul>
+                        <div class="alert-mini warn" data-i18n-html="sg_v0_diff">
+                            <strong>Differences from v2:</strong>
+                            <ul style="margin:6px 0 0 18px;">
+                                <li><code>Text</code> → <code>QueryText</code></li>
+                                <li><code>FilterCountries</code> → <code>Filter.IncludeCountries</code></li>
+                                <li><code>Results[].Text</code> → <code>ResultItems[].Title</code></li>
+                                <li>v0 tidak return Position di Suggest — harus call GetPlace</li>
+                            </ul>
+                        </div>
                     </div>
-                </div>
 
                 </div> {{-- end ver-content --}}
             </div>
@@ -3711,172 +2652,261 @@
                 <h1>ReverseGeocode</h1>
                 <p class="op-desc" data-i18n="rg_desc">Koordinat → alamat terdekat.</p>
 
+
                 <div class="ver-tabs">
                     <button data-version="v0">v0 Legacy</button>
                     <button data-version="v2" class="active">v2 Standalone</button>
                 </div>
 
                 <div class="ver-content">
-                <div data-version="v2" class="active">
+                    <div data-version="v2" class="active">
 
-                <div class="endpoint-line"><span class="method POST">POST</span><span>https://places.geo.{region}.amazonaws.com/v2/reverse-geocode?key=...</span></div>
+                        <div class="endpoint-line"><span class="method POST">POST</span><span>https://places.geo.{region}.amazonaws.com/v2/reverse-geocode?key=...</span></div>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> <span data-i18n="sec_request_syntax">Request Syntax</span></div>
-<pre><code class="language-json">{
-  "QueryPosition": [ number, number ],
-  "QueryRadius": number,
-  "MaxResults": number,
-  "Filter": {
-    "IncludePlaceTypes": [ "string" ]
-  },
-  "AdditionalFeatures": [ "string" ],
-  "Language": "string",
-  "PoliticalView": "string",
-  "IntendedUse": "string"
-}</code></pre>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Request Parameters</span></div>
-                <table class="param-table">
-                    <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>QueryPosition</code></td><td><span class="type-tag">[lng, lat]</span></td><td><span class="req">YES</span></td><td data-i18n="rg_p_qpos">Coordinate point to reverse-geocode</td></tr>
-                        <tr><td><code>QueryRadius</code></td><td><span class="type-tag">number</span></td><td>—</td><td data-i18n="rg_p_radius">Search radius (meters), default 0 (exact point)</td></tr>
-                        <tr><td><code>MaxResults</code></td><td><span class="type-tag">number</span></td><td>—</td><td data-i18n="note_max_4">1–4, default 1</td></tr>
-                        <tr><td><code>Filter.IncludePlaceTypes</code></td><td><span class="type-tag">array</span></td><td>—</td><td><code>Locality</code> | <code>Street</code> | <code>PointAddress</code> | <code>Block</code> | dst.</td></tr>
-                        <tr><td><code>AdditionalFeatures</code></td><td><span class="type-tag">array</span></td><td>—</td><td><code>TimeZone</code> | <code>Access</code></td></tr>
-                        <tr><td><code>Language</code></td><td><span class="type-tag">string</span></td><td>—</td><td data-i18n="note_bcp47_short">BCP 47</td></tr>
-                    </tbody>
-                </table>
+                        {{-- Empat tab seperti operasi Places lain: perakit + hasil, lalu
+                             rujukan request, respons, dan error. --}}
+                        <div class="op-tabs" role="tablist">
+                            <button class="op-tab-btn is-on" data-tab="live" type="button"><i class="bi bi-play-circle"></i> <span data-i18n="tab_live">Live try</span></button>
+                            <button class="op-tab-btn" data-tab="request" type="button"><i class="bi bi-arrow-up-right"></i> <span data-i18n="tab_request">Request</span></button>
+                            <button class="op-tab-btn" data-tab="response" type="button"><i class="bi bi-arrow-down-left"></i> <span data-i18n="tab_response">Respons</span></button>
+                            <button class="op-tab-btn" data-tab="error" type="button"><i class="bi bi-exclamation-triangle"></i> <span data-i18n="tab_error">Error</span></button>
+                        </div>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-shuffle"></i></span> <span data-i18n="sec_field_rules">Field Rules</span></div>
-                <div class="rules-grid">
-                    <div class="rule-card required">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-check-square-fill"></i></span> <span data-i18n="rule_required_qt">Required</span></div>
-                        <div class="field-list"><code>QueryPosition</code></div>
-                        <div class="rule-note" data-i18n="rg_required_note">Wajib koordinat [lng, lat] valid (lng ±180, lat ±90).</div>
-                    </div>
-                    <div class="rule-card combo">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-funnel-fill"></i></span> <span data-i18n="rg_filter_label">Filter PlaceType</span></div>
-                        <div class="field-list"><code>Filter.IncludePlaceTypes</code></div>
-                        <div class="rule-note" data-i18n="rg_filter_note">Batasi tipe hasil — mis. cuma <code>Street</code> atau <code>PointAddress</code> aja, tanpa <code>Locality</code>/<code>District</code>.</div>
-                    </div>
-                </div>
+                        <div class="op-tab is-on" data-tab="live">
+                            <div data-builder="places-reverse-geocode"></div>
 
-                <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
-                <table class="error-table">
-                    <thead><tr><th data-i18n="err_status">Status</th><th data-i18n="err_trigger">Trigger</th><th data-i18n="err_message">AWS Message</th></tr></thead>
-                    <tbody>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n-html="rg_err_pos">Tanpa <code>QueryPosition</code></td><td><em>"QueryPosition is required"</em></td></tr>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n-html="rg_err_format">Format <code>[lat, lng]</code> (terbalik)</td><td data-i18n-html="rg_err_format_msg">Hasil aneh — AWS treat sebagai [lng, lat]</td></tr>
-                        <tr><td><span class="err-code">400</span></td><td><code>MaxResults</code> &gt; 4</td><td><em>"...less than or equal to 4"</em></td></tr>
-                    </tbody>
-                </table>
-
-                <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> <span data-i18n="sec_response_syntax">Response Syntax</span></div>
-<pre><code class="language-json">{
-  "PricingBucket": "string",
-  "ResultItems": [
-    {
-      "PlaceId": "string",
-      "PlaceType": "string",
-      "Title": "string",
-      "Address": {
-        "Label": "string",
-        "Country": { "Code2": "string", "Name": "string" },
-        "Region": { "Code": "string", "Name": "string" },
-        "PostalCode": "string"
-      },
-      "Position": [ number, number ],
-      "Distance": number,
-      "MapView": [ number, number, number, number ]
-    }
-  ]
-}</code></pre>
-
-                <div class="doc-section-h"><span class="ic purple"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_response_fields">Response Fields</span></div>
-                <table class="param-table">
-                    <thead><tr><th>Field</th><th>Type</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>ResultItems[].Title</code></td><td><span class="type-tag">string</span></td><td data-i18n="r_short_name">Short location name</td></tr>
-                        <tr><td><code>ResultItems[].Address.Label</code></td><td><span class="type-tag">string</span></td><td data-i18n="r_full_address">Full formatted address</td></tr>
-                        <tr><td><code>ResultItems[].Distance</code></td><td><span class="type-tag">number</span></td><td data-i18n="r_distance_qpos">Meters from QueryPosition</td></tr>
-                        <tr><td><code>ResultItems[].PlaceType</code></td><td><span class="type-tag">string</span></td><td>Locality, District, Street, PointAddress, dst.</td></tr>
-                    </tbody>
-                </table>
-
-                <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
-
-                <div class="alert-mini success" style="margin-bottom:14px;">
-                    🔒 <span data-i18n="proxy_safe_rg">Aman — routing lewat <code>/api/places/reverse</code> (Laravel proxy).</span>
-                </div>
-
-                <div class="preset-row">
-                    <span class="preset-label"><i class="bi bi-bookmark-fill"></i>&nbsp;<span data-i18n="presets">Presets</span></span>
-                    <button class="preset-btn" data-preset="basic">📍 <span data-i18n="rg_preset_basic">Jakarta</span></button>
-                    <button class="preset-btn" data-preset="filter">🔧 <span data-i18n="rg_preset_filter">+ Filter Street only</span></button>
-                    <button class="preset-btn" data-preset="full">🎛️ <span data-i18n="preset_all">All Features</span></button>
-                </div>
-
-                <div class="try-it">
-                    <div class="try-it-pane right" style="border-right:0;">
-                        <div class="try-it-pane-header">
-                            <span><i class="bi bi-code-slash"></i> Request Body <span class="json-status ok" id="rg-json-status">VALID</span></span>
-                            <div style="display:flex;gap:6px;">
-                                <button class="btn-copy" onclick="copyToClipboard('rg-req-preview', this)"><span data-i18n="btn_copy">📋 Copy</span></button>
+                            {{-- Mesin Try It: tersembunyi, dipakai builder untuk mengirim. --}}
+                            <div class="tryit-engine" hidden>
+                                <span class="json-status ok" id="rg-json-status">VALID</span>
                                 <button class="btn-copy" id="rg-format-btn" type="button"><span data-i18n="btn_format">✨ Format</span></button>
+                                <div class="try-it-url">
+                                    <div><span class="try-it-method">POST</span><span style="color:#fbbf24;">https://places.geo.{{ env('AWS_REGION') }}.amazonaws.com/v2/reverse-geocode</span></div>
+                                </div>
+                                <textarea class="json-editor" id="rg-req-preview" spellcheck="false"></textarea>
+                                <button class="btn-send" id="rg-run" type="button"><span data-i18n="btn_send">Send Request</span></button>
+                                <span id="rg-spinner"></span>
                             </div>
+
+                            <div class="doc-section-h"><span class="ic orange"><i class="bi bi-broadcast"></i></span> <span data-i18n="bld_result">Hasil dari AWS</span></div>
+                            <div class="resp-bar">
+                                <span style="font-weight:700;color:var(--text-primary);">Response</span>
+                                <span class="status-pill idle" id="rg-status">— idle —</span>
+                                <span class="meta" id="rg-meta"></span>
+                            </div>
+                            <div id="rg-resp" class="resp-body empty" data-i18n="bld_resp_idle">Tekan "Kirim ke AWS" di perakit request untuk melihat balasan aslinya.</div>
                         </div>
-                        <div class="try-it-url">
-                            <div><span class="try-it-method">POST</span><span style="color:#fbbf24;">https://places.geo.{{ env('AWS_REGION') }}.amazonaws.com/v2/reverse-geocode</span></div>
-                            <div><span class="try-it-method" style="background:#10b981;">VIA</span><span style="color:#86efac;">/api/places/reverse</span></div>
+
+                        <div class="op-tab" data-tab="request">
+                            <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> <span data-i18n="sec_request_syntax">Request Syntax</span></div>
+                            <pre><code class="language-json">{
+      "QueryPosition": [ number, number ],
+      "QueryRadius": number,
+      "MaxResults": number,
+      "Filter": {
+        "IncludeCountries": [ "string" ]
+      },
+      "AdditionalFeatures": [ "TimeZone" ],      // tier: Advanced
+      "Language": "string",
+      "IntendedUse": "SingleUse" | "Storage"     // tier: Stored
+    }</code></pre>
+                            <p class="syn-legend"><i class="bi bi-tag-fill"></i> <span data-i18n-html="syn_legend_rg_live">Baris yang diberi pil tier menentukan keranjang harga. Tanpa satu pun penanda, panggilan masuk <b>Core</b>; <b>Stored</b> hanya kalau <code>IntendedUse</code> diisi <code>Storage</code>.</span></p>
+
+                            <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Request Parameters</span></div>
+                            <table class="param-table">
+                                <thead>
+                                    <tr>
+                                        <th>Field</th>
+                                        <th>Type</th>
+                                        <th>Required</th>
+                                        <th>Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>QueryPosition</code></td>
+                                        <td><span class="type-tag">[lng, lat]</span></td>
+                                        <td><span class="req">YES</span></td>
+                                        <td data-i18n="rg_p_qpos">Coordinate point to reverse-geocode</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>QueryRadius</code></td>
+                                        <td><span class="type-tag">number</span></td>
+                                        <td>—</td>
+                                        <td data-i18n="rg_n_radius">Radius pencarian dalam meter, 1–100000. Nilai 0 ditolak 400</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>MaxResults</code></td>
+                                        <td><span class="type-tag">number</span></td>
+                                        <td>—</td>
+                                        <td data-i18n="rg_n_maxresults">1–100, bawaan 1</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>AdditionalFeatures</code></td>
+                                        <td><span class="type-tag">array</span></td>
+                                        <td>—</td>
+                                        <td><span class="tier-pill tier-advanced">Advanced</span> <span data-i18n-html="rg_p_addfeat_full"><code>TimeZone</code> | <code>Intersections</code>. Di <code>ap-southeast-1</code> hanya <code>TimeZone</code> yang dilayani.</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Language</code></td>
+                                        <td><span class="type-tag">string</span></td>
+                                        <td>—</td>
+                                        <td data-i18n="note_bcp47_short">BCP 47</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>IntendedUse</code></td>
+                                        <td><span class="type-tag">string</span></td>
+                                        <td>—</td>
+                                        <td><span class="tier-pill tier-stored">Stored</span> <span data-i18n-html="note_intended_use"><code>SingleUse</code> (default) | <code>Storage</code></span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Filter.IncludeCountries</code></td>
+                                        <td><span class="type-tag">array&lt;string&gt;</span></td>
+                                        <td>—</td>
+                                        <td data-i18n-html="note_iso3_arr">Kode negara ISO-3, mis. <code>["IDN"]</code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                        <textarea class="json-editor" id="rg-req-preview" spellcheck="false"></textarea>
-                        <div class="send-row" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);">
-                            <button class="btn-send" id="rg-run" type="button"><i class="bi bi-play-fill"></i> <span data-i18n="btn_send">Send Request</span></button>
-                            <span id="rg-spinner" style="display:none;color:#cbd5e1;font-size:0.8rem;">⏳ <span data-i18n="loading">Loading</span>...</span>
+
+                        <div class="op-tab" data-tab="response">
+                            <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> <span data-i18n="sec_response_syntax">Response Syntax</span></div>
+                            <pre><code class="language-json">{
+      "ResultItems": [
+        {
+          "PlaceId": "string",
+          "PlaceType": "string",
+          "Title": "string",
+          "Address": {
+            "Label": "string",
+            "Country": { "Code2": "string", "Name": "string" },
+            "Region": { "Code": "string", "Name": "string" },
+            "PostalCode": "string"
+          },
+          "Position": [ number, number ],
+          "Distance": number,
+          "MapView": [ number, number, number, number ]
+        }
+      ]
+    }</code></pre>
+
+                            <p class="syn-legend"><i class="bi bi-info-circle"></i> <span data-i18n-html="rg_resp_note"><code>ResultItems</code> satu-satunya kunci di badan respons — <code>PricingBucket</code> dikirim sebagai header <code>x-amz-geo-pricing-bucket</code>. Tiap item selalu membawa <code>Position</code>, <code>Distance</code>, <code>MapView</code>, dan <code>Categories</code>; <code>TimeZone</code> hanya kalau diminta.</span></p>
+
+                            <div class="doc-section-h"><span class="ic purple"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_response_fields">Response Fields</span></div>
+                            <table class="param-table">
+                                <thead>
+                                    <tr>
+                                        <th>Field</th>
+                                        <th>Type</th>
+                                        <th>Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>ResultItems[].Title</code></td>
+                                        <td><span class="type-tag">string</span></td>
+                                        <td data-i18n="r_short_name">Short location name</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>ResultItems[].Address.Label</code></td>
+                                        <td><span class="type-tag">string</span></td>
+                                        <td data-i18n="r_full_address">Full formatted address</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>ResultItems[].Distance</code></td>
+                                        <td><span class="type-tag">number</span></td>
+                                        <td data-i18n="r_distance_qpos">Meters from QueryPosition</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>ResultItems[].PlaceType</code></td>
+                                        <td><span class="type-tag">string</span></td>
+                                        <td>Locality, District, Street, PointAddress, dst.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
-                </div>
 
-                <div class="resp-bar">
-                    <span style="font-weight:700;color:var(--text-primary);">Response</span>
-                    <span class="status-pill idle" id="rg-status">— idle —</span>
-                    <span class="meta" id="rg-meta"></span>
-                </div>
-                <div id="rg-resp" class="resp-body empty" data-i18n="resp_idle">Klik Send Request.</div>
+                        <div class="op-tab" data-tab="error">
+                            <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
+                            <table class="error-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="err_status">Status</th>
+                                        <th data-i18n="err_trigger">Trigger</th>
+                                        <th data-i18n="err_message">AWS Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="rg_err_pos">Tanpa <code>QueryPosition</code></td>
+                                        <td><em>"QueryPosition is required"</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="rg_err_format">Format <code>[lat, lng]</code> (terbalik)</td>
+                                        <td data-i18n-html="rg_err_format_msg">Hasil aneh — AWS treat sebagai [lng, lat]</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td><code>MaxResults</code> &gt; 100</td>
+                                        <td><em>"...less than or equal to 4"</em></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
 
-                <script>
-                    AWSAPI_TryIt.init({
-                        prefix: 'rg',
-                        panelId: 'op-places-reverse-geocode',
-                        proxy: '/api/places/reverse',
-                        defaultPreset: 'basic',
-                        presets: {
-                            basic: { QueryPosition: [106.8456, -6.2088], MaxResults: 1, Language: 'id' },
-                            filter: { QueryPosition: [106.8456, -6.2088], MaxResults: 4, Language: 'id', Filter: { IncludePlaceTypes: ['Street', 'PointAddress'] } },
-                            full: { QueryPosition: [106.8456, -6.2088], QueryRadius: 100, MaxResults: 4, Language: 'id', PoliticalView: 'IDN', AdditionalFeatures: ['TimeZone', 'Access'], IntendedUse: 'SingleUse' }
-                        }
-                    });
-                </script>
+                        <script>
+                            AWSAPI_TryIt.init({
+                                prefix: 'rg',
+                                panelId: 'op-places-reverse-geocode',
+                                proxy: '/api/places/reverse',
+                                defaultPreset: 'basic',
+                                presets: {
+                                    basic: {
+                                        QueryPosition: [106.8456, -6.2088],
+                                        MaxResults: 1,
+                                        Language: 'id'
+                                    },
+                                    filter: {
+                                        QueryPosition: [106.8456, -6.2088],
+                                        MaxResults: 4,
+                                        Language: 'id',
+                                        Filter: {
+                                            IncludePlaceTypes: ['Street', 'PointAddress']
+                                        }
+                                    },
+                                    full: {
+                                        QueryPosition: [106.8456, -6.2088],
+                                        QueryRadius: 100,
+                                        MaxResults: 4,
+                                        Language: 'id',
+                                        PoliticalView: 'IDN',
+                                        AdditionalFeatures: ['TimeZone', 'Access'],
+                                        IntendedUse: 'SingleUse'
+                                    }
+                                }
+                            });
+                        </script>
 
-                </div> {{-- end v2 --}}
+                    </div> {{-- end v2 --}}
 
-                <div data-version="v0">
-                    <div class="endpoint-line"><span class="method POST">POST</span><span>/places/v0/indexes/{Idx}/search/position?key=...</span></div>
-                    <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> Request Body</div>
-<pre><code class="language-json">{
+                    <div data-version="v0">
+                        <div class="endpoint-line"><span class="method POST">POST</span><span>/places/v0/indexes/{Idx}/search/position?key=...</span></div>
+                        <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> Request Body</div>
+                        <pre><code class="language-json">{
   "Position": [106.84, -6.20],
   "MaxResults": 1
 }</code></pre>
-                    <div class="alert-mini warn" data-i18n-html="rg_v0_diff">
-                        <strong>Differences from v2:</strong>
-                        <ul style="margin:6px 0 0 18px;">
-                            <li><code>Position</code> → <code>QueryPosition</code></li>
-                            <li>Tidak ada <code>Filter.IncludePlaceTypes</code> di v0</li>
-                            <li>Wajib bikin <code>PlaceIndex</code> resource dulu</li>
-                        </ul>
+                        <div class="alert-mini warn" data-i18n-html="rg_v0_diff">
+                            <strong>Differences from v2:</strong>
+                            <ul style="margin:6px 0 0 18px;">
+                                <li><code>Position</code> → <code>QueryPosition</code></li>
+                                <li>Tidak ada <code>Filter.IncludePlaceTypes</code> di v0</li>
+                                <li>Wajib bikin <code>PlaceIndex</code> resource dulu</li>
+                            </ul>
+                        </div>
                     </div>
-                </div>
 
                 </div> {{-- end ver-content --}}
             </div>
@@ -3887,166 +2917,261 @@
                 <h1>GetPlace</h1>
                 <p class="op-desc" data-i18n="gp_desc">Detail lengkap Place by <code>PlaceId</code> (dari hasil Search/Suggest sebelumnya).</p>
 
+
                 <div class="ver-tabs">
                     <button data-version="v0">v0 Legacy</button>
                     <button data-version="v2" class="active">v2 Standalone</button>
                 </div>
 
                 <div class="ver-content">
-                <div data-version="v2" class="active">
+                    <div data-version="v2" class="active">
 
-                <div class="endpoint-line"><span class="method GET">GET</span><span>https://places.geo.{region}.amazonaws.com/v2/place/{PlaceId}?key=...&amp;...</span></div>
+                        <div class="endpoint-line"><span class="method GET">GET</span><span>https://places.geo.{region}.amazonaws.com/v2/place/{PlaceId}?key=...&amp;...</span></div>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Query Parameters</span></div>
-                <table class="param-table">
-                    <thead><tr><th>Param</th><th>Type</th><th>Required</th><th>Note</th></tr></thead>
-                    <tbody>
-                        <tr><td><code>{PlaceId}</code></td><td><span class="type-tag">path</span></td><td><span class="req">YES</span></td><td data-i18n-html="note_placeid_path">Path segment (URL-encoded). From SearchText/Suggest.</td></tr>
-                        <tr><td><code>key</code></td><td><span class="type-tag">query</span></td><td><span class="req">YES</span></td><td data-i18n="note_api_key">API key</td></tr>
-                        <tr><td><code>additional-features</code></td><td><span class="type-tag">query</span></td><td>—</td><td data-i18n-html="gp_p_addfeat">Comma-separated: <code>TimeZone,Contact,Hours,Phonemes,Access</code></td></tr>
-                        <tr><td><code>language</code></td><td><span class="type-tag">query</span></td><td>—</td><td data-i18n-html="note_bcp47">BCP 47 (e.g. <code>id</code>, <code>en</code>)</td></tr>
-                        <tr><td><code>political-view</code></td><td><span class="type-tag">query</span></td><td>—</td><td data-i18n="note_iso3_label">ISO-3 country code</td></tr>
-                        <tr><td><code>intended-use</code></td><td><span class="type-tag">query</span></td><td>—</td><td><code>SingleUse</code> | <code>Storage</code></td></tr>
-                    </tbody>
-                </table>
 
-                <div class="doc-section-h"><span class="ic blue"><i class="bi bi-shuffle"></i></span> <span data-i18n="sec_field_rules">Field Rules</span></div>
-                <div class="rules-grid">
-                    <div class="rule-card required">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-check-square-fill"></i></span> <span data-i18n="rule_required_qt">Required</span></div>
-                        <div class="field-list"><code>PlaceId</code> (path)</div>
-                        <div class="rule-note" data-i18n="gp_required_note">Wajib di URL path. PlaceId valid time-bounded ~1 jam dari saat di-issue Search/Suggest.</div>
-                    </div>
-                    <div class="rule-card combo">
-                        <div class="rule-header"><span class="ic"><i class="bi bi-puzzle-fill"></i></span> <span data-i18n="gp_addfeat">Additional Features</span></div>
-                        <div class="field-list"><code>TimeZone</code> <code>Contact</code> <code>Hours</code> <code>Phonemes</code> <code>Access</code></div>
-                        <div class="rule-note" data-i18n="gp_addfeat_note">Opsional, comma-separated. Tambah cost per feature. Beberapa region cuma support TimeZone.</div>
-                    </div>
-                </div>
-
-                <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
-                <table class="error-table">
-                    <thead><tr><th data-i18n="err_status">Status</th><th data-i18n="err_trigger">Trigger</th><th data-i18n="err_message">AWS Message</th></tr></thead>
-                    <tbody>
-                        <tr><td><span class="err-code">404</span></td><td data-i18n="gp_err_notfound">PlaceId tidak ditemukan / expired</td><td><em>"Place not found"</em></td></tr>
-                        <tr><td><span class="err-code">400</span></td><td data-i18n-html="gp_err_unsupported"><code>additional-features</code> berisi value yang gak disupport region</td><td><em>"Unsupported AdditionalFeatures..."</em></td></tr>
-                        <tr><td><span class="err-code">403</span></td><td data-i18n-html="gp_err_perm">API Key tidak punya <code>geo-places:GetPlace</code></td><td><em>"explicit deny"</em></td></tr>
-                    </tbody>
-                </table>
-
-                <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> <span data-i18n="sec_response_syntax">Response Syntax</span></div>
-<pre><code class="language-json">{
-  "PlaceId": "string",
-  "PlaceType": "string",
-  "Title": "string",
-  "Address": {
-    "Label": "string",
-    "Country": { "Code2": "string", "Name": "string" },
-    "Region": { "Code": "string", "Name": "string" },
-    "Locality": "string",
-    "PostalCode": "string"
-  },
-  "Position": [ number, number ],
-  "MapView": [ number, number, number, number ],
-  "Categories": [ { "Id": "string", "Name": "string", "Primary": boolean } ],
-  "Contacts": {
-    "Phones": [ { "Value": "string" } ],
-    "Websites": [ { "Value": "string" } ]
-  },
-  "OpeningHours": [
-    { "Display": [ "string" ], "OpenNow": boolean }
-  ],
-  "TimeZone": { "Name": "string", "Offset": "string", "OffsetSeconds": number }
-}</code></pre>
-
-                <div class="doc-section-h"><span class="ic orange"><i class="bi bi-play-circle"></i></span> <span data-i18n="sec_try_live">Try it Live</span></div>
-
-                <div class="alert-mini info" style="margin-bottom:14px;">
-                    💡 <span data-i18n="gp_hint">Dapat <code>PlaceId</code> dulu dari Try it Live SearchText/Suggest, copy hasil <code>ResultItems[0].PlaceId</code>, paste ke sini.</span>
-                </div>
-
-                <div class="try-it">
-                    <div class="try-it-pane right" style="border-right:0;">
-                        <div class="try-it-pane-header">
-                            <span><i class="bi bi-link-45deg"></i> <span data-i18n="gp_query_params">Query Parameters</span></span>
+                        {{-- Empat tab seperti operasi Places lain. GetPlace beda sendiri:
+                             GET tanpa badan JSON, jadi perakitnya merangkai URL dan
+                             mengisi formulir tersembunyi di bawahnya. --}}
+                        <div class="op-tabs" role="tablist">
+                            <button class="op-tab-btn is-on" data-tab="live" type="button"><i class="bi bi-play-circle"></i> <span data-i18n="tab_live">Live try</span></button>
+                            <button class="op-tab-btn" data-tab="request" type="button"><i class="bi bi-arrow-up-right"></i> <span data-i18n="tab_request">Request</span></button>
+                            <button class="op-tab-btn" data-tab="response" type="button"><i class="bi bi-arrow-down-left"></i> <span data-i18n="tab_response">Respons</span></button>
+                            <button class="op-tab-btn" data-tab="error" type="button"><i class="bi bi-exclamation-triangle"></i> <span data-i18n="tab_error">Error</span></button>
                         </div>
-                        <div class="try-it-url">
-                            <div><span class="try-it-method GET">GET</span><span style="color:#fbbf24;">https://places.geo.{{ env('AWS_REGION') }}.amazonaws.com/v2/place/&lt;PlaceId&gt;</span></div>
-                            <div><span class="try-it-method" style="background:#10b981;">VIA</span><span style="color:#86efac;">/api/places/&lt;PlaceId&gt;</span></div>
-                        </div>
-                        <div style="padding-top:10px;display:flex;flex-direction:column;gap:8px;">
-                            <div>
-                                <label style="font-size:0.74rem;color:#cbd5e1;font-weight:600;">PlaceId <span style="color:#ef4444;">*</span></label>
-                                <input id="gp-id" placeholder="Paste PlaceId (e.g. AQABA...)" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-family:monospace;font-size:0.78rem;">
+
+                        <div class="op-tab is-on" data-tab="live">
+                            <div class="alert-mini info" style="margin-bottom:14px;">
+                                💡 <span data-i18n="gp_hint">Dapat <code>PlaceId</code> dulu dari Try it Live SearchText/Suggest, copy hasil <code>ResultItems[0].PlaceId</code>, paste ke sini.</span>
                             </div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                                <div>
-                                    <label style="font-size:0.74rem;color:#cbd5e1;font-weight:600;">language</label>
-                                    <select id="gp-lang" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:0.84rem;">
-                                        <option value="id">id</option>
-                                        <option value="en">en</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style="font-size:0.74rem;color:#cbd5e1;font-weight:600;">additional-features</label>
-                                    <input id="gp-feat" value="TimeZone" placeholder="TimeZone,Contact,Hours" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-family:monospace;font-size:0.78rem;">
+                            <div data-builder="places-get-place"></div>
+
+                            {{-- Formulir asli tetap ada tapi disembunyikan: skrip panel ini
+                                 membacanya untuk merangkai URL proxy, dan builder yang
+                                 mengisinya sebelum menekan tombol kirim. --}}
+                            <div class="tryit-engine" hidden>
+                                <div class="try-it">
+                                    <div class="try-it-pane right" style="border-right:0;">
+                                        <div class="try-it-pane-header">
+                                            <span><i class="bi bi-link-45deg"></i> <span data-i18n="gp_query_params">Query Parameters</span></span>
+                                        </div>
+                                        <div class="try-it-url">
+                                            <div><span class="try-it-method GET">GET</span><span style="color:#fbbf24;">https://places.geo.{{ env('AWS_REGION') }}.amazonaws.com/v2/place/&lt;PlaceId&gt;</span></div>
+                                            <div><span class="try-it-method" style="background:#10b981;">VIA</span><span style="color:#86efac;">/api/places/&lt;PlaceId&gt;</span></div>
+                                        </div>
+                                        <div style="padding-top:10px;display:flex;flex-direction:column;gap:8px;">
+                                            <div>
+                                                <label style="font-size:0.74rem;color:#cbd5e1;font-weight:600;">PlaceId <span style="color:#ef4444;">*</span></label>
+                                                <input id="gp-id" placeholder="Paste PlaceId (e.g. AQABA...)" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-family:monospace;font-size:0.78rem;">
+                                            </div>
+                                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                                <div>
+                                                    <label style="font-size:0.74rem;color:#cbd5e1;font-weight:600;">language</label>
+                                                    <select id="gp-lang" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:0.84rem;">
+                                                        <option value="id">id</option>
+                                                        <option value="en">en</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label style="font-size:0.74rem;color:#cbd5e1;font-weight:600;">additional-features</label>
+                                                    <input id="gp-feat" value="TimeZone" placeholder="TimeZone,Contact,Hours" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-family:monospace;font-size:0.78rem;">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="send-row" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);">
+                                            <button class="btn-send" id="gp-run" type="button"><i class="bi bi-play-fill"></i> <span data-i18n="btn_send">Send Request</span></button>
+                                            <span id="gp-spinner" style="display:none;color:#cbd5e1;font-size:0.8rem;">⏳ <span data-i18n="loading">Loading</span>...</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+
+                            <div class="doc-section-h"><span class="ic orange"><i class="bi bi-broadcast"></i></span> <span data-i18n="bld_result">Hasil dari AWS</span></div>
+                            <div class="resp-bar">
+                                <span style="font-weight:700;color:var(--text-primary);">Response</span>
+                                <span class="status-pill idle" id="gp-status">— idle —</span>
+                                <span class="meta" id="gp-meta"></span>
+                            </div>
+                            <div id="gp-resp" class="resp-body empty" data-i18n="gp_resp_idle">Masukkan PlaceId lalu klik Send Request.</div>
                         </div>
-                        <div class="send-row" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);">
-                            <button class="btn-send" id="gp-run" type="button"><i class="bi bi-play-fill"></i> <span data-i18n="btn_send">Send Request</span></button>
-                            <span id="gp-spinner" style="display:none;color:#cbd5e1;font-size:0.8rem;">⏳ <span data-i18n="loading">Loading</span>...</span>
+
+                        <div class="op-tab" data-tab="request">
+                            <div class="doc-section-h"><span class="ic blue"><i class="bi bi-arrow-up-right"></i></span> <span data-i18n="sec_request_syntax">Request Syntax</span></div>
+                            <pre><code class="language-bash">GET https://places.geo.{region}.amazonaws.com/v2/place/{PlaceId}
+          ?key=&lt;API_KEY&gt;
+          &amp;additional-features=TimeZone     # tier: Advanced
+          &amp;language=id
+          &amp;intended-use=Storage             # tier: Stored</code></pre>
+                            <p class="syn-legend"><i class="bi bi-tag-fill"></i> <span data-i18n-html="syn_legend_gp_live">Baris yang diberi pil tier menentukan keranjang harga. Tanpa keduanya, panggilan masuk <b>Core</b> dan <code>intended-use</code> dianggap <code>SingleUse</code>. Di <code>ap-southeast-1</code> <code>intended-use=Storage</code> ditolak 400.</span></p>
+
+                            <div class="doc-section-h"><span class="ic blue"><i class="bi bi-list-ul"></i></span> <span data-i18n="sec_request_params">Query Parameters</span></div>
+                            <table class="param-table">
+                                <thead>
+                                    <tr>
+                                        <th>Param</th>
+                                        <th>Type</th>
+                                        <th>Required</th>
+                                        <th>Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>{PlaceId}</code></td>
+                                        <td><span class="type-tag">path</span></td>
+                                        <td><span class="req">YES</span></td>
+                                        <td data-i18n-html="note_placeid_path">Path segment (URL-encoded). From SearchText/Suggest.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>key</code></td>
+                                        <td><span class="type-tag">query</span></td>
+                                        <td><span class="req">YES</span></td>
+                                        <td data-i18n="note_api_key">API key</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>additional-features</code></td>
+                                        <td><span class="type-tag">query</span></td>
+                                        <td>—</td>
+                                        <td><span class="tier-pill tier-advanced">Advanced</span> <span data-i18n-html="gp_p_addfeat_live">Comma-separated: <code>TimeZone</code>, <code>Contact</code>, <code>Access</code>, <code>Phonemes</code>, <code>SecondaryAddresses</code>. Di <code>ap-southeast-1</code> hanya <code>TimeZone</code> yang dilayani.</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>language</code></td>
+                                        <td><span class="type-tag">query</span></td>
+                                        <td>—</td>
+                                        <td data-i18n-html="note_bcp47">BCP 47 (e.g. <code>id</code>, <code>en</code>)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <p class="syn-legend"><i class="bi bi-tag-fill"></i> <span data-i18n-html="syn_legend_places">Baris yang diberi pil tier menentukan keranjang harga. Tanpa satu pun penanda, panggilan masuk <b>Core</b>; <b>Stored</b> hanya kalau <code>IntendedUse</code> diisi <code>Storage</code>.</span></p>
+                        </div>
+
+                        <div class="op-tab" data-tab="response">
+                            <div class="doc-section-h"><span class="ic purple"><i class="bi bi-arrow-down-left"></i></span> <span data-i18n="sec_response_syntax">Response Syntax</span></div>
+                            <pre><code class="language-json">{
+      "PlaceId": "string",
+      "PlaceType": "string",
+      "Title": "string",
+      "Address": {
+        "Label": "string",
+        "Country": { "Code2": "string", "Name": "string" },
+        "Region": { "Code": "string", "Name": "string" },
+        "Locality": "string",
+        "PostalCode": "string"
+      },
+      "Position": [ number, number ],
+      "MapView": [ number, number, number, number ],
+      "Categories": [ { "Id": "string", "Name": "string", "Primary": boolean } ],
+      "Contacts": {
+        "Phones": [ { "Value": "string" } ],
+        "Websites": [ { "Value": "string" } ]
+      },
+      "OpeningHours": [
+        { "Display": [ "string" ], "OpenNow": boolean }
+      ],
+      "TimeZone": { "Name": "string", "Offset": "string", "OffsetSeconds": number }
+    }</code></pre>
+
+                            <p class="syn-legend"><i class="bi bi-info-circle"></i> <span data-i18n-html="gp_resp_note">Balasannya objek tunggal, bukan <code>ResultItems</code>. Tidak ada <code>Distance</code> — GetPlace tidak punya titik acuan. <code>PricingBucket</code> dikirim sebagai header <code>x-amz-geo-pricing-bucket</code>.</span></p>
+                        </div>
+
+                        <div class="op-tab" data-tab="error">
+                            <div class="doc-section-h"><span class="ic" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-exclamation-triangle-fill"></i></span> <span data-i18n="sec_common_errors">Common Errors</span></div>
+                            <table class="error-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="err_status">Status</th>
+                                        <th data-i18n="err_trigger">Trigger</th>
+                                        <th data-i18n="err_message">AWS Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n="gp_err_badid">PlaceId tidak sah, dipotong, atau salah ketik</td>
+                                        <td><em>"'PlaceId' must be a valid ID."</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">400</span></td>
+                                        <td data-i18n-html="gp_err_unsupported"><code>additional-features</code> berisi value yang gak disupport region</td>
+                                        <td><em>"Unsupported AdditionalFeatures..."</em></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="err-code">403</span></td>
+                                        <td data-i18n-html="gp_err_perm">API Key tidak punya <code>geo-places:GetPlace</code></td>
+                                        <td><em>"explicit deny"</em></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <script>
+                            (function() {
+                                const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+                                const $ = id => document.getElementById(id);
+                                $('gp-run').addEventListener('click', async () => {
+                                    const id = $('gp-id').value.trim();
+                                    const lang = $('gp-lang').value;
+                                    const feat = $('gp-feat').value.trim();
+                                    const btn = $('gp-run'),
+                                        resp = $('gp-resp'),
+                                        st = $('gp-status'),
+                                        mt = $('gp-meta'),
+                                        sp = $('gp-spinner');
+                                    if (!id) {
+                                        resp.className = 'resp-body error';
+                                        resp.textContent = '❌ PlaceId required';
+                                        st.textContent = 'MISSING PlaceId';
+                                        st.className = 'status-pill bad';
+                                        return;
+                                    }
+                                    btn.disabled = true;
+                                    sp.style.display = 'inline-block';
+                                    st.textContent = '...';
+                                    st.className = 'status-pill idle';
+                                    mt.textContent = '';
+                                    resp.className = 'resp-body';
+                                    resp.textContent = '⏳';
+                                    const url = `/api/places/${encodeURIComponent(id)}?language=${encodeURIComponent(lang)}` + (feat ? `&additional-features=${encodeURIComponent(feat)}` : '');
+                                    const t0 = performance.now();
+                                    try {
+                                        const r = await fetch(url, {
+                                            headers: {
+                                                'Accept': 'application/json',
+                                                'X-CSRF-TOKEN': CSRF
+                                            }
+                                        });
+                                        const ms = Math.round(performance.now() - t0);
+                                        const d = await r.json();
+                                        st.textContent = `${r.status} ${r.statusText}`;
+                                        st.className = `status-pill ${r.ok?'ok':'bad'}`;
+                                        mt.innerHTML = `<b>${ms}ms</b>`;
+                                        if (!r.ok) resp.classList.add('error');
+                                        resp.textContent = JSON.stringify(d, null, 2);
+                                    } catch (e) {
+                                        resp.classList.add('error');
+                                        resp.textContent = 'Error: ' + e.message;
+                                        st.textContent = 'NETWORK ERROR';
+                                        st.className = 'status-pill bad';
+                                    } finally {
+                                        btn.disabled = false;
+                                        sp.style.display = 'none';
+                                    }
+                                });
+                            })();
+                        </script>
+
+                    </div> {{-- end v2 --}}
+
+                    <div data-version="v0">
+                        <div class="endpoint-line"><span class="method GET">GET</span><span>/places/v0/indexes/{Idx}/places/{PlaceId}?key=...</span></div>
+                        <div class="alert-mini warn" data-i18n-html="gp_v0_diff">
+                            <strong>Differences from v2:</strong>
+                            <ul style="margin:6px 0 0 18px;">
+                                <li>Path beda: <code>/places/v0/indexes/{Idx}/places/{PlaceId}</code></li>
+                                <li>Tidak ada <code>additional-features</code> param di v0</li>
+                                <li>Response shape lebih simple, tanpa <code>OpeningHours</code>, <code>Contacts</code>, <code>TimeZone</code></li>
+                            </ul>
                         </div>
                     </div>
-                </div>
-
-                <div class="resp-bar">
-                    <span style="font-weight:700;color:var(--text-primary);">Response</span>
-                    <span class="status-pill idle" id="gp-status">— idle —</span>
-                    <span class="meta" id="gp-meta"></span>
-                </div>
-                <div id="gp-resp" class="resp-body empty" data-i18n="gp_resp_idle">Masukkan PlaceId lalu klik Send Request.</div>
-
-                <script>
-                (function() {
-                    const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
-                    const $ = id => document.getElementById(id);
-                    $('gp-run').addEventListener('click', async () => {
-                        const id = $('gp-id').value.trim();
-                        const lang = $('gp-lang').value;
-                        const feat = $('gp-feat').value.trim();
-                        const btn=$('gp-run'),resp=$('gp-resp'),st=$('gp-status'),mt=$('gp-meta'),sp=$('gp-spinner');
-                        if (!id) { resp.className='resp-body error'; resp.textContent='❌ PlaceId required'; st.textContent='MISSING PlaceId'; st.className='status-pill bad'; return; }
-                        btn.disabled=true; sp.style.display='inline-block'; st.textContent='...'; st.className='status-pill idle'; mt.textContent=''; resp.className='resp-body'; resp.textContent='⏳';
-                        const url = `/api/places/${encodeURIComponent(id)}?language=${encodeURIComponent(lang)}` + (feat ? `&additional-features=${encodeURIComponent(feat)}` : '');
-                        const t0 = performance.now();
-                        try {
-                            const r = await fetch(url, { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF } });
-                            const ms = Math.round(performance.now() - t0); const d = await r.json();
-                            st.textContent = `${r.status} ${r.statusText}`; st.className = `status-pill ${r.ok?'ok':'bad'}`;
-                            mt.innerHTML = `<b>${ms}ms</b>`;
-                            if (!r.ok) resp.classList.add('error');
-                            resp.textContent = JSON.stringify(d, null, 2);
-                        } catch (e) {
-                            resp.classList.add('error'); resp.textContent='Error: '+e.message; st.textContent='NETWORK ERROR'; st.className='status-pill bad';
-                        } finally { btn.disabled=false; sp.style.display='none'; }
-                    });
-                })();
-                </script>
-
-                </div> {{-- end v2 --}}
-
-                <div data-version="v0">
-                    <div class="endpoint-line"><span class="method GET">GET</span><span>/places/v0/indexes/{Idx}/places/{PlaceId}?key=...</span></div>
-                    <div class="alert-mini warn" data-i18n-html="gp_v0_diff">
-                        <strong>Differences from v2:</strong>
-                        <ul style="margin:6px 0 0 18px;">
-                            <li>Path beda: <code>/places/v0/indexes/{Idx}/places/{PlaceId}</code></li>
-                            <li>Tidak ada <code>additional-features</code> param di v0</li>
-                            <li>Response shape lebih simple, tanpa <code>OpeningHours</code>, <code>Contacts</code>, <code>TimeZone</code></li>
-                        </ul>
-                    </div>
-                </div>
 
                 </div> {{-- end ver-content --}}
             </div>
@@ -4240,8 +3365,8 @@
                     <thead>
                         <tr>
                             <th>Service</th>
-                            <th>v0</th>
-                            <th>v2</th>
+                            <th class="cmp-legacy">v0 <span class="ver-tag ver-legacy" data-i18n="ver_legacy">Legacy</span></th>
+                            <th class="cmp-rec">v2 <span class="ver-tag ver-rec" data-i18n="ver_recommended">Recommended</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -4371,6 +3496,43 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="{{ asset('javascript/docs/aws-api-schemas.js') }}?v={{ filemtime(public_path('javascript/docs/aws-api-schemas.js')) }}"></script>
+    <script src="{{ asset('javascript/docs/aws-api-builder.js') }}?v={{ filemtime(public_path('javascript/docs/aws-api-builder.js')) }}"></script>
+
+    <script>
+        // Ubah komentar "// tier: Advanced" di blok Request Syntax jadi pil warna,
+        // supaya baris yang menentukan keranjang harga langsung kelihatan tanpa
+        // harus membaca kartu tier di atasnya. Prism menandai komentar itu
+        // sebagai .token.comment; kita cuma menukar isinya.
+        (function () {
+            const TIERS = ['Label', 'Core', 'Advanced', 'Premium', 'Stored'];
+
+            function decorate(root) {
+                root.querySelectorAll('.token.comment').forEach(node => {
+                    if (node.classList.contains('syn-tier')) return;
+                    const m = node.textContent.match(/^(?:\/\/|#)\s*tier:\s*(.+)$/);
+                    if (!m) return;
+
+                    const names = m[1].split('/').map(n => n.trim()).filter(n => TIERS.includes(n));
+                    if (!names.length) return;
+
+                    node.classList.add('syn-tier');
+                    node.textContent = '';
+                    names.forEach(name => {
+                        const pill = document.createElement('span');
+                        pill.className = 'tier-pill tier-' + name.toLowerCase();
+                        pill.textContent = name;
+                        node.appendChild(pill);
+                    });
+                });
+            }
+
+            // Autoloader mewarnai tiap blok secara asinkron, jadi hook 'complete'
+            // yang jadi pegangan utama; sapuan awal untuk blok yang keburu selesai.
+            if (window.Prism) Prism.hooks.add('complete', env => decorate(env.element.parentElement || document));
+            document.addEventListener('DOMContentLoaded', () => decorate(document));
+        })();
+    </script>
 
     <script>
         // ===== Sidebar collapse/expand =====
@@ -4428,6 +3590,7 @@
 
         // ===== Search filter — with highlight + empty state + group auto-hide =====
         const SEARCH_HL_CLASS = 'match-hl';
+
         function clearHighlights() {
             document.querySelectorAll('.op-link .' + SEARCH_HL_CLASS).forEach(span => {
                 const parent = span.parentNode;
@@ -4435,6 +3598,7 @@
                 parent.normalize();
             });
         }
+
         function highlightInLink(link, query) {
             // Only operate on the leaf text node(s) inside <a>, skip <span class="badge-soon">
             link.childNodes.forEach(node => {
@@ -4510,13 +3674,44 @@
         }
 
         function loadUserKey() {
-            try { return JSON.parse(localStorage.getItem(KEY_STORAGE) || 'null'); }
-            catch (_) { return null; }
+            try {
+                return JSON.parse(localStorage.getItem(KEY_STORAGE) || 'null');
+            } catch (_) {
+                return null;
+            }
         }
+
         function saveUserKey(data) {
             if (!data) localStorage.removeItem(KEY_STORAGE);
             else localStorage.setItem(KEY_STORAGE, JSON.stringify(data));
+
+            // Halaman /tester-api membaca kunci docs lebih dulu, tapi masih punya
+            // simpanannya sendiri. Ditulis bersamaan supaya keduanya tidak pernah
+            // berbeda — termasuk saat kuncinya dihapus dari sini.
+            try {
+                if (data && data.apiKey) localStorage.setItem('tester_aws_api_key', data.apiKey);
+                else localStorage.removeItem('tester_aws_api_key');
+            } catch (_) {
+                /* mode privat */ }
         }
+
+        // Kunci yang diubah di tab lain (mis. halaman tester) langsung terpasang.
+        window.addEventListener('storage', (e) => {
+            if (e.key !== KEY_STORAGE && e.key !== 'tester_aws_api_key') return;
+            if (typeof applyKeyToUI === 'function') applyKeyToUI();
+        });
+
+        // Tombol intip isi kunci, sama seperti di gerbang key halaman tester.
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('#keyPeekBtn');
+            if (!btn) return;
+            const input = document.getElementById('keyForm_apiKey');
+            const showing = input.type === 'text';
+            input.type = showing ? 'password' : 'text';
+            btn.innerHTML = showing
+                ? '<i class="bi bi-eye" id="keyPeekIcon"></i>'
+                : '<i class="bi bi-eye-slash" id="keyPeekIcon"></i>';
+        });
 
         function daysUntil(isoStr) {
             if (!isoStr) return null;
@@ -4537,16 +3732,22 @@
                 a.classList.remove('key-allowed', 'key-denied');
             });
 
+            const dot = document.getElementById('keyInspectorDot');
+
             if (!key) {
                 btn.classList.remove('has-key');
                 label.textContent = window.AWSAPI_I18N && window.AWSAPI_I18N.t ? window.AWSAPI_I18N.t('key_inspector_btn') : 'My Key';
                 pill.style.display = 'none';
+                if (dot) dot.classList.remove('is-ok');
+                btn.dataset.tip = label.textContent;
                 return;
             }
 
             // Has key — update topbar
             btn.classList.add('has-key');
             label.textContent = key.name || 'API Key';
+            if (dot) dot.classList.add('is-ok');
+            btn.dataset.tip = label.textContent;
             const days = daysUntil(key.expirationUtc);
             if (days !== null) {
                 pill.style.display = 'inline-block';
@@ -4564,8 +3765,14 @@
                 pill.style.display = 'none';
             }
 
-            // Annotate sidebar items
+            // Tandai operasi di sidebar. Daftar aksi itu isian opsional di bagian
+            // "Lanjutan" — kalau pengguna belum mengisinya, izin key-nya memang
+            // tidak diketahui, jadi jangan ada yang dicoret. Dulu keadaan kosong
+            // ini membuat semua operasi tampak ditolak.
             const allowed = key.allowed || {};
+            const adaDaftarAksi = Object.values(allowed).some(list => Array.isArray(list) && list.length);
+            if (!adaDaftarAksi) return;
+
             document.querySelectorAll('.op-link[data-op]').forEach(a => {
                 const action = opToAction(a.dataset.op);
                 if (!action) return; // meta items
@@ -4580,50 +3787,23 @@
         function openKeyModal() {
             const modal = document.getElementById('keyInspectorModal');
             const key = loadUserKey() || {};
-
-            document.getElementById('keyForm_name').value = key.name || '';
-            // Region locked to ap-southeast-1
-            document.getElementById('keyForm_region').value = 'ap-southeast-1';
             document.getElementById('keyForm_apiKey').value = key.apiKey || '';
-            // datetime-local expects YYYY-MM-DDTHH:MM (no seconds/Z)
-            const exp = key.expirationUtc ? new Date(key.expirationUtc).toISOString().slice(0, 16) : '';
-            document.getElementById('keyForm_expiration').value = exp;
-            document.getElementById('keyForm_useInTryIt').checked = !!key.useInTryIt;
-            document.getElementById('keyForm_useForSend').checked = !!key.useForSend;
-
-            // Populate checkboxes
-            const allowed = key.allowed || {};
-            document.querySelectorAll('.key-actions-grid').forEach(grid => {
-                const svc = grid.dataset.service;
-                const list = allowed[svc] || [];
-                grid.querySelectorAll('input[type="checkbox"][data-action]').forEach(cb => {
-                    cb.checked = list.includes(cb.dataset.action);
-                });
-            });
-
             modal.style.display = 'flex';
+            setTimeout(() => document.getElementById('keyForm_apiKey').focus(), 50);
         }
 
+        /**
+         * Modal ini sekarang cuma meminta kuncinya, sama seperti gerbang key di
+         * /tester-api. Data lain yang mungkin masih tersimpan dari versi lama
+         * (nama, masa berlaku, daftar aksi) ikut dibawa apa adanya supaya
+         * penanda izin di sidebar milik pengguna lama tidak hilang.
+         */
         function readKeyForm() {
-            const region = 'ap-southeast-1'; // locked
-            const exp = document.getElementById('keyForm_expiration').value; // YYYY-MM-DDTHH:MM
-            const allowed = {};
-            document.querySelectorAll('.key-actions-grid').forEach(grid => {
-                const svc = grid.dataset.service;
-                const list = [];
-                grid.querySelectorAll('input[type="checkbox"][data-action]:checked').forEach(cb => {
-                    list.push(cb.dataset.action);
-                });
-                if (list.length) allowed[svc] = list;
-            });
+            const before = loadUserKey() || {};
             return {
-                name: document.getElementById('keyForm_name').value.trim(),
-                region,
+                ...before,
+                region: 'ap-southeast-1',
                 apiKey: document.getElementById('keyForm_apiKey').value.trim(),
-                expirationUtc: exp ? new Date(exp).toISOString() : null,
-                useInTryIt: document.getElementById('keyForm_useInTryIt').checked,
-                useForSend: document.getElementById('keyForm_useForSend').checked,
-                allowed
             };
         }
 
@@ -4638,25 +3818,32 @@
 
         // Save
         document.getElementById('keySaveBtn').addEventListener('click', () => {
-            const data = readKeyForm();
+            const form = readKeyForm();
+            // Tidak ada lagi tombol "Clear" terpisah — mengosongkan kolom lalu
+            // menekan Continue yang menghapus kunci dari browser ini.
+            const data = form.apiKey ? form : null;
             saveUserKey(data);
             applyKeyToUI();
             document.getElementById('keyInspectorModal').style.display = 'none';
             // Expose to AWSAPI_TryIt for code snippet override + Send Request bypass
             window.AWSAPI_UserKey = data;
             if (window.AWSAPI_TryIt_refreshBadges) window.AWSAPI_TryIt_refreshBadges();
-            window.dispatchEvent(new CustomEvent('AWSAPI_UserKeyChanged', { detail: data }));
+            window.dispatchEvent(new CustomEvent('AWSAPI_UserKeyChanged', {
+                detail: data
+            }));
         });
 
-        // Clear
-        document.getElementById('keyClearBtn').addEventListener('click', () => {
+        // Dipertahankan untuk tombol lama di tempat lain (kalau ada).
+        document.getElementById('keyClearBtn')?.addEventListener('click', () => {
             if (!confirm('Clear saved API Key from this browser?')) return;
             saveUserKey(null);
             window.AWSAPI_UserKey = null;
             applyKeyToUI();
             if (window.AWSAPI_TryIt_refreshBadges) window.AWSAPI_TryIt_refreshBadges();
             document.getElementById('keyInspectorModal').style.display = 'none';
-            window.dispatchEvent(new CustomEvent('AWSAPI_UserKeyChanged', { detail: null }));
+            window.dispatchEvent(new CustomEvent('AWSAPI_UserKeyChanged', {
+                detail: null
+            }));
         });
 
         // Initial load
@@ -4694,6 +3881,41 @@
 
     {{-- I18N module — auto-init di DOMContentLoaded --}}
     <script src="{{ asset('javascript/docs/aws-api-i18n.js') }}"></script>
+
+    <script>
+        // Sakelar tema — kunci gm-theme, sama dengan halaman lain.
+        (function() {
+            const group = document.getElementById('themeToggle');
+            if (!group || !window.gmApplyTheme) return;
+
+            const current = () => {
+                try {
+                    return localStorage.getItem('gm-theme') || 'system';
+                } catch (e) {
+                    return 'system';
+                }
+            };
+            const paint = () => group.querySelectorAll('[data-theme-set]').forEach(
+                b => b.classList.toggle('active', b.dataset.themeSet === current())
+            );
+
+            group.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-theme-set]');
+                if (!btn) return;
+                try {
+                    localStorage.setItem('gm-theme', btn.dataset.themeSet);
+                } catch (err) {
+                    /* mode privat */ }
+                window.gmApplyTheme(btn.dataset.themeSet);
+                paint();
+                btn.classList.add('pop');
+                setTimeout(() => btn.classList.remove('pop'), 450);
+                btn.blur();
+            });
+
+            paint();
+        })();
+    </script>
 
 </body>
 

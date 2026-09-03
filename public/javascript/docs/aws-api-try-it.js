@@ -427,16 +427,71 @@ print_r($data);`;
         }
     }
 
+    /**
+     * Salin teks ke papan klip.
+     *
+     * navigator.clipboard hanya ada di secure context. Halaman ini sering dibuka
+     * lewat http (grabmap.test, IP lokal, demo internal) — di sana objeknya tidak
+     * ada sama sekali, jadi versi lama melempar TypeError dan tombol Copy diam
+     * saja tanpa pesan. Karena itu selalu disediakan jalur cadangan textarea +
+     * execCommand yang jalan di http.
+     */
+    function copyText(text, btn, sourceEl) {
+        const done = ok => {
+            if (!ok && sourceEl) selectContents(sourceEl);
+            if (!btn) return;
+            const orig = btn.dataset.origHtml || btn.innerHTML;
+            btn.dataset.origHtml = orig;
+            btn.innerHTML = ok ? '✓ Copied' : '⌘C / Ctrl+C';
+            setTimeout(() => { btn.innerHTML = orig; delete btn.dataset.origHtml; }, ok ? 1500 : 3000);
+        };
+
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(() => done(true), () => done(fallback(text)));
+            return;
+        }
+        done(fallback(text));
+    }
+
+    /**
+     * Kalau menyalin benar-benar gagal (browser tanpa izin papan klip, jendela
+     * tidak fokus), teksnya diseleksi supaya pengguna tinggal menekan Ctrl+C —
+     * lebih berguna daripada tombol yang cuma bilang gagal.
+     */
+    function selectContents(node) {
+        try {
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+        } catch (e) { /* biarkan */ }
+    }
+
+    function fallback(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        // Di luar layar tapi tetap bisa diseleksi; display:none bikin execCommand gagal.
+        ta.style.cssText = 'position:fixed;top:-1000px;left:-1000px;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        document.body.removeChild(ta);
+        return ok;
+    }
+
+    window.AWSAPI_copyText = copyText;
+
     // Generic copy-to-clipboard helper
     if (!window.copyToClipboard) {
         window.copyToClipboard = (id, btn) => {
             const el = document.getElementById(id);
-            const txt = (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') ? el.value : el.textContent;
-            navigator.clipboard.writeText(txt).then(() => {
-                const orig = btn.innerHTML;
-                btn.innerHTML = '✓ Copied';
-                setTimeout(() => btn.innerHTML = orig, 1500);
-            });
+            if (!el) return;
+            const isField = el.tagName === 'TEXTAREA' || el.tagName === 'INPUT';
+            copyText(isField ? el.value : el.textContent, btn, isField ? null : el);
         };
     }
 

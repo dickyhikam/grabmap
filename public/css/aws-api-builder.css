@@ -1,0 +1,524 @@
+/**
+ * Request Builder di /docs/aws-api.
+ *
+ * Semua warnanya diambil dari token --d-* milik halaman docs, yang sudah punya
+ * nilai untuk tema terang maupun gelap. Karena itu berkas ini nyaris tidak
+ * punya aturan khusus [data-theme="dark"] — yang berubah cukup tokennya.
+ */
+
+.rb {
+    border: 1px solid var(--d-line, #e5e7eb);
+    border-radius: 12px;
+    background: var(--d-card, #fff);
+    margin: 18px 0 22px;
+    overflow: hidden;
+}
+
+.rb-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--d-line, #e5e7eb);
+    background: var(--d-surface, #f3f4f6);
+}
+
+.rb-title {
+    font-weight: 800;
+    font-size: 0.86rem;
+    color: var(--d-ink, #1f2937);
+}
+
+.rb-title i {
+    color: var(--grab-green, #00B14F);
+    margin-right: 4px;
+}
+
+/* Keranjang harga berjalan — inti dari builder ini, jadi ditaruh di kanan
+   kepala supaya tetap terlihat waktu pilihan diubah. */
+.rb-tier {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--d-muted, #6b7280);
+}
+
+/* Nama tier tidak ikut huruf kapital kepala, supaya tulisannya sama persis
+   dengan yang dipakai tabel harga. */
+.rb-tier .tier-pill {
+    text-transform: none;
+}
+
+.rb-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+    gap: 0;
+}
+
+.rb-groups {
+    padding: 14px 16px;
+    min-width: 0;
+}
+
+.rb-group + .rb-group {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--d-line, #e5e7eb);
+}
+
+.rb-group-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.rb-group-title {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--d-muted, #6b7280);
+}
+
+/* Aturan kombinasi ditulis sebagai label kecil, bukan kartu tersendiri —
+   bentuk kontrolnya (radio vs centang) sudah menyampaikan sebagian besarnya. */
+.rb-rule {
+    font-size: 0.64rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--d-surface, #f3f4f6);
+    color: var(--d-muted, #6b7280);
+    border: 1px solid var(--d-line, #e5e7eb);
+}
+
+.rb-rule-exactly-one {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.28);
+    color: #b91c1c;
+}
+
+.rb-rule-one-or-more {
+    background: rgba(245, 158, 11, 0.14);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #92400e;
+}
+
+[data-theme="dark"] .rb-rule-exactly-one { color: #fca5a5; }
+[data-theme="dark"] .rb-rule-one-or-more { color: #fbbf24; }
+
+/* Kisi tiga kolom — kotak centang, nama field, nilai. Dengan flex biasa,
+   nilai yang panjang (BoundingBox punya empat angka) turun ke baris baru dan
+   berhenti di bawah kotak centang, bukan sejajar nilai lain. */
+.rb-field {
+    display: grid;
+    grid-template-columns: 16px 196px minmax(0, 1fr);
+    align-items: center;
+    gap: 4px 9px;
+    padding: 5px 0;
+    cursor: pointer;
+}
+
+.rb-group-note {
+    margin-top: 8px;
+}
+
+.rb-field > .rb-note,
+.rb-field > .rb-field-tier {
+    grid-column: 3;
+    justify-self: start;
+}
+
+.rb-field input[type="checkbox"],
+.rb-field input[type="radio"] {
+    accent-color: var(--grab-green, #00B14F);
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    flex: none;
+}
+
+.rb-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.76rem;
+    color: var(--d-ink, #1f2937);
+}
+
+.rb-val {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.rb-text,
+.rb-num,
+.rb-select {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.74rem;
+    padding: 3px 8px;
+    border-radius: 5px;
+    border: 1px solid var(--d-line, #e5e7eb);
+    background: var(--d-page, #f8fafc);
+    color: var(--d-ink, #1f2937);
+}
+
+.rb-text { width: 190px; }
+.rb-num { width: 84px; }
+
+.rb-text:focus,
+.rb-num:focus,
+.rb-select:focus {
+    outline: 2px solid rgba(0, 177, 79, 0.35);
+    outline-offset: 1px;
+}
+
+.rb-range,
+.rb-note {
+    font-size: 0.68rem;
+    color: var(--d-faint, #9ca3af);
+}
+
+.rb-field-tier {
+    margin-left: 2px;
+}
+
+/* Field yang tidak dicentang tetap terbaca, cuma diredupkan — supaya daftar
+   ini masih berfungsi sebagai daftar parameter yang tersedia. */
+.rb-field:not(:has(input:checked)) .rb-val,
+.rb-field:not(:has(input:checked)) .rb-name {
+    opacity: 0.55;
+}
+
+.rb-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.rb-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--d-line, #e5e7eb);
+    background: var(--d-page, #f8fafc);
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.rb-chip code {
+    font-size: 0.74rem;
+    background: none;
+    color: var(--d-ink, #1f2937);
+    padding: 0;
+}
+
+.rb-chip:hover:not(:disabled) {
+    border-color: rgba(0, 177, 79, 0.5);
+}
+
+.rb-chip.is-on {
+    border-color: var(--grab-green, #00B14F);
+    background: rgba(0, 177, 79, 0.1);
+}
+
+.rb-chip.is-blocked {
+    cursor: not-allowed;
+    opacity: 0.5;
+    text-decoration: line-through;
+    text-decoration-color: rgba(239, 68, 68, 0.6);
+}
+
+.rb-chip-x {
+    color: #dc2626;
+    font-size: 0.72rem;
+}
+
+/* ---- kolom kanan: JSON yang terbentuk ---- */
+.rb-out {
+    border-left: 1px solid var(--d-line, #e5e7eb);
+    background: var(--d-surface, #f3f4f6);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.rb-out-head {
+    display: flex;
+    align-items: center;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--d-muted, #6b7280);
+}
+
+.rb-copy {
+    margin-left: auto;
+    border: 1px solid var(--d-line, #e5e7eb);
+    background: var(--d-card, #fff);
+    color: var(--d-muted, #6b7280);
+    border-radius: 5px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 0.72rem;
+}
+
+.rb-json {
+    margin: 0;
+    max-height: 340px;
+    overflow: auto;
+    font-size: 0.74rem !important;
+    line-height: 1.5;
+}
+
+.rb-warn {
+    display: none;
+    font-size: 0.72rem;
+    color: #b91c1c;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 7px;
+    padding: 7px 9px;
+    line-height: 1.5;
+}
+
+.rb-warn.is-on {
+    display: block;
+}
+
+[data-theme="dark"] .rb-warn {
+    color: #fca5a5;
+}
+
+.rb-hints {
+    font-size: 0.7rem;
+    color: var(--d-muted, #6b7280);
+    line-height: 1.6;
+}
+
+.rb-hints code {
+    font-size: 0.68rem;
+}
+
+.rb-send {
+    margin-top: auto;
+    background: var(--grab-green, #00B14F);
+    color: #fff;
+    border: 0;
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-weight: 700;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.rb-send:hover:not(:disabled) {
+    background: #00913f;
+}
+
+.rb-send:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+    .rb-body {
+        grid-template-columns: 1fr;
+    }
+
+    .rb-out {
+        border-left: 0;
+        border-top: 1px solid var(--d-line, #e5e7eb);
+    }
+
+    .rb-field {
+        grid-template-columns: 16px minmax(0, 1fr);
+    }
+
+    .rb-field > .rb-val,
+    .rb-group-note {
+    margin-top: 8px;
+}
+
+.rb-field > .rb-note,
+    .rb-field > .rb-field-tier {
+        grid-column: 2;
+    }
+}
+
+/* ---- lipatan dokumentasi di bawah hasil ----
+   Dipakai untuk tabel "Arti tiap field": yang dicari orang biasanya balasan
+   nyata di atasnya, bukan tabelnya. */
+.doc-fold {
+    margin: 16px 0 22px;
+    border: 1px solid var(--d-line, #e5e7eb);
+    border-radius: 10px;
+    background: var(--d-card, #fff);
+    overflow: hidden;
+}
+
+.doc-fold > summary {
+    cursor: pointer;
+    padding: 9px 14px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: var(--d-muted, #6b7280);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.doc-fold > summary::-webkit-details-marker {
+    display: none;
+}
+
+.doc-fold > summary::after {
+    content: '\f282';
+    font-family: 'bootstrap-icons';
+    margin-left: auto;
+    font-size: 0.7rem;
+    transition: transform 0.15s;
+}
+
+.doc-fold[open] > summary::after {
+    transform: rotate(180deg);
+}
+
+.doc-fold > summary:hover {
+    color: var(--d-ink, #1f2937);
+}
+
+.doc-fold[open] > summary {
+    border-bottom: 1px solid var(--d-line, #e5e7eb);
+}
+
+.doc-fold > .preset-row,
+.doc-fold > .try-it {
+    margin: 12px 14px;
+}
+
+/* Tombol halaman berikutnya — hanya muncul kalau respons terakhir membawa
+   NextToken, jadi tempatnya di bawah tombol kirim. */
+.rb-next {
+    background: none;
+    border: 1px solid var(--d-line, #e5e7eb);
+    color: var(--d-ink, #1f2937);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.rb-next:hover {
+    border-color: var(--grab-green, #00B14F);
+    color: var(--grab-green, #00B14F);
+}
+
+.rb-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Label "contoh" di kotak hasil sebelum ada panggilan sungguhan. */
+.resp-sample {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: -2px 0 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed rgba(148, 163, 184, 0.35);
+    font-size: 0.72rem;
+    font-style: italic;
+    color: #94a3b8;
+}
+
+/* Penanda field wajib — menggantikan kotak centang yang tidak bisa dilepas. */
+.rb-req {
+    display: inline-flex;
+    justify-content: center;
+    color: #dc2626;
+    font-size: 0.6rem;
+}
+
+[data-theme="dark"] .rb-req {
+    color: #fca5a5;
+}
+
+/* ---- tab per operasi ---- */
+.op-tabs {
+    display: inline-flex;
+    gap: 4px;
+    padding: 5px;
+    margin: 16px 0 18px;
+    border: 1px solid var(--d-line, #e5e7eb);
+    border-radius: 12px;
+    background: var(--d-surface, #f3f4f6);
+}
+
+.op-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 16px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: none;
+    color: var(--d-muted, #6b7280);
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: color 0.12s, background 0.12s, border-color 0.12s;
+}
+
+.op-tab-btn:hover {
+    color: var(--d-ink, #1f2937);
+}
+
+.op-tab-btn.is-on {
+    background: rgba(0, 177, 79, 0.12);
+    border-color: rgba(0, 177, 79, 0.35);
+    color: #00913f;
+}
+
+[data-theme="dark"] .op-tab-btn.is-on {
+    background: rgba(0, 177, 79, 0.16);
+    color: #6ee7a8;
+}
+
+.op-tab-btn i {
+    font-size: 0.86rem;
+}
+
+.op-tab {
+    display: none;
+}
+
+.op-tab.is-on {
+    display: block;
+}
+
+@media (max-width: 720px) {
+    .op-tabs {
+        display: flex;
+        flex-wrap: wrap;
+    }
+}
+
+/* Field boolean tidak punya kotak isian — namanya saja yang berdampingan dengan
+   centangnya, jadi kolom nilainya dibiarkan kosong. */
+.rb-field > .rb-val:empty {
+    display: none;
+}
