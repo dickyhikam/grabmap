@@ -106,4 +106,11 @@ return [
         'geofence_event_forecast' => ['name' => 'Geofence Event Forecast Requested', 'description' => 'Ramal bila peranti akan masuk atau keluar geofence.'],
         'resource_crud_list' => ['name' => 'Resource CRUD/List Requests', 'description' => 'Cipta, baca, kemas kini, padam, atau senarai sumber API.'],
     ],
+
+    'theme_light' => 'Mod cerah',
+    'theme_dark' => 'Mod gelap',
+    'theme_system' => 'Ikut sistem',
+
+    'tab_compare' => 'Banding',
+    'als_only_notice' => 'Sesetengah kategori (Trackers, Geofences) hanya ada pada Amazon Location Service — tukar ke paparan Banding atau Amazon Location untuk melihatnya.',
 ];

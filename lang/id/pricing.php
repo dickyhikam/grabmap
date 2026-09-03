@@ -29,13 +29,18 @@ return [
     'free_tier' => 'Free Tier',
     'als_cost' => 'Biaya ALS',
     'google_cost' => 'Biaya Google',
-    'savings' => 'Penghematan',
+    'savings' => 'Hemat',
+    'price_1k' => 'Harga /1K',
+    'cost_col' => 'Biaya /bln',
+    'free_quota' => 'Kuota gratis',
     'subtotal' => 'Subtotal',
 
     'key_insights' => 'Insight Utama',
+    'avg_savings' => 'Rata-rata Hemat',
+    'avg_savings_desc' => 'Rata-rata selisih harga ALS-GRAB dibanding Google Maps untuk :count API yang sebanding',
     'breakeven_point' => 'Titik Impas',
     'breakeven_desc' => 'Dengan hanya :count request/bulan untuk Places, GrabMaps sudah lebih murah dari Google Maps',
-    'map_tiles_savings' => 'Penghematan Map Tiles',
+    'map_tiles_savings' => 'Hemat Map Tiles',
     'map_tiles_desc' => 'Map Tiles GrabMaps $:als/1K vs Google $:google/1K - perbedaan signifikan dalam skala besar',
     'exclusive_features' => 'Fitur Eksklusif',
     'exclusive_desc' => 'Trackers, Geofences, Isolines, dan Snap to Roads hanya tersedia di ALS-GRAB',
@@ -63,15 +68,15 @@ return [
     'categories' => [
         'places' => [
             'name' => 'Places',
-            'description' => 'Cari tempat, konversi alamat ke koordinat, dan dapatkan detail tempat. Penting untuk pencarian lokasi, autocomplete alamat, dan geocoding.',
+            'description' => 'Cari tempat, ubah alamat jadi koordinat, dan ambil detail tempat. Mencakup SearchText, Suggest, ReverseGeocode, dan GetPlace.',
         ],
         'routes' => [
             'name' => 'Routes',
-            'description' => 'Hitung arah, rute, dan waktu tempuh antar lokasi. Termasuk route matrix, optimasi waypoint, dan snap-to-road untuk jejak GPS.',
+            'description' => 'Hitung petunjuk arah dan waktu tempuh antar lokasi, plus matriks rute untuk banyak pasangan origin dan destination.',
         ],
         'maps' => [
             'name' => 'Maps',
-            'description' => 'Tampilkan tile peta dan gambar peta statis. Untuk menampilkan peta interaktif, gambar peta statis, dan visualisasi peta kustom.',
+            'description' => 'Menyajikan tile peta untuk peta interaktif. GrabMaps menagih permintaan tile lewat GetTile.',
         ],
         'trackers' => [
             'name' => 'Trackers',
@@ -88,15 +93,15 @@ return [
     ],
 
     'items' => [
-        'autocomplete_suggest' => ['name' => 'Autocomplete, Suggest', 'description' => 'Saran alamat dan tempat saat user mengetik. Mendukung search-as-you-type di field alamat dan pencarian tempat.'],
-        'geocode_core' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Konversi alamat ke koordinat (lat/lng) dan sebaliknya. Detail tempat, search by text, atau cari tempat terdekat.'],
-        'geocode_advanced' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Data tempat lanjutan: jam operasional, kontak, time zone, access points. Untuk detail tempat yang lebih lengkap.'],
-        'geocode_stored' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Simpan hasil untuk penggunaan jangka panjang. Mengurangi API calls saat reuse hasil untuk analytics atau caching.'],
-        'calculate_routes_core' => ['name' => 'Calculate Routes', 'description' => 'Petunjuk arah turn-by-turn antar dua titik atau lebih. Mendukung mobil, truck, pejalan kaki, dan sepeda.'],
-        'calculate_routes_advanced' => ['name' => 'Calculate Routes', 'description' => 'Routing lanjutan dengan traffic real-time. Mode perjalanan tambahan seperti scooter.'],
-        'calculate_routes_premium' => ['name' => 'Calculate Routes', 'description' => 'Termasuk perhitungan biaya tol. Untuk rute yang membutuhkan estimasi tol.'],
-        'calculate_route_matrix_core' => ['name' => 'Calculate Route Matrix', 'description' => 'Hitung rute antar banyak origin dan destination dalam satu request. Ideal untuk optimasi delivery dan fleet.'],
-        'calculate_route_matrix_advanced' => ['name' => 'Calculate Route Matrix', 'description' => 'Route matrix lanjutan dengan opsi lebih banyak.'],
+        'autocomplete_suggest' => ['name' => 'Autocomplete, Suggest', 'description' => 'Saran alamat dan tempat saat pengguna mengetik. Tanpa additionalFeature, balasannya hanya PlaceID, jenis tempat, judul, dan label alamat.'],
+        'geocode_core' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Dipakai saat additionalFeature kosong. Balasannya komponen alamat lengkap, kategori, dan detail tempat standar.'],
+        'geocode_advanced' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Dipakai saat meminta additionalFeature Contact, Access, TimeZone, atau Phonemes — jam buka, kontak, zona waktu, dan titik akses.'],
+        'geocode_stored' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Dipakai saat intendedUse = Stored: hasil boleh disimpan permanen untuk caching atau analitik. Harga ini juga jadi batas atas satu panggilan Places.'],
+        'calculate_routes_core' => ['name' => 'Calculate Routes', 'description' => 'Mode Car dan Truck tanpa hitung tol, plus Pedestrian dan Transit. Untuk pelanggan GrabMaps di ap-southeast-1, mode Scooter ikut masuk Core.'],
+        'calculate_routes_advanced' => ['name' => 'Calculate Routes', 'description' => 'Mode perjalanan alternatif seperti Scooter, tanpa hitung tol. Di GrabMaps ap-southeast-1 Scooter sudah dihitung Core, jadi tier ini jarang terpakai.'],
+        'calculate_routes_premium' => ['name' => 'Calculate Routes', 'description' => 'Dipakai saat meminta biaya tol lewat LegAdditionalFeatures[Tolls] atau SpanAdditionalFeatures[TollSystems], dan saat memakai mode Intermodal.'],
+        'calculate_route_matrix_core' => ['name' => 'Calculate Route Matrix', 'description' => 'Mode Car, Truck, dan Pedestrian. Ditagih per pasangan origin x destination, jadi 300 origin x 100 destination = 30.000 rute. Di GrabMaps ap-southeast-1, Scooter ikut masuk Core.'],
+        'calculate_route_matrix_advanced' => ['name' => 'Calculate Route Matrix', 'description' => 'Mode perjalanan alternatif seperti Scooter. Di GrabMaps ap-southeast-1 Scooter sudah dihitung Core.'],
         'snap_to_roads_advanced' => ['name' => 'Snap to Roads', 'description' => 'Snap titik GPS ke jalan. Hingga 200 titik; mode mobil, truck, atau pejalan kaki.'],
         'snap_to_roads_premium' => ['name' => 'Snap to Roads', 'description' => 'Snap hingga 5.000 titik GPS ke jalan. Tanpa batasan mode perjalanan.'],
         'optimize_waypoints_advanced' => ['name' => 'Optimize Waypoints', 'description' => 'Urutkan waypoint untuk rute optimal. Untuk optimasi rute delivery.'],
@@ -124,4 +129,11 @@ return [
         'geofence_event_forecast' => ['name' => 'Geofence Event Forecast Requested', 'description' => 'Prediksi kapan device masuk/keluar geofence.'],
         'resource_crud_list' => ['name' => 'Resource CRUD/List Requests', 'description' => 'Create, read, update, delete, atau list resource API.'],
     ],
+
+    'theme_light' => 'Mode terang',
+    'theme_dark' => 'Mode gelap',
+    'theme_system' => 'Ikut sistem',
+
+    'tab_compare' => 'Bandingkan',
+    'als_only_notice' => 'Sebagian kategori (Trackers, Geofences) hanya ada di Amazon Location Service — pindah ke tampilan Bandingkan atau Amazon Location untuk melihatnya.',
 ];

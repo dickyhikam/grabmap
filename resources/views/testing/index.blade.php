@@ -52,6 +52,331 @@
             transform: none;
         }
 
+
+        /* ================= Tata letak baru: peta latar + panel mengambang ============ */
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            overflow: hidden;
+        }
+
+        .tester-map {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+        }
+
+        .tester-map #miniMap {
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+        }
+
+        .map-clear-btn {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 3;
+            background: #fff;
+            color: #111;
+            font-weight: 600;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, .16);
+            border: none;
+        }
+
+        .map-clear-btn:hover {
+            background: var(--grab-green, #00B14F);
+            color: #fff;
+        }
+
+        #mapRouteStatus {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 96px;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        /* Kolom kiri jadi panel mengambang yang bisa digulir sendiri. */
+        .container-fluid.py-4 {
+            position: relative;
+            z-index: 2;
+            padding: 0 !important;
+        }
+
+        .row.g-4 {
+            margin: 0;
+        }
+
+        .row.g-4>.col-lg-5 {
+            position: fixed;
+            top: 84px;
+            left: 18px;
+            bottom: 18px;
+            width: 400px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0 6px 0 0;
+            scrollbar-width: thin;
+        }
+
+        .row.g-4>.col-lg-7 {
+            position: fixed;
+            top: 84px;
+            right: 18px;
+            bottom: 18px;
+            width: 440px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0 0 0 6px;
+            scrollbar-width: thin;
+        }
+
+        .row.g-4>.col-lg-5::-webkit-scrollbar,
+        .row.g-4>.col-lg-7::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .row.g-4>.col-lg-5::-webkit-scrollbar-thumb,
+        .row.g-4>.col-lg-7::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, .18);
+            border-radius: 8px;
+        }
+
+        /* Header jadi bar mengambang di atas peta. */
+        .row.mb-4:first-of-type {
+            position: fixed;
+            top: 14px;
+            left: 18px;
+            right: 18px;
+            z-index: 3;
+            margin: 0;
+        }
+
+        .row.mb-4:first-of-type>.col-12>.d-flex {
+            background: rgba(255, 255, 255, .94);
+            backdrop-filter: blur(10px);
+            border-radius: 999px;
+            padding: 8px 12px 8px 8px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, .10);
+        }
+
+        .card-glass {
+            border-radius: 20px !important;
+            box-shadow: 0 6px 26px rgba(0, 0, 0, .10) !important;
+            background: rgba(255, 255, 255, .96) !important;
+            backdrop-filter: blur(8px);
+        }
+
+        @media (max-width: 1200px) {
+            body {
+                overflow: auto;
+            }
+
+            .tester-map {
+                position: relative;
+                height: 320px;
+            }
+
+            .row.g-4>.col-lg-5,
+            .row.g-4>.col-lg-7 {
+                position: static;
+                width: auto;
+                top: auto;
+                bottom: auto;
+                overflow: visible;
+            }
+
+            .row.mb-4:first-of-type {
+                position: static;
+            }
+        }
+
+
+        /* Rel ikon kiri: pintasan mode + sembunyi panel. */
+        .tester-rail {
+            position: fixed;
+            left: 18px;
+            top: 84px;
+            z-index: 4;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: rgba(255, 255, 255, .96);
+            backdrop-filter: blur(8px);
+            border-radius: 18px;
+            padding: 8px;
+            box-shadow: 0 6px 26px rgba(0, 0, 0, .10);
+        }
+
+        .tester-rail button {
+            width: 42px;
+            height: 42px;
+            border: none;
+            border-radius: 13px;
+            background: transparent;
+            color: #64748b;
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .18s, color .18s, transform .18s;
+        }
+
+        .tester-rail button:hover {
+            background: #e6f7ee;
+            color: var(--grab-green);
+            transform: translateY(-1px);
+        }
+
+        .tester-rail button.active {
+            background: var(--grab-green);
+            color: #fff;
+        }
+
+        .tester-rail button {
+            position: relative;
+        }
+
+        .tester-rail button::after {
+            content: attr(data-tip);
+            position: absolute;
+            left: calc(100% + 10px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: #111827;
+            color: #fff;
+            font-size: .72rem;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 8px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .12s ease;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+        }
+
+        .tester-rail button::before {
+            content: '';
+            position: absolute;
+            left: calc(100% + 4px);
+            top: 50%;
+            transform: translateY(-50%);
+            border: 6px solid transparent;
+            border-right-color: #111827;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity .12s ease;
+        }
+
+        .tester-rail button:hover::after,
+        .tester-rail button:hover::before,
+        .tester-rail button:focus-visible::after,
+        .tester-rail button:focus-visible::before {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .tester-rail .rail-sep {
+            height: 1px;
+            background: rgba(0, 0, 0, .08);
+            margin: 4px 6px;
+        }
+
+        .row.g-4>.col-lg-5 {
+            left: 82px;
+        }
+
+        body.panel-hidden .row.g-4>.col-lg-5 {
+            transform: translateX(-460px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .row.g-4>.col-lg-5 {
+            transition: transform .25s ease, opacity .25s ease;
+        }
+
+        @media (max-width: 1200px) {
+            .tester-rail {
+                position: static;
+                flex-direction: row;
+                margin: 12px 18px;
+            }
+
+            .row.g-4>.col-lg-5 {
+                left: auto;
+                transform: none !important;
+                opacity: 1 !important;
+            }
+        }
+
+
+        /* Dock bawah: hint aktif, legenda, dan tombol kirim. */
+        .tester-dock {
+            position: fixed;
+            z-index: 4;
+            left: 506px;
+            right: 482px;
+            bottom: 18px;
+            background: rgba(255, 255, 255, .96);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 12px 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, .12);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: left .25s ease;
+        }
+
+        body.panel-hidden .tester-dock {
+            left: 82px;
+        }
+
+        .tester-dock .dock-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .tester-dock .dock-hint {
+            display: none;
+            margin: 0 !important;
+        }
+
+        .tester-dock .dock-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: .72rem;
+            margin-top: 4px;
+        }
+
+        .tester-dock #btnSend {
+            width: auto !important;
+            margin: 0 !important;
+            white-space: nowrap;
+            padding: 12px 26px !important;
+        }
+
+        @media (max-width: 1200px) {
+            .tester-dock {
+                position: static;
+                left: auto;
+                right: auto;
+                margin: 12px 18px;
+                flex-wrap: wrap;
+            }
+        }
+
         #miniMap {
             width: 100%;
             height: 450px;
@@ -231,8 +556,8 @@
         }
 
         .chip-location {
-            background: #ede9fe;
-            color: #6d28d9;
+            background: #e6f7ee;
+            color: #009543;
         }
 
         .chip-maps {
@@ -307,12 +632,12 @@
 
         .loc-submode-btn.active {
             background: white;
-            color: #6d28d9;
+            color: #009543;
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
         }
 
         .loc-submode-btn:hover:not(.active) {
-            color: #6d28d9;
+            color: #009543;
         }
 
         /* Location result items */
@@ -328,7 +653,7 @@
         }
 
         .loc-result-item:hover {
-            border-color: #6d28d9;
+            border-color: #009543;
             transform: translateX(4px);
             background: #faf5ff;
         }
@@ -534,41 +859,56 @@
             --brand-green: #00B14F;
             --brand-green-dark: #008b3d;
             --brand-amber: #f59e0b;
-            --brand-purple: #7c3aed;
+            --brand-purple: #00B14F;
             --brand-blue: #2563eb;
-            --surface: rgba(255,255,255,0.85);
+            --surface: rgba(255, 255, 255, 0.85);
             --surface-solid: #ffffff;
-            --border-soft: rgba(0,0,0,0.06);
+            --border-soft: rgba(0, 0, 0, 0.06);
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
         body {
             font-family: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif !important;
             background: #f4f6f8;
             background-image:
-                radial-gradient(1200px 600px at 10% -10%, rgba(0,177,79,0.10), transparent 60%),
-                radial-gradient(900px 500px at 110% 0%, rgba(245,158,11,0.09), transparent 60%),
-                radial-gradient(700px 400px at 50% 100%, rgba(124,58,237,0.06), transparent 60%);
+                radial-gradient(1200px 600px at 10% -10%, rgba(0, 177, 79, 0.10), transparent 60%),
+                radial-gradient(900px 500px at 110% 0%, rgba(245, 158, 11, 0.09), transparent 60%),
+                radial-gradient(700px 400px at 50% 100%, rgba(124, 58, 237, 0.06), transparent 60%);
             min-height: 100vh;
             position: relative;
         }
+
         body::before {
             content: '';
             position: fixed;
             inset: 0;
             background:
-                radial-gradient(circle at 20% 40%, rgba(0,177,79,0.06), transparent 45%),
-                radial-gradient(circle at 80% 20%, rgba(245,158,11,0.05), transparent 45%);
+                radial-gradient(circle at 20% 40%, rgba(0, 177, 79, 0.06), transparent 45%),
+                radial-gradient(circle at 80% 20%, rgba(245, 158, 11, 0.05), transparent 45%);
             pointer-events: none;
             z-index: 0;
             animation: bgFloat 24s ease-in-out infinite alternate;
         }
+
         @keyframes bgFloat {
-            0% { transform: translate(0, 0) scale(1); opacity: 1; }
-            100% { transform: translate(-20px, 20px) scale(1.05); opacity: 0.7; }
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(-20px, 20px) scale(1.05);
+                opacity: 0.7;
+            }
         }
-        body > * { position: relative; z-index: 1; }
+
+        body>* {
+            position: relative;
+            z-index: 1;
+        }
 
         /* Reading progress bar */
         .tester-progress {
@@ -581,49 +921,55 @@
             pointer-events: none;
             background: transparent;
         }
+
         .tester-progress-fill {
             height: 100%;
             width: 0%;
             background: linear-gradient(90deg, var(--brand-green), #10d966, var(--brand-amber));
             transition: width 0.1s linear;
-            box-shadow: 0 0 10px rgba(0,177,79,0.5);
+            box-shadow: 0 0 10px rgba(0, 177, 79, 0.5);
         }
 
         /* Modern card enhancement */
         .card-glass {
-            background: rgba(255,255,255,0.75) !important;
+            background: rgba(255, 255, 255, 0.75) !important;
             backdrop-filter: blur(24px) saturate(180%) !important;
             -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-            border: 1px solid rgba(255,255,255,0.9) !important;
+            border: 1px solid rgba(255, 255, 255, 0.9) !important;
             border-radius: 20px !important;
             box-shadow:
-                0 1px 3px rgba(0,0,0,0.04),
-                0 8px 24px rgba(0,0,0,0.06),
-                0 20px 60px rgba(0,0,0,0.04) !important;
+                0 1px 3px rgba(0, 0, 0, 0.04),
+                0 8px 24px rgba(0, 0, 0, 0.06),
+                0 20px 60px rgba(0, 0, 0, 0.04) !important;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
         }
+
         .card-glass::before {
             content: '';
             position: absolute;
-            top: 0; left: 0; right: 0;
+            top: 0;
+            left: 0;
+            right: 0;
             height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
         }
+
         .card-glass:hover {
             transform: translateY(-2px);
             box-shadow:
-                0 4px 8px rgba(0,0,0,0.05),
-                0 16px 32px rgba(0,0,0,0.08),
-                0 32px 80px rgba(0,0,0,0.06) !important;
+                0 4px 8px rgba(0, 0, 0, 0.05),
+                0 16px 32px rgba(0, 0, 0, 0.08),
+                0 32px 80px rgba(0, 0, 0, 0.06) !important;
         }
 
         /* Modern header — reveal from top */
-        .container-fluid > .row:first-child {
+        .container-fluid>.row:first-child {
             animation: fadeSlideDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .container-fluid > .row:first-child h4 {
+
+        .container-fluid>.row:first-child h4 {
             font-size: 1.35rem !important;
             font-weight: 800 !important;
             background: linear-gradient(135deg, #111827 0%, #1f2937 50%, #374151 100%);
@@ -632,55 +978,69 @@
             -webkit-text-fill-color: transparent;
             letter-spacing: -0.02em;
         }
-        .container-fluid > .row:first-child small {
+
+        .container-fluid>.row:first-child small {
             color: #6b7280 !important;
             font-weight: 500;
             font-size: 0.82rem;
         }
 
         @keyframes fadeSlideDown {
-            from { opacity: 0; transform: translateY(-16px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(-16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* Header buttons — modern pill */
         #btnChangeApiKey,
-        .container-fluid > .row:first-child .btn-outline-success {
+        .container-fluid>.row:first-child .btn-outline-success {
             border-radius: 12px !important;
             padding: 9px 18px !important;
             font-size: 0.8rem !important;
             font-weight: 700 !important;
             transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
+
         #btnChangeApiKey {
-            background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+            background: linear-gradient(135deg, #00B14F, #009543) !important;
             color: #fff !important;
-            border: 1px solid #6d28d9 !important;
-            box-shadow: 0 4px 14px rgba(124,58,237,0.35) !important;
+            border: 1px solid #009543 !important;
+            box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35) !important;
         }
+
         #btnChangeApiKey:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(124,58,237,0.45) !important;
+            box-shadow: 0 8px 20px rgba(124, 58, 237, 0.45) !important;
         }
-        .container-fluid > .row:first-child .btn-outline-success {
+
+        .container-fluid>.row:first-child .btn-outline-success {
             border: 1.5px solid var(--brand-green) !important;
             color: var(--brand-green) !important;
-            background: rgba(255,255,255,0.7);
+            background: rgba(255, 255, 255, 0.7);
         }
-        .container-fluid > .row:first-child .btn-outline-success:hover {
+
+        .container-fluid>.row:first-child .btn-outline-success:hover {
             background: var(--brand-green) !important;
             color: #fff !important;
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0,177,79,0.35) !important;
+            box-shadow: 0 8px 20px rgba(0, 177, 79, 0.35) !important;
         }
-        .container-fluid > .row:first-child a.btn-light {
-            background: rgba(255,255,255,0.9) !important;
+
+        .container-fluid>.row:first-child a.btn-light {
+            background: rgba(255, 255, 255, 0.9) !important;
             border: 1px solid var(--border-soft) !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
             transition: all 0.18s !important;
         }
-        .container-fluid > .row:first-child a.btn-light:hover {
+
+        .container-fluid>.row:first-child a.btn-light:hover {
             transform: translateX(-3px);
             border-color: var(--brand-green) !important;
             color: var(--brand-green) !important;
@@ -692,7 +1052,11 @@
             transform: translateY(20px);
             transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .reveal-on-scroll.visible { opacity: 1; transform: translateY(0); }
+
+        .reveal-on-scroll.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
 
         /* Modern buttons — enhance grab btn */
         .btn-grab {
@@ -702,25 +1066,35 @@
             font-size: 0.85rem !important;
             letter-spacing: 0.01em;
             background: linear-gradient(135deg, #00B14F 0%, #008b3d 100%) !important;
-            box-shadow: 0 6px 18px rgba(0,177,79,0.35) !important;
+            box-shadow: 0 6px 18px rgba(0, 177, 79, 0.35) !important;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
             position: relative;
             overflow: hidden;
         }
+
         .btn-grab::before {
             content: '';
             position: absolute;
-            top: 0; left: -100%;
-            width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
             transition: left 0.5s;
         }
-        .btn-grab:hover::before { left: 100%; }
+
+        .btn-grab:hover::before {
+            left: 100%;
+        }
+
         .btn-grab:hover {
             transform: translateY(-3px) !important;
-            box-shadow: 0 10px 25px rgba(0,177,79,0.45) !important;
+            box-shadow: 0 10px 25px rgba(0, 177, 79, 0.45) !important;
         }
-        .btn-grab:active { transform: translateY(-1px) scale(0.98) !important; }
+
+        .btn-grab:active {
+            transform: translateY(-1px) scale(0.98) !important;
+        }
 
         /* Form inputs — modern */
         .coord-input,
@@ -730,12 +1104,13 @@
             padding: 9px 14px !important;
             font-size: 0.85rem !important;
             transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            background: rgba(255,255,255,0.9) !important;
+            background: rgba(255, 255, 255, 0.9) !important;
         }
+
         .coord-input:focus,
         .form-control:focus {
             border-color: var(--brand-green) !important;
-            box-shadow: 0 0 0 4px rgba(0,177,79,0.12) !important;
+            box-shadow: 0 0 0 4px rgba(0, 177, 79, 0.12) !important;
             background: #fff !important;
             transform: translateY(-1px);
         }
@@ -760,17 +1135,19 @@
             background: #f3f4f6 !important;
             padding: 4px !important;
             border-radius: 14px !important;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.04);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
         }
+
         .api-mode-btn {
             border-radius: 10px !important;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
             font-size: 0.78rem !important;
             padding: 8px 10px !important;
         }
+
         .api-mode-btn.active {
             transform: scale(1.02);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,177,79,0.1) !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 177, 79, 0.1) !important;
         }
 
         /* Chips — pop with color */
@@ -778,31 +1155,40 @@
             font-size: 0.72rem !important;
             padding: 6px 14px !important;
             font-weight: 700 !important;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
             animation: chipPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
+
         @keyframes chipPop {
-            0% { transform: scale(0.7); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
+            0% {
+                transform: scale(0.7);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
 
         /* Log box — richer */
         .log-box {
             border-radius: 14px !important;
             background: #1a1b26 !important;
-            border: 1px solid rgba(255,255,255,0.05);
-            box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
             padding: 18px !important;
         }
 
         /* History item hover — smooth glide */
         .history-item {
             border-radius: 12px !important;
-            border: 1px solid rgba(0,0,0,0.05) !important;
+            border: 1px solid rgba(0, 0, 0, 0.05) !important;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
+
         .history-item:hover {
-            box-shadow: 0 6px 18px rgba(0,177,79,0.15) !important;
+            box-shadow: 0 6px 18px rgba(0, 177, 79, 0.15) !important;
         }
 
         /* Result items — modernize */
@@ -810,45 +1196,46 @@
         .geo-result-item,
         .trk-result-item {
             border-radius: 12px !important;
-            border: 1px solid rgba(0,0,0,0.05) !important;
+            border: 1px solid rgba(0, 0, 0, 0.05) !important;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
 
-        /* Map container polish */
-        #miniMap {
-            height: 480px !important;
-            border-radius: 16px !important;
-            box-shadow:
-                0 4px 6px rgba(0,0,0,0.04),
-                0 12px 32px rgba(0,0,0,0.08),
-                inset 0 0 0 1px rgba(255,255,255,0.5) !important;
-        }
 
         /* Route status bar — pill-shape */
         .route-status-bar {
             border-radius: 14px !important;
             padding: 10px 16px !important;
             font-size: 0.82rem !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
             transition: all 0.2s;
         }
+
         .route-status-bar.loading {
             animation: pulseGlow 1.5s ease-in-out infinite;
         }
+
         @keyframes pulseGlow {
-            0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-            50% { box-shadow: 0 4px 20px rgba(37,99,235,0.25); }
+
+            0%,
+            100% {
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            }
+
+            50% {
+                box-shadow: 0 4px 20px rgba(37, 99, 235, 0.25);
+            }
         }
 
         /* Modal enhancements */
         .modal-content {
             border-radius: 20px !important;
             border: none !important;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.25) !important;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25) !important;
         }
 
         /* Ripple on click for buttons */
-        .btn-grab, #btnChangeApiKey {
+        .btn-grab,
+        #btnChangeApiKey {
             position: relative;
             overflow: hidden;
         }
@@ -861,18 +1248,32 @@
             border-radius: 8px;
             color: transparent !important;
         }
+
         @keyframes skelShimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
         }
 
         /* Floating action ripple for API key badge */
         #apiKeyStatusBadge {
             animation: pulse 2s infinite;
         }
+
         @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.6); }
-            50% { box-shadow: 0 0 0 6px rgba(255,255,255,0); }
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.6);
+            }
+
+            50% {
+                box-shadow: 0 0 0 6px rgba(255, 255, 255, 0);
+            }
         }
 
         /* Waypoint / matrix items — micro animation on delete */
@@ -880,12 +1281,13 @@
         .matrix-dest-item {
             border-radius: 12px !important;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(0,0,0,0.06) !important;
+            border: 1px solid rgba(0, 0, 0, 0.06) !important;
         }
+
         .waypoint-item:hover,
         .matrix-dest-item:hover {
             transform: translateX(2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
         }
 
         /* Reference card polish */
@@ -893,34 +1295,45 @@
             border-radius: 16px !important;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
+
         .ref-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.06) !important;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06) !important;
         }
 
         /* Subtle body scroll blur on toolbar */
-        .container-fluid > .row:first-child {
+        .container-fluid>.row:first-child {
             position: sticky;
             top: 0;
             z-index: 100;
             padding: 8px 12px 12px !important;
             margin: 0 -12px 24px -12px !important;
-            background: rgba(244,246,248,0.75);
+            background: rgba(244, 246, 248, 0.75);
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
             border-radius: 0 0 20px 20px;
-            border: 1px solid rgba(255,255,255,0.5);
+            border: 1px solid rgba(255, 255, 255, 0.5);
             border-top: none;
         }
 
         /* Smooth scrollbar */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
         ::-webkit-scrollbar-thumb {
-            background: rgba(0,0,0,0.15);
+            background: rgba(0, 0, 0, 0.15);
             border-radius: 10px;
         }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(0,177,79,0.4); }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 177, 79, 0.4);
+        }
 
         /* Loading spinner enhancement */
         .spinner-border-sm {
@@ -929,17 +1342,28 @@
 
         /* Mobile responsive tweaks */
         @media (max-width: 768px) {
-            .container-fluid > .row:first-child h4 { font-size: 1.05rem !important; }
-            .container-fluid > .row:first-child small { display: none; }
+            .container-fluid>.row:first-child h4 {
+                font-size: 1.05rem !important;
+            }
+
+            .container-fluid>.row:first-child small {
+                display: none;
+            }
+
             #btnChangeApiKey span,
-            .container-fluid > .row:first-child .btn-outline-success { font-size: 0.72rem !important; padding: 7px 12px !important; }
+            .container-fluid>.row:first-child .btn-outline-success {
+                font-size: 0.72rem !important;
+                padding: 7px 12px !important;
+            }
         }
     </style>
 </head>
 
 <body>
     <!-- Modern scroll progress bar -->
-    <div class="tester-progress"><div class="tester-progress-fill" id="testerProgressFill"></div></div>
+    <div class="tester-progress">
+        <div class="tester-progress-fill" id="testerProgressFill"></div>
+    </div>
 
     <div class="container-fluid py-4">
         <!-- Header -->
@@ -953,7 +1377,7 @@
                         <h4 class="mb-0 fw-bold">AWS Location Service API Tester</h4>
                         <small class="text-muted">Debug & test AWS Location Service APIs — Routes, Places, Maps, Geofencing & Tracking (Grab)</small>
                     </div>
-                    <button class="btn rounded-pill px-3" type="button" id="btnChangeApiKey" onclick="showApiKeyGate(document.getElementById('awsApiKey').value)" style="background:#7c3aed;color:#fff;font-weight:600;border:none;">
+                    <button class="btn rounded-pill px-3" type="button" id="btnChangeApiKey" onclick="showApiKeyGate(document.getElementById('awsApiKey').value)" style="background:#00B14F;color:#fff;font-weight:600;border:none;">
                         <i class="bi bi-key-fill me-1"></i> API Key
                         <span class="badge bg-light text-dark ms-1" id="apiKeyStatusBadge" style="font-size:0.6rem;font-weight:600;">●</span>
                     </button>
@@ -964,23 +1388,141 @@
             </div>
         </div>
 
-        <!-- Map — 100% width -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card-glass p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div class="section-title mb-0">
-                            <i class="bi bi-map me-1"></i> Preview Map
-                        </div>
-                        <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="clearAllMapLayers()" id="btnClearRoute" style="display:none;">
-                            <i class="bi bi-eraser me-1"></i> Clear
+        <nav class="tester-rail" id="testerRail">
+            <button type="button" data-rail="route" class="active" data-tip="Calculate Route" onclick="railGo('route')"><i class="bi bi-signpost-split"></i></button>
+            <button type="button" data-rail="matrix" data-tip="Route Matrix" onclick="railGo('matrix')"><i class="bi bi-grid-3x3"></i></button>
+            <button type="button" data-rail="location" data-tip="Places" onclick="railGo('location')"><i class="bi bi-geo-alt"></i></button>
+            <button type="button" data-rail="maps" data-tip="Maps" onclick="railGo('maps')"><i class="bi bi-map"></i></button>
+            <div class="rail-sep"></div>
+            <button type="button" data-tip="Sembunyikan panel" onclick="document.body.classList.toggle('panel-hidden')"><i class="bi bi-layout-sidebar-inset"></i></button>
+        </nav>
+
+        <div class="tester-dock" id="testerDock">
+            <div class="dock-info" id="dockInfo"></div>
+        </div>
+
+        {{-- Peta jadi latar penuh; panel-panel di atasnya mengambang. --}}
+        <div class="tester-map">
+            <div id="miniMap"></div>
+            <div id="mapRouteStatus"></div>
+            <button class="btn btn-sm rounded-pill map-clear-btn" onclick="clearAllMapLayers()" id="btnClearRoute" style="display:none;">
+                <i class="bi bi-eraser me-1"></i> Clear
+            </button>
+        </div>
+
+        <div class="row g-4">
+            <!-- LEFT: Config & Input -->
+            <div class="col-lg-5">
+                <!-- API Mode Toggle -->
+                <div class="card-glass p-4 mb-4">
+                    <div class="section-title">
+                        <i class="bi bi-toggles me-1"></i> API Endpoint
+                    </div>
+                    <div class="api-mode-toggle mb-3 d-none" style="flex-wrap:wrap;gap:4px;">
+                        <button class="api-mode-btn active" onclick="switchApiMode('route')" id="modeBtn-route" style="flex:1 1 30%;">
+                            <i class="bi bi-sign-turn-right-fill me-1"></i> Route
+                        </button>
+                        <button class="api-mode-btn" onclick="switchApiMode('matrix')" id="modeBtn-matrix" style="flex:1 1 30%;">
+                            <i class="bi bi-grid-3x3 me-1"></i> Matrix
+                        </button>
+                        <button class="api-mode-btn" onclick="switchApiMode('location')" id="modeBtn-location" style="flex:1 1 30%;">
+                            <i class="bi bi-geo-alt-fill me-1"></i> Location
+                        </button>
+                        <button class="api-mode-btn" onclick="switchApiMode('maps')" id="modeBtn-maps" style="flex:1 1 30%;">
+                            <i class="bi bi-map-fill me-1"></i> Maps
+                        </button>
+                        {{-- Geofencing & Tracking tidak menerima API key (butuh SigV4) dan
+                             bukan aksi yang diizinkan GrabMaps, jadi selalu balas 403
+                             "Missing Authentication Token". Disembunyikan; markup & JS-nya
+                             dibiarkan supaya mudah dihidupkan lagi kalau memakai IAM. --}}
+                        <button class="api-mode-btn" onclick="switchApiMode('geofence')" id="modeBtn-geofence" style="flex:1 1 30%;display:none;">
+                            <i class="bi bi-bounding-box me-1"></i> Geofence
+                        </button>
+                        <button class="api-mode-btn" onclick="switchApiMode('tracking')" id="modeBtn-tracking" style="flex:1 1 30%;display:none;">
+                            <i class="bi bi-broadcast-pin me-1"></i> Tracking
                         </button>
                     </div>
-                    <div id="miniMap"></div>
-                    <div id="mapRouteStatus"></div>
 
+                    <!-- Mode descriptions -->
+                    <div id="modeDesc-route">
+                        <div class="d-flex align-items-start gap-2 p-3 rounded-3" style="background:#f0f9ff;border:1px solid #bae6fd;">
+                            <i class="bi bi-info-circle-fill text-primary mt-1"></i>
+                            <div>
+                                <div class="fw-bold small text-primary">calculate/route</div>
+                                <div style="font-size:0.78rem;color:#475569;">
+                                    Single route A&rarr;B with optional waypoints.
+                                    Returns <b>full geometry (LineString)</b>, distance, duration, dan leg details.
+                                    Cocok untuk <b>menggambar rute di peta</b>.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="modeDesc-matrix" style="display:none;">
+                        <div class="d-flex align-items-start gap-2 p-3 rounded-3" style="background:#fffbeb;border:1px solid #fde68a;">
+                            <i class="bi bi-info-circle-fill text-warning mt-1"></i>
+                            <div>
+                                <div class="fw-bold small text-warning">calculate/route-matrix</div>
+                                <div style="font-size:0.78rem;color:#475569;">
+                                    N origins &times; M destinations matrix.
+                                    Returns <b>distance + duration</b> per pair saja (tanpa geometry).
+                                    Cocok untuk <b>optimasi urutan, cari terdekat, batch comparison</b>.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="modeDesc-location" style="display:none;">
+                        <div class="d-flex align-items-start gap-2 p-3 rounded-3" style="background:#faf5ff;border:1px solid #d8b4fe;">
+                            <i class="bi bi-info-circle-fill mt-1" style="color:#00B14F;"></i>
+                            <div>
+                                <div class="fw-bold small" style="color:#00B14F;">Places API</div>
+                                <div style="font-size:0.78rem;color:#475569;">
+                                    Search, autocomplete, reverse geocode, dan get place details.
+                                    Test semua <b>Places endpoints</b> dari AWS Location Service.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="modeDesc-maps" style="display:none;">
+                        <div class="d-flex align-items-start gap-2 p-3 rounded-3" style="background:#ecfeff;border:1px solid #a5f3fc;">
+                            <i class="bi bi-info-circle-fill mt-1" style="color:#0891b2;"></i>
+                            <div>
+                                <div class="fw-bold small" style="color:#0891b2;">Maps API</div>
+                                <div style="font-size:0.78rem;color:#475569;">
+                                    Inspect map resources: <b>style descriptor, tiles, glyphs, sprites</b>.
+                                    Test Maps rendering endpoints langsung.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="modeDesc-geofence" style="display:none;">
+                        <div class="d-flex align-items-start gap-2 p-3 rounded-3" style="background:#fff7ed;border:1px solid #fed7aa;">
+                            <i class="bi bi-info-circle-fill mt-1" style="color:#ea580c;"></i>
+                            <div>
+                                <div class="fw-bold small" style="color:#ea580c;">Geofencing API</div>
+                                <div style="font-size:0.78rem;color:#475569;">
+                                    Create, list, dan evaluate geofences. Draw boundaries di map.
+                                    <b>Note:</b> Mungkin butuh IAM/Cognito auth (API Key bisa error).
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="modeDesc-tracking" style="display:none;">
+                        <div class="d-flex align-items-start gap-2 p-3 rounded-3" style="background:#fdf2f8;border:1px solid #fbcfe8;">
+                            <i class="bi bi-info-circle-fill mt-1" style="color:#db2777;"></i>
+                            <div>
+                                <div class="fw-bold small" style="color:#db2777;">Tracking API</div>
+                                <div style="font-size:0.78rem;color:#475569;">
+                                    Update dan retrieve device positions. View position history trails di map.
+                                    <b>Note:</b> Mungkin butuh IAM/Cognito auth (API Key bisa error).
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-glass p-4 mb-4" id="cardRouteMatrixWrap">
                     <!-- Route & Matrix Input (inside map card) — same UI as API Configuration -->
-                    <div class="mt-4 pt-4 border-top" id="cardRouteMatrix" style="border-color:rgba(0,0,0,0.08)!important;">
+                    <div id="cardRouteMatrix">
                         <div class="section-title">
                             <i class="bi bi-sign-turn-right-fill me-1"></i> Route & Matrix Input
                         </div>
@@ -1082,145 +1624,37 @@
                         </div>
                     </div>
 
-                    <small class="text-muted d-block mt-2" id="mapHintRoute">
+                    <small class="text-muted dock-hint mt-2" id="mapHintRoute" style="display:block;">
                         <i class="bi bi-info-circle me-1"></i>
                         Klik tombol <b>Pick from map</b> lalu klik peta untuk set koordinat.
                     </small>
-                    <small class="text-muted d-block mt-2" id="mapHintMatrix" style="display:none;">
+                    <small class="text-muted dock-hint mt-2" id="mapHintMatrix" style="display:none;">
                         <i class="bi bi-info-circle me-1"></i>
                         Klik tombol <b>Pick from map</b> / <b>Add from map</b> lalu klik peta untuk set koordinat.
                     </small>
-                    <small class="text-muted d-block mt-2" id="mapHintLocation" style="display:none;">
+                    <small class="text-muted dock-hint mt-2" id="mapHintLocation" style="display:none;">
                         <i class="bi bi-info-circle me-1"></i>
                         Click map to fill reverse geocode coordinates. Search results appear as markers.
                     </small>
-                    <small class="text-muted d-block mt-2" id="mapHintMaps" style="display:none;">
+                    <small class="text-muted dock-hint mt-2" id="mapHintMaps" style="display:none;">
                         <i class="bi bi-info-circle me-1"></i>
                         Click "Fill from map center" to get tile coordinates from current view.
                     </small>
-                    <small class="text-muted d-block mt-2" id="mapHintGeofence" style="display:none;">
+                    <small class="text-muted dock-hint mt-2" id="mapHintGeofence" style="display:none;">
                         <i class="bi bi-info-circle me-1"></i>
                         Click map to set geofence center / evaluation position. Geofence boundaries shown as polygons.
                     </small>
-                    <small class="text-muted d-block mt-2" id="mapHintTracking" style="display:none;">
+                    <small class="text-muted dock-hint mt-2" id="mapHintTracking" style="display:none;">
                         <i class="bi bi-info-circle me-1"></i>
                         Click map to set device position. Device markers and history trails shown on map.
                     </small>
-                    <div class="d-flex flex-wrap gap-3 mt-2" style="font-size:0.75rem;">
+                    <div class="dock-legend" id="mapLegend">
                         <span><i class="bi bi-circle-fill text-success me-1" style="font-size:0.5rem;"></i> Departure</span>
                         <span><i class="bi bi-circle-fill text-danger me-1" style="font-size:0.5rem;"></i> Destination</span>
                         <span><i class="bi bi-dash-lg text-primary me-1"></i> Route</span>
                         <span style="color:#6d28d9;"><i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i> Location result</span>
-                        <span style="color:#ea580c;"><i class="bi bi-square-fill me-1" style="font-size:0.5rem;"></i> Geofence</span>
-                        <span style="color:#db2777;"><i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i> Tracking</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row g-4">
-            <!-- LEFT: Config & Input -->
-            <div class="col-lg-5">
-                <!-- API Mode Toggle -->
-                <div class="card-glass p-4 mb-4">
-                    <div class="section-title">
-                        <i class="bi bi-toggles me-1"></i> API Endpoint
-                    </div>
-                    <div class="api-mode-toggle mb-3" style="flex-wrap:wrap;gap:4px;">
-                        <button class="api-mode-btn active" onclick="switchApiMode('route')" id="modeBtn-route" style="flex:1 1 30%;">
-                            <i class="bi bi-sign-turn-right-fill me-1"></i> Route
-                        </button>
-                        <button class="api-mode-btn" onclick="switchApiMode('matrix')" id="modeBtn-matrix" style="flex:1 1 30%;">
-                            <i class="bi bi-grid-3x3 me-1"></i> Matrix
-                        </button>
-                        <button class="api-mode-btn" onclick="switchApiMode('location')" id="modeBtn-location" style="flex:1 1 30%;">
-                            <i class="bi bi-geo-alt-fill me-1"></i> Location
-                        </button>
-                        <button class="api-mode-btn" onclick="switchApiMode('maps')" id="modeBtn-maps" style="flex:1 1 30%;">
-                            <i class="bi bi-map-fill me-1"></i> Maps
-                        </button>
-                        <button class="api-mode-btn" onclick="switchApiMode('geofence')" id="modeBtn-geofence" style="flex:1 1 30%;">
-                            <i class="bi bi-bounding-box me-1"></i> Geofence
-                        </button>
-                        <button class="api-mode-btn" onclick="switchApiMode('tracking')" id="modeBtn-tracking" style="flex:1 1 30%;">
-                            <i class="bi bi-broadcast-pin me-1"></i> Tracking
-                        </button>
-                    </div>
-
-                    <!-- Mode descriptions -->
-                    <div id="modeDesc-route">
-                        <div class="d-flex align-items-start gap-2 p-3 rounded-3" style="background:#f0f9ff;border:1px solid #bae6fd;">
-                            <i class="bi bi-info-circle-fill text-primary mt-1"></i>
-                            <div>
-                                <div class="fw-bold small text-primary">calculate/route</div>
-                                <div style="font-size:0.78rem;color:#475569;">
-                                    Single route A&rarr;B with optional waypoints.
-                                    Returns <b>full geometry (LineString)</b>, distance, duration, dan leg details.
-                                    Cocok untuk <b>menggambar rute di peta</b>.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="modeDesc-matrix" style="display:none;">
-                        <div class="d-flex align-items-start gap-2 p-3 rounded-3" style="background:#fffbeb;border:1px solid #fde68a;">
-                            <i class="bi bi-info-circle-fill text-warning mt-1"></i>
-                            <div>
-                                <div class="fw-bold small text-warning">calculate/route-matrix</div>
-                                <div style="font-size:0.78rem;color:#475569;">
-                                    N origins &times; M destinations matrix.
-                                    Returns <b>distance + duration</b> per pair saja (tanpa geometry).
-                                    Cocok untuk <b>optimasi urutan, cari terdekat, batch comparison</b>.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="modeDesc-location" style="display:none;">
-                        <div class="d-flex align-items-start gap-2 p-3 rounded-3" style="background:#faf5ff;border:1px solid #d8b4fe;">
-                            <i class="bi bi-info-circle-fill mt-1" style="color:#7c3aed;"></i>
-                            <div>
-                                <div class="fw-bold small" style="color:#7c3aed;">Places API</div>
-                                <div style="font-size:0.78rem;color:#475569;">
-                                    Search, autocomplete, reverse geocode, dan get place details.
-                                    Test semua <b>Places endpoints</b> dari AWS Location Service.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="modeDesc-maps" style="display:none;">
-                        <div class="d-flex align-items-start gap-2 p-3 rounded-3" style="background:#ecfeff;border:1px solid #a5f3fc;">
-                            <i class="bi bi-info-circle-fill mt-1" style="color:#0891b2;"></i>
-                            <div>
-                                <div class="fw-bold small" style="color:#0891b2;">Maps API</div>
-                                <div style="font-size:0.78rem;color:#475569;">
-                                    Inspect map resources: <b>style descriptor, tiles, glyphs, sprites</b>.
-                                    Test Maps rendering endpoints langsung.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="modeDesc-geofence" style="display:none;">
-                        <div class="d-flex align-items-start gap-2 p-3 rounded-3" style="background:#fff7ed;border:1px solid #fed7aa;">
-                            <i class="bi bi-info-circle-fill mt-1" style="color:#ea580c;"></i>
-                            <div>
-                                <div class="fw-bold small" style="color:#ea580c;">Geofencing API</div>
-                                <div style="font-size:0.78rem;color:#475569;">
-                                    Create, list, dan evaluate geofences. Draw boundaries di map.
-                                    <b>Note:</b> Mungkin butuh IAM/Cognito auth (API Key bisa error).
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="modeDesc-tracking" style="display:none;">
-                        <div class="d-flex align-items-start gap-2 p-3 rounded-3" style="background:#fdf2f8;border:1px solid #fbcfe8;">
-                            <i class="bi bi-info-circle-fill mt-1" style="color:#db2777;"></i>
-                            <div>
-                                <div class="fw-bold small" style="color:#db2777;">Tracking API</div>
-                                <div style="font-size:0.78rem;color:#475569;">
-                                    Update dan retrieve device positions. View position history trails di map.
-                                    <b>Note:</b> Mungkin butuh IAM/Cognito auth (API Key bisa error).
-                                </div>
-                            </div>
-                        </div>
+                        <span style="color:#ea580c;" class="d-none"><i class="bi bi-square-fill me-1" style="font-size:0.5rem;"></i> Geofence</span>
+                        <span style="color:#db2777;" class="d-none"><i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i> Tracking</span>
                     </div>
                 </div>
 
@@ -1269,7 +1703,7 @@
                                 <small class="text-muted" style="font-size:0.7rem;">
                                     <i class="bi bi-shield-lock me-1"></i> Saved in browser only
                                 </small>
-                                <button class="btn btn-link btn-sm p-0" type="button" onclick="showApiKeyGate(document.getElementById('awsApiKey').value)" style="font-size:0.7rem;text-decoration:none;color:#7c3aed;">
+                                <button class="btn btn-link btn-sm p-0" type="button" onclick="showApiKeyGate(document.getElementById('awsApiKey').value)" style="font-size:0.7rem;text-decoration:none;color:#00B14F;">
                                     <i class="bi bi-pencil-square me-1"></i>Change
                                 </button>
                             </div>
@@ -1281,7 +1715,7 @@
                 <div class="card-glass p-4 mb-4" id="cardTravelMode">
                     <div class="section-title">
                         <i class="bi bi-sliders me-1"></i> Request Options
-                        <span class="badge ms-2" id="routeApiVersionBadge" style="background:#7c3aed;color:#fff;font-size:0.7rem;">v2</span>
+                        <span class="badge ms-2" id="routeApiVersionBadge" style="background:#00B14F;color:#fff;font-size:0.7rem;">v2</span>
                     </div>
 
                     <!-- API Version Toggle (v0 vs v2) -->
@@ -1315,9 +1749,12 @@
                             <label class="btn btn-outline-success rounded-pill flex-grow-1" for="mScooter">
                                 <i class="bi bi-scooter me-1"></i> Motorcycle <small style="opacity:0.7;">(v2)</small>
                             </label>
+                            {{-- AWS menolak Truck di ap-southeast-1: "'TravelMode' Truck is
+                                 not supported in ap-southeast-1 region." --}}
                             <input type="radio" class="btn-check" name="travelMode" id="mTruck" value="Truck">
-                            <label class="btn btn-outline-success rounded-pill flex-grow-1" for="mTruck">
-                                <i class="bi bi-truck me-1"></i> Truck
+                            <label class="btn btn-outline-success rounded-pill flex-grow-1" for="mTruck"
+                                title="Tidak didukung di ap-southeast-1">
+                                <i class="bi bi-truck me-1"></i> Truck <small style="opacity:0.7;">(bukan ap-southeast-1)</small>
                             </label>
                             <input type="radio" class="btn-check" name="travelMode" id="mWalk" value="Pedestrian">
                             <label class="btn btn-outline-success rounded-pill flex-grow-1" for="mWalk">
@@ -1354,7 +1791,7 @@
                     <div class="section-title">
                         <i class="bi bi-search me-1"></i> Places API
                         <span class="mode-info-chip chip-location ms-2">Location mode</span>
-                        <span class="badge ms-2" id="locApiVersionBadge" style="background:#7c3aed;color:#fff;font-size:0.7rem;">v2</span>
+                        <span class="badge ms-2" id="locApiVersionBadge" style="background:#00B14F;color:#fff;font-size:0.7rem;">v2</span>
                     </div>
 
                     <!-- API Version Toggle (v0 vs v2) -->
@@ -1412,6 +1849,17 @@
                                 </select>
                             </div>
                         </div>
+                        {{-- Suggest v2 menolak permintaan tanpa BiasPosition/Filter. --}}
+                        <div class="row g-2 mt-1">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Bias Longitude</label>
+                                <input type="number" step="any" class="form-control coord-input" id="locSuggestLng" value="106.8272">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Bias Latitude</label>
+                                <input type="number" step="any" class="form-control coord-input" id="locSuggestLat" value="-6.1754">
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Sub: Search Text -->
@@ -1431,6 +1879,17 @@
                                     <option value="en" selected>English</option>
                                     <option value="id">Indonesia</option>
                                 </select>
+                            </div>
+                        </div>
+                        {{-- SearchText v2 juga wajib punya BiasPosition atau Filter. --}}
+                        <div class="row g-2 mt-1">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Bias Longitude</label>
+                                <input type="number" step="any" class="form-control coord-input" id="locSearchLng" value="106.8272">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold">Bias Latitude</label>
+                                <input type="number" step="any" class="form-control coord-input" id="locSearchLat" value="-6.1754">
                             </div>
                         </div>
                     </div>
@@ -1492,9 +1951,9 @@
                 </div>
 
                 <!-- Places v0 vs v2 Comparison (Location mode only) -->
-                <div class="card-glass p-4 mb-4" id="cardLocComparison" style="display:none;border:2px solid #7c3aed;">
+                <div class="card-glass p-4 mb-4" id="cardLocComparison" style="display:none;border:2px solid #00B14F;">
                     <div class="section-title mb-2">
-                        <i class="bi bi-arrow-left-right me-1" style="color:#7c3aed;"></i> Places API: v0 vs v2
+                        <i class="bi bi-arrow-left-right me-1" style="color:#00B14F;"></i> Places API: v0 vs v2
                         <span class="badge bg-success ms-1" style="font-size:0.65rem;">v2 Available</span>
                     </div>
                     <div class="small text-muted mb-3">Perbandingan utama legacy v0 vs standalone v2 API GrabMaps</div>
@@ -1602,7 +2061,7 @@
                     <div class="section-title">
                         <i class="bi bi-map-fill me-1" style="color:#0891b2;"></i> Maps API
                         <span class="mode-info-chip chip-maps ms-2">Maps mode</span>
-                        <span class="badge ms-2" id="mapsApiVersionBadge" style="background:#7c3aed;color:#fff;font-size:0.7rem;">v2</span>
+                        <span class="badge ms-2" id="mapsApiVersionBadge" style="background:#00B14F;color:#fff;font-size:0.7rem;">v2</span>
                     </div>
 
                     <!-- API Version Toggle (v0 vs v2) -->
@@ -1639,13 +2098,40 @@
                             <i class="bi bi-image d-block mb-1"></i> Sprites
                         </button>
                     </div>
+                    {{-- Style & color scheme dipakai bersama oleh descriptor dan sprites (v2). --}}
+                    <div class="row g-2 mb-3" id="mapsV2Common">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Style (v2)</label>
+                            <select class="form-select coord-input" id="mapsStyleV2">
+                                <option value="Standard" selected>Standard</option>
+                                <option value="Monochrome">Monochrome</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Color Scheme</label>
+                            <select class="form-select coord-input" id="mapsColorScheme">
+                                <option value="Light" selected>Light</option>
+                                <option value="Dark">Dark</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div id="mapsPane-style">
                         <div class="p-2 rounded-3 small" style="background:#ecfeff;border:1px solid #a5f3fc;">
                             <i class="bi bi-info-circle me-1" style="color:#0891b2;"></i>
-                            Fetches the full MapLibre GL style JSON. No additional parameters needed.
+                            Fetches the full MapLibre GL style JSON. GrabMaps di ap-southeast-1 mendukung style <code>Standard</code> dan <code>Monochrome</code>.
                         </div>
                     </div>
                     <div id="mapsPane-tile" style="display:none;">
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Tileset (v2)</label>
+                            <select class="form-select coord-input" id="mapsTileset">
+                                <option value="vector.basemap" selected>vector.basemap</option>
+                            </select>
+                            <small class="text-muted d-block mt-1">
+                                <i class="bi bi-info-circle me-1"></i>ap-southeast-1 hanya menyediakan <code>vector.basemap</code>; <code>raster.satellite</code> ditolak AWS.
+                            </small>
+                        </div>
                         <div class="row g-2 mb-2">
                             <div class="col-4">
                                 <label class="form-label small fw-semibold">Zoom (z)</label>
@@ -1960,7 +2446,7 @@
     <div class="modal fade" id="apiKeyGateModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius:18px;border:none;overflow:hidden;">
-                <div class="modal-header" style="background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%);color:#fff;border:none;padding:22px 24px;">
+                <div class="modal-header" style="background:linear-gradient(135deg,#00B14F 0%,#009543 100%);color:#fff;border:none;padding:22px 24px;">
                     <div class="d-flex align-items-center gap-2">
                         <i class="bi bi-shield-lock-fill" style="font-size:1.4rem;"></i>
                         <div>
@@ -1972,8 +2458,8 @@
                 <div class="modal-body" style="padding:24px;">
                     <div class="p-3 rounded-3 mb-3" style="background:#f5f3ff;border:1px solid #ddd6fe;">
                         <div class="d-flex align-items-start gap-2">
-                            <i class="bi bi-info-circle-fill" style="color:#7c3aed;font-size:1rem;margin-top:2px;"></i>
-                            <div style="font-size:0.8rem;color:#5b21b6;line-height:1.5;">
+                            <i class="bi bi-info-circle-fill" style="color:#00B14F;font-size:1rem;margin-top:2px;"></i>
+                            <div style="font-size:0.8rem;color:#00713a;line-height:1.5;">
                                 Tester ini butuh <b>AWS API Key</b> untuk render map dan call API.
                                 Key kamu akan disimpan di browser (<code>localStorage</code>) dan tidak dikirim ke server kami.
                             </div>
@@ -1985,7 +2471,7 @@
                     </label>
                     <div class="input-group mb-2">
                         <span class="input-group-text" style="background:#f3f4f6;border-radius:10px 0 0 10px;">
-                            <i class="bi bi-key-fill" style="color:#7c3aed;"></i>
+                            <i class="bi bi-key-fill" style="color:#00B14F;"></i>
                         </span>
                         <input type="password" class="form-control" id="gateApiKey" placeholder="v1.public.xxxxxxxxxxxxxxxxxxx" autocomplete="off" style="border-radius:0;">
                         <button class="btn btn-outline-secondary" type="button" id="gateApiKeyToggle" style="border-radius:0 10px 10px 0;">
@@ -1997,12 +2483,12 @@
                     </div>
 
                     <details class="mt-3">
-                        <summary style="cursor:pointer;color:#7c3aed;font-weight:600;font-size:0.8rem;">
+                        <summary style="cursor:pointer;color:#00B14F;font-weight:600;font-size:0.8rem;">
                             <i class="bi bi-question-circle me-1"></i> Bagaimana cara dapat API Key?
                         </summary>
                         <div class="mt-2 p-3 rounded-3 small" style="background:#f9fafb;border:1px solid #e5e7eb;color:#4b5563;font-size:0.75rem;line-height:1.6;">
                             <ol class="mb-0 ps-3">
-                                <li>Buka <a href="https://console.aws.amazon.com/location/" target="_blank" style="color:#7c3aed;">AWS Console → Location Service</a></li>
+                                <li>Buka <a href="https://console.aws.amazon.com/location/" target="_blank" style="color:#00B14F;">AWS Console → Location Service</a></li>
                                 <li>Klik <b>API keys → Create API key</b></li>
                                 <li>Pilih region <b>ap-southeast-1</b> (Singapore)</li>
                                 <li>Centang resources yang dibutuhkan: Maps, Places, Routes</li>
@@ -2013,7 +2499,7 @@
                     </details>
                 </div>
                 <div class="modal-footer" style="border:none;padding:0 24px 24px;">
-                    <button type="button" class="btn rounded-pill px-4 w-100 py-2" id="gateContinueBtn" style="background:#7c3aed;color:#fff;font-weight:600;">
+                    <button type="button" class="btn rounded-pill px-4 w-100 py-2" id="gateContinueBtn" style="background:#00B14F;color:#fff;font-weight:600;">
                         <i class="bi bi-arrow-right-circle-fill me-1"></i> Continue
                     </button>
                 </div>
@@ -2108,7 +2594,7 @@
                     <!-- Places -->
                     <div class="ref-card">
                         <div class="ref-card-title">
-                            <i class="bi bi-geo-alt-fill" style="color:#7c3aed;"></i> Places API <span class="badge bg-success ms-1" style="font-size:0.6rem;">v2</span>
+                            <i class="bi bi-geo-alt-fill" style="color:#00B14F;"></i> Places API <span class="badge bg-success ms-1" style="font-size:0.6rem;">v2</span>
                         </div>
                         <div class="mb-2 small text-muted">Search, autocomplete, reverse geocode & get place details (Standalone v2)</div>
                         <div class="ref-endpoint">
@@ -2138,9 +2624,9 @@
                     </div>
 
                     <!-- v0 vs v2 Comparison -->
-                    <div class="ref-card" style="border:2px solid #7c3aed;">
+                    <div class="ref-card" style="border:2px solid #00B14F;">
                         <div class="ref-card-title">
-                            <i class="bi bi-arrow-left-right" style="color:#7c3aed;"></i> Places v0 vs v2
+                            <i class="bi bi-arrow-left-right" style="color:#00B14F;"></i> Places v0 vs v2
                         </div>
                         <div class="mb-2 small text-muted">Perbandingan utama antara legacy v0 dan v2 standalone API</div>
                         <div class="table-responsive">
@@ -2477,7 +2963,7 @@
             const badge = document.getElementById('mapsApiVersionBadge');
             if (badge) {
                 badge.textContent = ver;
-                badge.style.background = ver === 'v2' ? '#7c3aed' : '#6b7280';
+                badge.style.background = ver === 'v2' ? '#00B14F' : '#6b7280';
             }
         }
 
@@ -2486,7 +2972,7 @@
             const badge = document.getElementById('locApiVersionBadge');
             if (badge) {
                 badge.textContent = ver;
-                badge.style.background = ver === 'v2' ? '#7c3aed' : '#6b7280';
+                badge.style.background = ver === 'v2' ? '#00B14F' : '#6b7280';
             }
         }
 
@@ -2495,7 +2981,7 @@
             const badge = document.getElementById('routeApiVersionBadge');
             if (badge) {
                 badge.textContent = ver;
-                badge.style.background = ver === 'v2' ? '#7c3aed' : '#6b7280';
+                badge.style.background = ver === 'v2' ? '#00B14F' : '#6b7280';
             }
         }
 
@@ -2532,6 +3018,42 @@
         /* =========================================
            API MODE TOGGLE
            ========================================= */
+
+        // Hint, legenda, dan tombol kirim dipindah ke dock bawah — id tetap sama.
+        document.addEventListener('DOMContentLoaded', function() {
+            const info = document.getElementById('dockInfo');
+            const dock = document.getElementById('testerDock');
+            if (!info || !dock) return;
+            ['mapHintRoute', 'mapHintMatrix', 'mapHintLocation', 'mapHintMaps', 'mapHintGeofence', 'mapHintTracking', 'mapLegend']
+            .forEach(id => {
+                const el = document.getElementById(id);
+                if (el) info.appendChild(el);
+            });
+            const send = document.getElementById('btnSend');
+            if (send) dock.appendChild(send);
+        });
+
+
+        // Ukuran container peta berubah (buka-tutup panel, resize window) — canvas harus ikut.
+        function watchMapSize() {
+            const el = document.getElementById('miniMap');
+            if (!el || typeof ResizeObserver === 'undefined') return;
+            new ResizeObserver(() => {
+                if (miniMap && miniMap.resize) miniMap.resize();
+            }).observe(el);
+        }
+        document.addEventListener('DOMContentLoaded', watchMapSize);
+
+        function railGo(mode) {
+            switchApiMode(mode);
+            document.body.classList.remove('panel-hidden');
+            const panel = document.querySelector('.row.g-4 > .col-lg-5');
+            if (panel) panel.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
         function switchApiMode(mode) {
             currentApiMode = mode;
             clearPickFromMapMode();
@@ -2539,6 +3061,8 @@
             const allModes = ['route', 'matrix', 'location', 'maps', 'geofence', 'tracking'];
             allModes.forEach(m => {
                 document.getElementById(`modeBtn-${m}`).classList.toggle('active', m === mode);
+                document.querySelectorAll(`.tester-rail button[data-rail="${m}"]`)
+                    .forEach(b => b.classList.toggle('active', m === mode));
                 document.getElementById(`modeDesc-${m}`).style.display = m === mode ? 'block' : 'none';
             });
 
@@ -3916,18 +4440,28 @@
             } else {
                 // ===== v2 (New) endpoints =====
                 if (sub === 'suggestions') {
+                    // AWS: "Exactly one of the following fields must be set:
+                    // 'BiasPosition', 'Filter.BoundingBox', 'Filter.Circle'."
                     url = `https://places.geo.${region}.amazonaws.com/v2/suggest?key=${apiKey}`;
                     requestBody = {
                         QueryText: document.getElementById('locSuggestText').value,
                         MaxResults: parseInt(document.getElementById('locSuggestMax').value) || 5,
-                        Language: document.getElementById('locSuggestLang').value
+                        Language: document.getElementById('locSuggestLang').value,
+                        BiasPosition: [
+                            parseFloat(document.getElementById('locSuggestLng').value),
+                            parseFloat(document.getElementById('locSuggestLat').value)
+                        ]
                     };
                 } else if (sub === 'search') {
                     url = `https://places.geo.${region}.amazonaws.com/v2/search-text?key=${apiKey}`;
                     requestBody = {
                         QueryText: document.getElementById('locSearchText').value,
                         MaxResults: parseInt(document.getElementById('locSearchMax').value) || 5,
-                        Language: document.getElementById('locSearchLang').value
+                        Language: document.getElementById('locSearchLang').value,
+                        BiasPosition: [
+                            parseFloat(document.getElementById('locSearchLng').value),
+                            parseFloat(document.getElementById('locSearchLat').value)
+                        ]
                     };
                 } else if (sub === 'reverse') {
                     url = `https://places.geo.${region}.amazonaws.com/v2/reverse-geocode?key=${apiKey}`;
@@ -4092,7 +4626,7 @@
 
                 div.innerHTML = `
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge rounded-pill" style="background:#ede9fe;color:#6d28d9;">${i + 1}</span>
+                        <span class="badge rounded-pill" style="background:#e6f7ee;color:#009543;">${i + 1}</span>
                         <div class="flex-grow-1">
                             <div class="fw-semibold" style="font-size:0.82rem;">${p.label}</div>
                             ${subLabelHtml}
@@ -4155,23 +4689,42 @@
                     url = `https://maps.geo.${region}.amazonaws.com/maps/v0/maps/${mapName}/sprites/${spriteFile}?key=${apiKey}`;
                 }
             } else {
-                // ===== v2 (New) — resource-less, langsung pilih Style =====
-                // Default style: 'Standard' (vector). Bisa diganti ke Hybrid/Satellite kalau GrabMaps support.
-                const styleName = 'Standard';
+                // ===== v2 (New) — tanpa resource, langsung pilih Style =====
+                // Bentuk URL di bawah mengikuti style descriptor GrabMaps di
+                // ap-southeast-1. Style yang didukung: Standard & Monochrome
+                // (Hybrid/Satellite ditolak "not a supported map style").
+                const styleName = document.getElementById('mapsStyleV2').value;
+                const colorScheme = document.getElementById('mapsColorScheme').value;
+
                 if (sub === 'style') {
-                    url = `https://maps.geo.${region}.amazonaws.com/v2/styles/${styleName}/descriptor?key=${apiKey}`;
+                    url = `https://maps.geo.${region}.amazonaws.com/v2/styles/${styleName}/descriptor?key=${apiKey}&color-scheme=${colorScheme}`;
                 } else if (sub === 'tile') {
                     const z = document.getElementById('mapsZ').value,
                         x = document.getElementById('mapsX').value,
                         y = document.getElementById('mapsY').value;
-                    url = `https://maps.geo.${region}.amazonaws.com/v2/tiles/raster/${styleName}/${z}/${x}/${y}?key=${apiKey}`;
+                    // Tileset, bukan style. ap-southeast-1 hanya punya vector.basemap.
+                    const tileset = document.getElementById('mapsTileset').value;
+                    url = `https://maps.geo.${region}.amazonaws.com/v2/tiles/${tileset}/${z}/${x}/${y}?key=${apiKey}`;
                 } else if (sub === 'glyphs') {
+                    // Glyphs v2 tidak memakai style di path, dan berakhiran .pbf.
                     const fontStack = encodeURIComponent(document.getElementById('mapsFontStack').value);
                     const range = document.getElementById('mapsGlyphRange').value;
-                    url = `https://maps.geo.${region}.amazonaws.com/v2/glyphs/${styleName}/${fontStack}/${range}?key=${apiKey}`;
+                    url = `https://maps.geo.${region}.amazonaws.com/v2/glyphs/${fontStack}/${range}.pbf?key=${apiKey}`;
                 } else if (sub === 'sprites') {
+                    // Path sprite memuat nomor versi style yang bisa berubah, jadi
+                    // diambil dari descriptor, bukan ditulis tetap di sini.
                     const spriteFile = document.getElementById('mapsSpriteFile').value;
-                    url = `https://maps.geo.${region}.amazonaws.com/v2/sprites/${styleName}/Default/Default/${spriteFile}?key=${apiKey}`;
+                    const descUrl = `https://maps.geo.${region}.amazonaws.com/v2/styles/${styleName}/descriptor?key=${apiKey}&color-scheme=${colorScheme}`;
+
+                    try {
+                        const desc = await (await fetch(descUrl)).json();
+                        if (!desc.sprite) throw new Error('Style descriptor tidak memuat URL sprite');
+                        const suffix = spriteFile.replace(/^sprites/, '');
+                        url = `${desc.sprite}${suffix}${desc.sprite.includes('?') ? '&' : '?'}key=${apiKey}`;
+                    } catch (e) {
+                        handleFetchError(new Error('Gagal membaca sprite dari style descriptor: ' + e.message));
+                        return;
+                    }
                 }
             }
 
@@ -4785,6 +5338,7 @@
             } catch (_) {}
             return null;
         }
+
         function saveSharedKey(apiKey) {
             apiKey = (apiKey || '').trim();
             if (apiKey) {
@@ -4800,7 +5354,10 @@
                 // Don't fully delete docs Inspector key — just clear apiKey field
                 try {
                     const obj = JSON.parse(localStorage.getItem('awsapi_user_key') || 'null');
-                    if (obj) { obj.apiKey = ''; localStorage.setItem('awsapi_user_key', JSON.stringify(obj)); }
+                    if (obj) {
+                        obj.apiKey = '';
+                        localStorage.setItem('awsapi_user_key', JSON.stringify(obj));
+                    }
                 } catch (_) {}
             }
         }
@@ -4866,7 +5423,9 @@
                     const pct = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
                     testerBar.style.width = pct + '%';
                 };
-                window.addEventListener('scroll', updateTesterProgress, { passive: true });
+                window.addEventListener('scroll', updateTesterProgress, {
+                    passive: true
+                });
                 updateTesterProgress();
             }
 
@@ -4883,7 +5442,10 @@
                         revealObserver.unobserve(entry.target);
                     }
                 });
-            }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+            }, {
+                threshold: 0.08,
+                rootMargin: '0px 0px -40px 0px'
+            });
             document.querySelectorAll('.reveal-on-scroll').forEach(el => revealObserver.observe(el));
 
             // 3. Button ripple on click

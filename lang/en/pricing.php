@@ -30,9 +30,14 @@ return [
     'als_cost' => 'ALS Cost',
     'google_cost' => 'Google Cost',
     'savings' => 'Savings',
+    'price_1k' => 'Price /1K',
+    'cost_col' => 'Cost /mo',
+    'free_quota' => 'Free quota',
     'subtotal' => 'Subtotal',
 
     'key_insights' => 'Key Insights',
+    'avg_savings' => 'Average Saving',
+    'avg_savings_desc' => 'Average price gap between ALS-GRAB and Google Maps across :count comparable APIs',
     'breakeven_point' => 'Breakeven Point',
     'breakeven_desc' => 'At just :count requests/month for Places, GrabMaps is already cheaper than Google Maps',
     'map_tiles_savings' => 'Map Tiles Savings',
@@ -63,15 +68,15 @@ return [
     'categories' => [
         'places' => [
             'name' => 'Places',
-            'description' => 'Search for places, convert addresses to coordinates, and get place details. Essential for location search, address autocomplete, and geocoding.',
+            'description' => 'Search for places, convert addresses to coordinates, and get place details. Covers SearchText, Suggest, ReverseGeocode, and GetPlace.',
         ],
         'routes' => [
             'name' => 'Routes',
-            'description' => 'Calculate directions, routes, and travel times between locations. Includes route matrices, waypoint optimization, and snap-to-road for GPS traces.',
+            'description' => 'Calculate directions and travel times between locations, plus route matrices for many origin and destination pairs.',
         ],
         'maps' => [
             'name' => 'Maps',
-            'description' => 'Display map tiles and static map images. Used for showing interactive maps, static map images, and custom map visualizations.',
+            'description' => 'Serve map tiles for interactive maps. GrabMaps bills tile requests through GetTile.',
         ],
         'trackers' => [
             'name' => 'Trackers',
@@ -88,15 +93,15 @@ return [
     ],
 
     'items' => [
-        'autocomplete_suggest' => ['name' => 'Autocomplete, Suggest', 'description' => 'Address and place suggestions as the user types. Supports search-as-you-type in address fields and place search.'],
-        'geocode_core' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Convert addresses to coordinates (lat/lng) and vice versa. Place details, search by text, or find nearby places.'],
-        'geocode_advanced' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Advanced place data: opening hours, contact info, time zone, access points. For more comprehensive place details.'],
-        'geocode_stored' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Store results for long-term use. Reduces API calls when reusing results for analytics or caching.'],
-        'calculate_routes_core' => ['name' => 'Calculate Routes', 'description' => 'Turn-by-turn directions between two or more points. Supports car, truck, pedestrian, and bicycle.'],
-        'calculate_routes_advanced' => ['name' => 'Calculate Routes', 'description' => 'Advanced routing with real-time traffic. Additional travel modes such as scooter.'],
-        'calculate_routes_premium' => ['name' => 'Calculate Routes', 'description' => 'Includes toll cost calculation. For routes that require toll estimation.'],
-        'calculate_route_matrix_core' => ['name' => 'Calculate Route Matrix', 'description' => 'Calculate routes between multiple origins and destinations in one request. Ideal for delivery and fleet optimization.'],
-        'calculate_route_matrix_advanced' => ['name' => 'Calculate Route Matrix', 'description' => 'Advanced route matrix with more options.'],
+        'autocomplete_suggest' => ['name' => 'Autocomplete, Suggest', 'description' => 'Address and place suggestions as the user types. Without additionalFeature the response carries only PlaceID, place type, title, and address label.'],
+        'geocode_core' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Charged when additionalFeature is empty. Returns full address components, categories, and standard place details.'],
+        'geocode_advanced' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Charged when the request asks for additionalFeature Contact, Access, TimeZone, or Phonemes — opening hours, contacts, time zone, and access points.'],
+        'geocode_stored' => ['name' => 'Geocode / Reverse Geocode / Get Place / Search Text / Search Nearby', 'description' => 'Charged when intendedUse = Stored: results may be kept permanently for caching or analytics. This price also caps any single Places call.'],
+        'calculate_routes_core' => ['name' => 'Calculate Routes', 'description' => 'Car and Truck without toll calculation, plus Pedestrian and Transit. For GrabMaps customers in ap-southeast-1, Scooter also falls under Core.'],
+        'calculate_routes_advanced' => ['name' => 'Calculate Routes', 'description' => 'Alternative travel modes such as Scooter, without toll calculation. On GrabMaps ap-southeast-1 Scooter is already Core, so this tier rarely applies.'],
+        'calculate_routes_premium' => ['name' => 'Calculate Routes', 'description' => 'Charged when the request asks for toll cost via LegAdditionalFeatures[Tolls] or SpanAdditionalFeatures[TollSystems], and for the Intermodal travel mode.'],
+        'calculate_route_matrix_core' => ['name' => 'Calculate Route Matrix', 'description' => 'Car, Truck, and Pedestrian. Billed per origin x destination pair, so 300 origins x 100 destinations = 30,000 routes. On GrabMaps ap-southeast-1, Scooter also falls under Core.'],
+        'calculate_route_matrix_advanced' => ['name' => 'Calculate Route Matrix', 'description' => 'Alternative travel modes such as Scooter. On GrabMaps ap-southeast-1 Scooter is already Core.'],
         'snap_to_roads_advanced' => ['name' => 'Snap to Roads', 'description' => 'Snap GPS points to roads. Up to 200 points; car, truck, or pedestrian mode.'],
         'snap_to_roads_premium' => ['name' => 'Snap to Roads', 'description' => 'Snap up to 5,000 GPS points to roads. No restriction on travel mode.'],
         'optimize_waypoints_advanced' => ['name' => 'Optimize Waypoints', 'description' => 'Order waypoints for optimal route. For delivery route optimization.'],
@@ -124,4 +129,11 @@ return [
         'geofence_event_forecast' => ['name' => 'Geofence Event Forecast Requested', 'description' => 'Predict when device will enter or exit geofence.'],
         'resource_crud_list' => ['name' => 'Resource CRUD/List Requests', 'description' => 'Create, read, update, delete, or list API resources.'],
     ],
+
+    'theme_light' => 'Light mode',
+    'theme_dark' => 'Dark mode',
+    'theme_system' => 'Follow system',
+
+    'tab_compare' => 'Compare',
+    'als_only_notice' => 'Some categories (Trackers, Geofences) are exclusive to Amazon Location Service — switch to Compare or Amazon Location view to see them.',
 ];

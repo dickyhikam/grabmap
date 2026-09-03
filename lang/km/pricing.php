@@ -106,4 +106,11 @@ return [
         'geofence_event_forecast' => ['name' => 'Geofence Event Forecast Requested', 'description' => 'ព្យាករណ៍ពេលឧបករណ៍នឹងចូល ឬចេញ geofence។'],
         'resource_crud_list' => ['name' => 'Resource CRUD/List Requests', 'description' => 'បង្កើត អាន ធ្វើបច្ចុប្បន្នភាព លុប ឬបញ្ជីធនធាន API។'],
     ],
+
+    'theme_light' => 'របៀបភ្លឺ',
+    'theme_dark' => 'របៀបងងឹត',
+    'theme_system' => 'តាមប្រព័ន្ធ',
+
+    'tab_compare' => 'ប្រៀបធៀប',
+    'als_only_notice' => 'ប្រភេទខ្លះ (Trackers, Geofences) មានតែនៅ Amazon Location Service ប៉ុណ្ណោះ — សូមប្ដូរទៅទិដ្ឋភាព ប្រៀបធៀប ឬ Amazon Location ដើម្បីមើល។',
 ];

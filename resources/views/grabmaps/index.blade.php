@@ -5,6 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
     <title>GrabMaps Playground</title>
+    {{-- Tema dipasang sebelum CSS supaya tidak ada kedipan putih saat mode gelap. --}}
+    <script>
+        (function () {
+            try {
+                document.documentElement.setAttribute('data-theme', localStorage.getItem('gm-theme') || 'system');
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'system');
+            }
+        })();
+    </script>
 
     <link rel="shortcut icon" href="{{ asset('logo2.png') }}" type="image/png">
 
@@ -12,24 +22,148 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
+        /* ================= Token tema =================
+           Sejajar dengan layouts/admin-v2 dan /pricing. Terang = default di
+           :root. Gelap dipakai kalau data-theme="dark", atau saat mengikuti
+           sistem (data-theme="system"/kosong) dan OS-nya gelap. */
         :root {
+            color-scheme: light;
+
             --grab-green: #00B14F;
             --grab-green-dark: #009344;
             --grab-green-soft: #E7F8EE;
-            --ink: #10221A;
+            --green-hover: #009344;
+
+            --ink: #141B18;
             --ink-2: #46564E;
-            --ink-3: #84948C;
-            --line: #E4E9E6;
+            --ink-3: #8A938F;
+            --line: #EBEEEE;
+            --line-strong: #CFD6D2;
+            --faint: #B3BCB7;
             --surface: #FFFFFF;
-            --surface-2: #F6F8F7;
+            --surface-2: #F2F4F4;
+            --surface-3: #E9EDEB;
+            --disabled: #B9CFC3;
+
             --danger: #D93025;
+            --danger-soft: #FDECEA;
+            --danger-fg: #92211A;
+            --danger-strong: #92211A;
+            --ok-fg: #04642E;
+            --ok-strong: #04642E;
+            --warn: #E8A33D;
+
+            --code-bg: #0F1A15;
+            --code-ink: #D7E5DD;
+            --glass: rgba(255, 255, 255, .8);
+            --glass-strong: rgba(255, 255, 255, .95);
+            --toast-bg: #10221A;
+            --toast-ink: #FFFFFF;
+
+            --welcome-bg: #F3F7F4;
+            --welcome-grid: rgba(16, 34, 26, .035);
+            --welcome-right-bg: linear-gradient(180deg, #FBFDFC 0%, #F2F7F4 100%);
+            --glow-1: rgba(0, 177, 79, .16);
+            --glow-2: rgba(0, 177, 79, .12);
+
             --radius: 14px;
+            --radius-lg: 22px;
             --shadow-sm: 0 1px 2px rgba(16, 34, 26, .06), 0 1px 3px rgba(16, 34, 26, .05);
             --shadow-md: 0 4px 14px rgba(16, 34, 26, .08);
             --shadow-lg: 0 18px 50px rgba(16, 34, 26, .18);
+        }
+
+        :root[data-theme="dark"] {
+            color-scheme: dark;
+
+            --grab-green-dark: #45D67F;
+            --grab-green-soft: rgba(0, 177, 79, .16);
+            --green-hover: #00C257;
+
+            --ink: #EAF0EC;
+            --ink-2: #B8C3BD;
+            --ink-3: #8E9A94;
+            --line: #2B322E;
+            --line-strong: #3A423D;
+            --faint: #5F6B65;
+            --surface: #191E1B;
+            --surface-2: #232926;
+            --surface-3: #2B322E;
+            --disabled: #3A423D;
+
+            --danger: #F08A8A;
+            --danger-soft: rgba(220, 38, 38, .16);
+            --danger-fg: #F5A3A3;
+            --danger-strong: #7F1D1D;
+            --ok-fg: #6EE7A8;
+            --ok-strong: #065F36;
+            --warn: #FBBF24;
+
+            --code-bg: #0B0F0D;
+            --code-ink: #CFE0D7;
+            --glass: rgba(25, 30, 27, .82);
+            --glass-strong: rgba(25, 30, 27, .92);
+            --toast-bg: #232926;
+            --toast-ink: #EAF0EC;
+
+            --welcome-bg: #0E1210;
+            --welcome-grid: rgba(255, 255, 255, .04);
+            --welcome-right-bg: linear-gradient(180deg, #1B211E 0%, #151A17 100%);
+            --glow-1: rgba(0, 177, 79, .20);
+            --glow-2: rgba(0, 177, 79, .14);
+
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+            --shadow-md: 0 4px 14px rgba(0, 0, 0, .38);
+            --shadow-lg: 0 18px 50px rgba(0, 0, 0, .55);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]):not([data-theme="dark"]) {
+                color-scheme: dark;
+
+                --grab-green-dark: #45D67F;
+                --grab-green-soft: rgba(0, 177, 79, .16);
+                --green-hover: #00C257;
+
+                --ink: #EAF0EC;
+                --ink-2: #B8C3BD;
+                --ink-3: #8E9A94;
+                --line: #2B322E;
+                --line-strong: #3A423D;
+                --faint: #5F6B65;
+                --surface: #191E1B;
+                --surface-2: #232926;
+                --surface-3: #2B322E;
+                --disabled: #3A423D;
+
+                --danger: #F08A8A;
+                --danger-soft: rgba(220, 38, 38, .16);
+                --danger-fg: #F5A3A3;
+                --danger-strong: #7F1D1D;
+                --ok-fg: #6EE7A8;
+                --ok-strong: #065F36;
+                --warn: #FBBF24;
+
+                --code-bg: #0B0F0D;
+                --code-ink: #CFE0D7;
+                --glass: rgba(25, 30, 27, .82);
+                --glass-strong: rgba(25, 30, 27, .92);
+                --toast-bg: #232926;
+                --toast-ink: #EAF0EC;
+
+                --welcome-bg: #0E1210;
+                --welcome-grid: rgba(255, 255, 255, .04);
+                --welcome-right-bg: linear-gradient(180deg, #1B211E 0%, #151A17 100%);
+                --glow-1: rgba(0, 177, 79, .20);
+                --glow-2: rgba(0, 177, 79, .14);
+
+                --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+                --shadow-md: 0 4px 14px rgba(0, 0, 0, .38);
+                --shadow-lg: 0 18px 50px rgba(0, 0, 0, .55);
+            }
         }
 
         * { box-sizing: border-box; }
@@ -60,9 +194,9 @@
             padding: 24px;
             overflow-y: auto;
             background:
-                radial-gradient(1100px 600px at 12% -10%, rgba(0, 177, 79, .16), transparent 60%),
-                radial-gradient(900px 520px at 92% 108%, rgba(0, 177, 79, .12), transparent 60%),
-                #F3F7F4;
+                radial-gradient(1100px 600px at 12% -10%, var(--glow-1), transparent 60%),
+                radial-gradient(900px 520px at 92% 108%, var(--glow-2), transparent 60%),
+                var(--welcome-bg);
         }
 
         .welcome::before {
@@ -70,8 +204,8 @@
             position: absolute;
             inset: 0;
             background-image:
-                linear-gradient(rgba(16, 34, 26, .035) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(16, 34, 26, .035) 1px, transparent 1px);
+                linear-gradient(var(--welcome-grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--welcome-grid) 1px, transparent 1px);
             background-size: 46px 46px;
             mask-image: radial-gradient(circle at 50% 45%, #000 20%, transparent 78%);
             -webkit-mask-image: radial-gradient(circle at 50% 45%, #000 20%, transparent 78%);
@@ -95,7 +229,7 @@
 
         .welcome-right {
             padding: 40px 38px;
-            background: linear-gradient(180deg, #FBFDFC 0%, #F2F7F4 100%);
+            background: var(--welcome-right-bg);
             border-left: 1px solid var(--line);
         }
 
@@ -202,7 +336,7 @@
             padding: 0 44px 0 14px;
             border: 1.5px solid var(--line);
             border-radius: 11px;
-            background: #fff;
+            background: var(--surface);
             font-size: 14px;
             color: var(--ink);
             outline: none;
@@ -280,10 +414,10 @@
             box-shadow: 0 6px 16px rgba(0, 177, 79, .28);
         }
 
-        .btn-primary:hover { background: var(--grab-green-dark); }
+        .btn-primary:hover { background: var(--green-hover); }
 
         .btn-primary:disabled {
-            background: #B9CFC3;
+            background: var(--disabled);
             box-shadow: none;
             cursor: not-allowed;
         }
@@ -294,7 +428,7 @@
             border: 1px solid var(--line);
         }
 
-        .btn-ghost:hover { background: #EDF2EF; color: var(--ink); }
+        .btn-ghost:hover { background: var(--surface-3); color: var(--ink); }
 
         .alert {
             display: flex;
@@ -307,8 +441,8 @@
             margin-bottom: 14px;
         }
 
-        .alert-error { background: #FDECEA; color: #92211A; }
-        .alert-ok { background: var(--grab-green-soft); color: #04642E; }
+        .alert-error { background: var(--danger-soft); color: var(--danger-fg); }
+        .alert-ok { background: var(--grab-green-soft); color: var(--ok-fg); }
 
         .privacy-note {
             margin-top: 18px;
@@ -336,6 +470,64 @@
         }
 
         @keyframes rot { to { transform: rotate(360deg); } }
+
+        /* ============ JUDUL & SAKELAR TEMA ============ */
+        .welcome h1,
+        .side-head .title,
+        .metric-big,
+        .pc-name {
+            font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+        }
+
+        .theme-switch {
+            display: inline-flex;
+            gap: 2px;
+            padding: 3px;
+            border-radius: 999px;
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+        }
+
+        .theme-switch button {
+            width: 26px;
+            height: 26px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 0;
+            border-radius: 999px;
+            background: transparent;
+            color: var(--ink-3);
+            font-size: 12px;
+            transition: background .18s, color .18s, transform .18s;
+        }
+
+        .theme-switch button:hover { color: var(--ink); }
+
+        .theme-switch button.active {
+            background: var(--surface);
+            color: var(--grab-green);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .theme-switch button.pop { transform: scale(1.18); }
+
+        /* Sakelar di kartu pembuka mengambang di pojok kanan atas kartu. */
+        .welcome-card .theme-switch {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            z-index: 3;
+        }
+
+        :root.theme-anim,
+        :root.theme-anim body,
+        :root.theme-anim .sidebar,
+        :root.theme-anim .welcome-card,
+        :root.theme-anim .res,
+        :root.theme-anim .place-card {
+            transition: background-color .28s ease, color .28s ease, border-color .28s ease;
+        }
 
         /* ============ APP SHELL ============ */
         .app {
@@ -494,7 +686,7 @@
             width: 100%;
             border: 1.5px solid var(--line);
             border-radius: 10px;
-            background: #fff;
+            background: var(--surface);
             color: var(--ink);
             outline: none;
         }
@@ -541,7 +733,7 @@
             height: 40px;
             border: 1.5px solid var(--line);
             border-radius: 10px;
-            background: #fff;
+            background: var(--surface);
             overflow: hidden;
             transition: border-color .15s, box-shadow .15s;
         }
@@ -590,7 +782,7 @@
         }
 
         .step-btn:disabled {
-            color: #C8D6CE;
+            color: var(--faint);
             cursor: not-allowed;
         }
 
@@ -598,7 +790,7 @@
 
         @keyframes clampFlash {
             0%, 100% { border-color: var(--line); }
-            30%, 65% { border-color: #E8A33D; box-shadow: 0 0 0 3px rgba(232, 163, 61, .18); }
+            30%, 65% { border-color: var(--warn); box-shadow: 0 0 0 3px rgba(232, 163, 61, .18); }
         }
 
         /* search + suggestions */
@@ -646,7 +838,7 @@
             top: calc(100% + 6px);
             left: 0;
             right: 0;
-            background: #fff;
+            background: var(--surface);
             border: 1px solid var(--line);
             border-radius: 12px;
             box-shadow: var(--shadow-md);
@@ -709,7 +901,7 @@
             border-radius: 12px;
             padding: 11px 12px;
             cursor: pointer;
-            background: #fff;
+            background: var(--surface);
             overflow: hidden;
             transition: border-color .12s, box-shadow .12s, background .12s;
         }
@@ -859,14 +1051,14 @@
             gap: 5px;
         }
 
-        .link-btn:hover { background: #FDECEA; color: var(--danger); }
+        .link-btn:hover { background: var(--danger-soft); color: var(--danger); }
 
         /* chips / segmented */
         .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
         .chip {
             border: 1.5px solid var(--line);
-            background: #fff;
+            background: var(--surface);
             border-radius: 999px;
             padding: 6px 12px;
             font-size: 12px;
@@ -877,7 +1069,7 @@
             gap: 6px;
         }
 
-        .chip:hover { border-color: #C6D5CD; }
+        .chip:hover { border-color: var(--line-strong); }
 
         .chip.on {
             border-color: var(--grab-green);
@@ -918,7 +1110,7 @@
             color: var(--ink-3);
         }
 
-        .stop-del:hover { background: #FDECEA; color: var(--danger); }
+        .stop-del:hover { background: var(--danger-soft); color: var(--danger); }
 
         /* route summary */
         .route-card {
@@ -926,7 +1118,7 @@
             border-radius: 12px;
             padding: 12px;
             cursor: pointer;
-            background: #fff;
+            background: var(--surface);
         }
 
         .route-card.on {
@@ -1016,12 +1208,12 @@
             color: var(--ink-2);
         }
 
-        .status-pill.ok { background: var(--grab-green-soft); color: #04642E; }
-        .status-pill.bad { background: #FDECEA; color: #92211A; }
+        .status-pill.ok { background: var(--grab-green-soft); color: var(--ok-fg); }
+        .status-pill.bad { background: var(--danger-soft); color: var(--danger-fg); }
 
         .code {
-            background: #0F1A15;
-            color: #D7E5DD;
+            background: var(--code-bg);
+            color: var(--code-ink);
             border-radius: 11px;
             padding: 12px;
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -1082,7 +1274,7 @@
 
         .map-hint,
         .map-btn {
-            background: rgba(255, 255, 255, .95);
+            background: var(--glass-strong);
             backdrop-filter: blur(6px);
             border: 1px solid var(--line);
             border-radius: 999px;
@@ -1104,7 +1296,7 @@
         .map-btn:hover {
             border-color: var(--danger);
             color: var(--danger);
-            background: #fff;
+            background: var(--surface);
         }
 
         .map-btn i { font-size: 12px; }
@@ -1115,7 +1307,7 @@
             bottom: 34px;
             z-index: 6;
             width: min(340px, calc(100% - 24px));
-            background: #fff;
+            background: var(--surface);
             border: 1px solid var(--line);
             border-radius: var(--radius);
             box-shadow: var(--shadow-lg);
@@ -1178,7 +1370,7 @@
             width: 28px;
             height: 28px;
             border: 0;
-            background: rgba(255, 255, 255, .8);
+            background: var(--glass);
             border-radius: 8px;
             color: var(--ink-3);
         }
@@ -1280,8 +1472,8 @@
         }
 
         .toast {
-            background: #10221A;
-            color: #fff;
+            background: var(--toast-bg);
+            color: var(--toast-ink);
             padding: 10px 16px;
             border-radius: 10px;
             font-size: 12.5px;
@@ -1294,8 +1486,8 @@
             max-width: 460px;
         }
 
-        .toast.err { background: #92211A; }
-        .toast.ok { background: #04642E; }
+        .toast.err { background: var(--danger-strong); color: #fff; }
+        .toast.ok { background: var(--ok-strong); color: #fff; }
 
         @keyframes pop {
             from { opacity: 0; transform: translateY(-8px); }
@@ -1328,6 +1520,13 @@
     <!-- ==================== WELCOME ==================== -->
     <div class="welcome" id="welcome">
         <div class="welcome-card">
+            {{-- Tema: terang / gelap / ikut sistem --}}
+            <div class="theme-switch" data-theme-toggle>
+                <button type="button" data-theme-set="light" title="Light mode" aria-label="Light mode"><i class="bi bi-sun"></i></button>
+                <button type="button" data-theme-set="dark" title="Dark mode" aria-label="Dark mode"><i class="bi bi-moon"></i></button>
+                <button type="button" data-theme-set="system" title="Follow system" aria-label="Follow system"><i class="bi bi-circle-half"></i></button>
+            </div>
+
             <div class="welcome-left">
                 <span class="brand-chip">
                     <span class="brand-dot"><i class="bi bi-geo-alt-fill"></i></span>
@@ -1439,6 +1638,11 @@
                 <button class="key-chip" id="keyChip" title="Change API key">
                     <i class="bi bi-key-fill"></i><span id="keyMask">—</span>
                 </button>
+                <div class="theme-switch" data-theme-toggle>
+                    <button type="button" data-theme-set="light" title="Light mode" aria-label="Light mode"><i class="bi bi-sun"></i></button>
+                    <button type="button" data-theme-set="dark" title="Dark mode" aria-label="Dark mode"><i class="bi bi-moon"></i></button>
+                    <button type="button" data-theme-set="system" title="Follow system" aria-label="Follow system"><i class="bi bi-circle-half"></i></button>
+                </div>
             </div>
 
             <nav class="tabs">
@@ -1703,6 +1907,43 @@
             <div class="place-card" id="placeCard" hidden></div>
         </main>
     </div>
+
+    <script>
+        /* Sakelar tema. Kunci localStorage 'gm-theme' dipakai bersama
+           layouts/admin-v2 dan halaman /pricing, jadi pilihan pengguna
+           terbawa antar halaman. Ada dua grup tombol (kartu pembuka dan
+           kepala sidebar) yang harus selalu menunjukkan keadaan yang sama. */
+        (function () {
+            const groups = document.querySelectorAll('[data-theme-toggle]');
+            if (!groups.length) return;
+
+            const current = () => {
+                try { return localStorage.getItem('gm-theme') || 'system'; } catch (e) { return 'system'; }
+            };
+
+            const paint = () => groups.forEach(g => g.querySelectorAll('[data-theme-set]').forEach(
+                b => b.classList.toggle('active', b.dataset.themeSet === current())
+            ));
+
+            groups.forEach(group => group.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-theme-set]');
+                if (!btn) return;
+
+                const root = document.documentElement;
+                root.classList.add('theme-anim');
+                root.setAttribute('data-theme', btn.dataset.themeSet);
+                try { localStorage.setItem('gm-theme', btn.dataset.themeSet); } catch (err) { /* mode privat */ }
+
+                paint();
+                btn.classList.add('pop');
+                setTimeout(() => btn.classList.remove('pop'), 450);
+                setTimeout(() => root.classList.remove('theme-anim'), 350);
+                btn.blur();
+            }));
+
+            paint();
+        })();
+    </script>
 
     <script src="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.js"></script>
     <script>

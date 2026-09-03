@@ -106,4 +106,11 @@ return [
         'geofence_event_forecast' => ['name' => 'Geofence Event Forecast Requested', 'description' => 'คาดการณ์เมื่ออุปกรณ์จะเข้าหรือออก geofence'],
         'resource_crud_list' => ['name' => 'Resource CRUD/List Requests', 'description' => 'สร้าง อ่าน อัปเดต ลบ หรือรายการทรัพยากร API'],
     ],
+
+    'theme_light' => 'โหมดสว่าง',
+    'theme_dark' => 'โหมดมืด',
+    'theme_system' => 'ตามระบบ',
+
+    'tab_compare' => 'เปรียบเทียบ',
+    'als_only_notice' => 'บางหมวด (Trackers, Geofences) มีเฉพาะใน Amazon Location Service — สลับไปมุมมองเปรียบเทียบหรือ Amazon Location เพื่อดู',
 ];

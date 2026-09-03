@@ -1,3 +1,16 @@
+@php
+    // Harga satuan: $1.00 dan $0.50 lebih mudah dibandingkan daripada $1.0000.
+    // Angka di bawah 10 sen tetap butuh desimal tambahan supaya tidak jadi $0.04
+    // untuk dua harga yang berbeda ($0.035 vs $0.04).
+    $money = function ($value) {
+        $value = (float) $value;
+        $text = $value < 0.1
+            ? rtrim(rtrim(number_format($value, 4, '.', ','), '0'), '.')
+            : number_format($value, 2, '.', ',');
+        return '$' . $text;
+    };
+
+@endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
@@ -5,6 +18,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    {{-- Tema dipasang sebelum CSS supaya tidak ada kedipan putih saat mode gelap. --}}
+    <script>
+        (function () {
+            try {
+                document.documentElement.setAttribute('data-theme', localStorage.getItem('gm-theme') || 'system');
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'system');
+            }
+        })();
+    </script>
     <link rel="shortcut icon" href="{{ asset('logo2.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('logo2.png') }}" type="image/png" sizes="32x32">
     <title>{{ __('pricing.title') }} - GrabMaps vs Google Maps</title>
@@ -13,369 +36,110 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/pricing.css">
+    <link rel="stylesheet" href="/css/pricing-v2.css?v={{ filemtime(public_path('css/pricing-v2.css')) }}">
 
-    <style>
-        body {
-            background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 50%, #e8f0fe 100%);
-            min-height: 100vh;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        }
-        body::before {
-            content: '';
-            position: fixed; inset: 0;
-            background:
-                radial-gradient(700px 400px at 5% 5%, rgba(0,177,79,0.10), transparent 60%),
-                radial-gradient(700px 400px at 95% 20%, rgba(37,99,235,0.08), transparent 60%),
-                radial-gradient(600px 400px at 50% 100%, rgba(245,158,11,0.06), transparent 60%);
-            pointer-events: none;
-            z-index: 0;
-            animation: floatBg 22s ease-in-out infinite alternate;
-        }
-        @keyframes floatBg {
-            0% { transform: translate(0,0) scale(1); }
-            100% { transform: translate(-30px, 20px) scale(1.05); }
-        }
-        body > * { position: relative; z-index: 1; }
-
-        .grab-logo { height: 24px; width: auto; }
-
-        /* ─── Reading progress bar ─── */
-        .price-progress {
-            position: fixed; top: 0; left: 0; right: 0;
-            height: 3px; z-index: 9999; pointer-events: none;
-        }
-        .price-progress-fill {
-            height: 100%; width: 0%;
-            background: linear-gradient(90deg, #00B14F, #10d966, #f59e0b);
-            transition: width 0.1s linear;
-            box-shadow: 0 0 10px rgba(0,177,79,0.5);
-        }
-
-        /* ─── Hero enhancements ─── */
-        .hero-section {
-            position: relative;
-            overflow: hidden;
-        }
-        .hero-section::before,
-        .hero-section::after {
-            content: '';
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(60px);
-            pointer-events: none;
-        }
-        .hero-section::before {
-            top: -30%; right: -10%;
-            width: 500px; height: 500px;
-            background: radial-gradient(circle, rgba(255,255,255,0.18), transparent 70%);
-            animation: heroBlob 18s ease-in-out infinite;
-        }
-        .hero-section::after {
-            bottom: -40%; left: -15%;
-            width: 600px; height: 600px;
-            background: radial-gradient(circle, rgba(16,217,102,0.18), transparent 70%);
-            animation: heroBlob 24s ease-in-out infinite reverse;
-        }
-        @keyframes heroBlob {
-            0%, 100% { transform: translate(0,0) scale(1); }
-            50% { transform: translate(30px, 20px) scale(1.08); }
-        }
-        .hero-section > .container { position: relative; z-index: 2; }
-        .hero-section h1 {
-            animation: fadeInUp 0.8s ease both;
-            letter-spacing: -0.02em;
-        }
-        .hero-section p {
-            animation: fadeInUp 0.8s ease 0.1s both;
-        }
-        .hero-section small {
-            animation: fadeInUp 0.8s ease 0.2s both;
-        }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* ─── Calculator polish ─── */
-        .calculator-card {
-            transition: box-shadow 0.3s cubic-bezier(0.4,0,0.2,1), transform 0.3s cubic-bezier(0.4,0,0.2,1);
-            border: 1px solid rgba(0,0,0,0.04);
-        }
-        .calculator-card:hover {
-            box-shadow: 0 12px 32px rgba(0,0,0,0.08), 0 4px 12px rgba(0,177,79,0.08) !important;
-        }
-        .btn-calculate {
-            position: relative; overflow: hidden;
-            transition: all 0.2s cubic-bezier(0.4,0,0.2,1) !important;
-        }
-        .btn-calculate::before {
-            content: '';
-            position: absolute; top: 0; left: -100%;
-            width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
-            transition: left 0.5s;
-        }
-        .btn-calculate:hover::before { left: 100%; }
-        .btn-calculate:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,177,79,0.35) !important; }
-
-        /* ─── Chart cards ─── */
-        .chart-card {
-            transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
-            border: 1px solid rgba(0,0,0,0.04);
-        }
-        .chart-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.08), 0 6px 16px rgba(0,0,0,0.05);
-        }
-
-        /* ═══════════════════════════════════════════════════════════
-           PROVIDER TABS — Compare / AWS / Google
-           Filter table columns via body[data-provider-view]
-           ═══════════════════════════════════════════════════════════ */
-        .provider-tabs-wrap {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 24px;
-            animation: fadeInUp 0.6s ease both;
-        }
-        .provider-tabs {
-            display: inline-flex;
-            background: rgba(255,255,255,0.9);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border: 1px solid rgba(0,0,0,0.06);
-            border-radius: 16px;
-            padding: 6px;
-            gap: 4px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.04);
-        }
-        .provider-tab {
-            background: transparent;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 11px;
-            font-weight: 700;
-            font-size: 0.85rem;
-            color: #6b7280;
-            cursor: pointer;
-            transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-            position: relative;
-        }
-        .provider-tab .provider-emoji { font-size: 1rem; }
-        .provider-tab:hover { color: #1f2937; background: rgba(0,0,0,0.03); }
-        .provider-tab.active {
-            background: #fff;
-            color: #1f2937;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
-            transform: translateY(-1px);
-        }
-        .provider-tab[data-view="compare"].active { color: #7c3aed; }
-        .provider-tab[data-view="compare"].active::before {
-            content: '';
-            position: absolute; inset: -2px;
-            border-radius: 13px;
-            background: linear-gradient(135deg, #7c3aed, #ec4899);
-            z-index: -1;
-            opacity: 0.15;
-        }
-        .provider-tab[data-view="als"].active { color: #d97706; }
-        .provider-tab[data-view="als"].active::before {
-            content: '';
-            position: absolute; inset: -2px;
-            border-radius: 13px;
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            z-index: -1;
-            opacity: 0.15;
-        }
-        .provider-tab[data-view="google"].active { color: #2563eb; }
-        .provider-tab[data-view="google"].active::before {
-            content: '';
-            position: absolute; inset: -2px;
-            border-radius: 13px;
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            z-index: -1;
-            opacity: 0.15;
-        }
-
-        /* Column visibility rules (default = compare, shows all) */
-        /* AWS-only view: hide Google columns */
-        body[data-provider-view="als"] .col-google-price,
-        body[data-provider-view="als"] .col-google-free,
-        body[data-provider-view="als"] .col-google-cost,
-        body[data-provider-view="als"] .col-savings,
-        body[data-provider-view="als"] .td-google,
-        body[data-provider-view="als"] .td-free,
-        body[data-provider-view="als"] .td-cost-google,
-        body[data-provider-view="als"] .td-savings,
-        body[data-provider-view="als"] .subtotal-google,
-        body[data-provider-view="als"] .subtotal-savings {
-            display: none !important;
-        }
-
-        /* Google-only view: hide AWS columns */
-        body[data-provider-view="google"] .col-als-price,
-        body[data-provider-view="google"] .col-als-cost,
-        body[data-provider-view="google"] .col-savings,
-        body[data-provider-view="google"] .td-als,
-        body[data-provider-view="google"] .td-cost-als,
-        body[data-provider-view="google"] .td-savings,
-        body[data-provider-view="google"] .subtotal-als,
-        body[data-provider-view="google"] .subtotal-savings {
-            display: none !important;
-        }
-
-        /* Hide ALS-exclusive category rows when in Google-only view */
-        body[data-provider-view="google"] .pricing-card.als-only-card {
-            display: none;
-        }
-        /* Show "Google doesn't have this" banner for hidden category */
-        body[data-provider-view="google"] .als-only-notice {
-            display: block;
-        }
-        .als-only-notice { display: none; }
-
-        /* Provider column color hints — subtle bg tint */
-        body[data-provider-view="compare"] .td-als,
-        body[data-provider-view="compare"] .td-cost-als,
-        body[data-provider-view="compare"] .subtotal-als {
-            background: rgba(245, 158, 11, 0.05);
-        }
-        body[data-provider-view="compare"] .td-google,
-        body[data-provider-view="compare"] .td-free,
-        body[data-provider-view="compare"] .td-cost-google,
-        body[data-provider-view="compare"] .subtotal-google {
-            background: rgba(37, 99, 235, 0.045);
-        }
-
-        /* ─── Pricing card polish ─── */
-        .pricing-card {
-            transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
-            border: 1px solid rgba(0,0,0,0.04);
-        }
-        .pricing-card:hover {
-            box-shadow: 0 16px 40px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
-        }
-        .pricing-card-header .category-badge {
-            transition: transform 0.2s;
-        }
-        .pricing-card:hover .category-badge {
-            transform: scale(1.05);
-        }
-        .unified-table tbody tr {
-            transition: background-color 0.15s;
-        }
-        .unified-table tbody tr:hover:not(.row-disabled):not(.subtotal-row) {
-            background: rgba(0,177,79,0.04);
-        }
-
-        /* ─── Key insights ─── */
-        .insight-card {
-            transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
-            border: 1px solid rgba(0,0,0,0.04);
-        }
-        .insight-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1), 0 6px 16px rgba(0,0,0,0.06);
-        }
-        .insight-icon {
-            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-        }
-        .insight-card:hover .insight-icon {
-            transform: scale(1.12) rotate(-4deg);
-        }
-
-        /* ─── Reveal-on-scroll ─── */
-        .reveal {
-            opacity: 0;
-            transform: translateY(24px);
-            transition: opacity 0.7s ease, transform 0.7s ease;
-        }
-        .reveal.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        /* ─── Custom scrollbar ─── */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(0,0,0,0.15);
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(0,177,79,0.4); }
-
-        /* ─── ALS-only notice card ─── */
-        .als-only-notice {
-            background: linear-gradient(135deg, #fef3c7, #fed7aa);
-            border: 1px solid rgba(245, 158, 11, 0.3);
-            border-radius: 16px;
-            padding: 20px 24px;
-            margin-bottom: 20px;
-            text-align: center;
-            color: #78350f;
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-        .als-only-notice i {
-            color: #d97706;
-            margin-right: 6px;
-        }
-
-        @media (max-width: 640px) {
-            .provider-tab { padding: 8px 12px; font-size: 0.78rem; }
-            .provider-tab .provider-label { display: none; }
-        }
-    </style>
 </head>
 
 <body>
     <div class="price-progress"><div class="price-progress-fill" id="priceProgressFill"></div></div>
 
-    <!-- NAVBAR -->
-    <nav class="pricing-navbar">
-        <div class="container">
-            <a href="{{ route('pageHome') }}" class="navbar-brand">
-                <img src="logo.png" alt="Grab Logo" class="grab-logo">
-            </a>
-            <div class="navbar-actions">
-                <div class="lang-switcher-dropdown">
-                    <label for="langSelect" class="lang-label">{{ __('pricing.language') }}:</label>
-                    <select id="langSelect" class="lang-select" aria-label="{{ __('pricing.language') }}" onchange="window.location.href='{{ route('pricing') }}?lang='+this.value">
-                        @foreach(config('pricing_locales', []) as $code => $info)
-                        <option value="{{ $code }}" {{ app()->getLocale() === $code ? 'selected' : '' }}>{{ $info['label'] }} ({{ $info['country'] }})</option>
-                        @endforeach
-                    </select>
-                </div>
-                <a href="{{ route('pricing.admin') }}" class="btn-back" hidden>
-                    <i class="bi bi-gear"></i> {{ __('pricing.admin') }}
-                </a>
-                <a href="{{ route('pageHome') }}" class="btn-back">
-                    <i class="bi bi-map"></i> {{ __('pricing.back_to_map') }}
-                </a>
-            </div>
-        </div>
-    </nav>
+    {{-- Kepala halaman: satu kartu mengambang berisi tombol kembali, judul, dan
+         aksi — menggantikan navbar berlogo plus hero hijau yang mengulang judul
+         yang sama.
 
-    <!-- HERO -->
-    <section class="hero-section">
-        <div class="container">
+         Yang melekat di atas adalah cangkangnya, bukan kartunya. Tanpa cangkang
+         selebar layar, isi halaman yang lewat di sela kiri-kanan kartu terlihat
+         sebagai serpihan putih di sekelilingnya saat digulir. --}}
+    <div class="head-shell" id="headShell">
+    <header class="page-head" id="pageHead">
+        <a href="{{ route('pageHome') }}" class="head-back" aria-label="{{ __('pricing.back_to_map') }}">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <a href="{{ route('pageHome') }}" class="head-logo" aria-label="GrabMaps">
+            <img src="{{ asset('logo.png') }}" alt="GrabMaps">
+        </a>
+        <div class="head-text">
             <h1>{{ __('pricing.title') }}</h1>
             <p>{{ __('pricing.subtitle') }}</p>
-            <small>{{ __('pricing.per_request') }}</small>
         </div>
-    </section>
+        {{-- Bahasa dan tema: pengaturan yang jarang disentuh, jadi ditaruh di
+             kepala halaman dan mengatup saat digulir supaya ruangnya bisa
+             dipakai ringkasan angka. --}}
+        <div class="head-tools">
+            {{-- Bahasa: roda pilih. Hanya kode di tengah yang menonjol, tetangganya
+                 meredup di tepi — delapan locale muat di ruang selebar tiga. Bisa
+                 digulir (roda tetikus atau geser) dan diklik. --}}
+            <div class="lang-wheel" id="langWheel" role="listbox" aria-label="{{ __('pricing.language') }}">
+                <div class="lang-track" id="langTrack">
+                    @foreach(config('pricing_locales', []) as $code => $info)
+                    <a href="{{ route('pricing') }}?lang={{ $code }}"
+                       class="lang-item {{ app()->getLocale() === $code ? 'active' : '' }}"
+                       data-lang="{{ $code }}"
+                       role="option"
+                       aria-selected="{{ app()->getLocale() === $code ? 'true' : 'false' }}"
+                       title="{{ $info['label'] }} ({{ $info['country'] }})">{{ strtoupper($code) }}</a>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Tema: terang / gelap / ikut sistem --}}
+            <div class="theme-switch" id="themeToggle">
+            <button type="button" data-theme-set="light" title="{{ __('pricing.theme_light') }}" aria-label="{{ __('pricing.theme_light') }}"><i class="bi bi-sun"></i></button>
+            <button type="button" data-theme-set="dark" title="{{ __('pricing.theme_dark') }}" aria-label="{{ __('pricing.theme_dark') }}"><i class="bi bi-moon"></i></button>
+            <button type="button" data-theme-set="system" title="{{ __('pricing.theme_system') }}" aria-label="{{ __('pricing.theme_system') }}"><i class="bi bi-circle-half"></i></button>
+            </div>
+        </div>
+
+        {{-- Ringkasan ringkas yang muncul saat kepala mengatup: volume yang sudah
+             diketik beserta hasilnya, supaya angka kalkulator tetap terbaca
+             walau kartunya sudah tergulir jauh ke atas. --}}
+        <div class="head-stats" id="headStats" aria-live="polite">
+            <button type="button" class="head-stat head-volume" id="headVolume" title="{{ __('pricing.cost_calculator') }}">
+                <i class="bi bi-hash"></i><span>-</span>
+            </button>
+            <span class="head-stat"><i class="stat-dot als"></i>ALS <b id="headAls">-</b></span>
+            <span class="head-stat"><i class="stat-dot google"></i>Google <b id="headGoogle">-</b></span>
+            <span class="head-stat head-save" id="headSave">-</span>
+        </div>
+
+        <a href="{{ route('pricing.admin') }}" class="head-btn" hidden>
+            <i class="bi bi-gear"></i> {{ __('pricing.admin') }}
+        </a>
+        <a href="{{ route('pageHome') }}" class="head-btn">
+            <i class="bi bi-map"></i> {{ __('pricing.back_to_map') }}
+        </a>
+    </header>
+    </div>
 
     <!-- CALCULATOR -->
     <section class="content-section">
         <div class="calculator-card animate-in">
-            <h5><i class="bi bi-calculator"></i> {{ __('pricing.cost_calculator') }}</h5>
-            <p class="calc-subtitle">{{ __('pricing.calc_subtitle') }}</p>
+            <div class="calc-head">
+                <div class="calc-head-text">
+                    <h5><i class="bi bi-calculator"></i> {{ __('pricing.cost_calculator') }}</h5>
+                    <p class="calc-subtitle">{{ __('pricing.calc_subtitle') }}</p>
+                </div>
+
+                <div class="calc-head-tools">
+                    @if($currency)
+                    {{-- Mata uang: USD atau mata uang lokal locale ini. Kursnya
+                         boleh diubah di tempat; nilainya tersimpan di browser. --}}
+                    <div class="cur-switch" role="group" aria-label="{{ $currency['code'] }}">
+                        <button type="button" class="cur-opt active" data-cur="USD">USD</button>
+                        <button type="button" class="cur-opt" data-cur="LOCAL">{{ $currency['code'] }}</button>
+                    </div>
+                    <label class="rate-box" id="rateBox" hidden>
+                        <span>1 USD =</span>
+                        <input type="text" id="rateInput" inputmode="decimal" autocomplete="off"
+                               value="{{ rtrim(rtrim(number_format((float) $currency['rate'], 2, '.', ''), '0'), '.') }}">
+                        <span>{{ $currency['code'] }}</span>
+                    </label>
+                    @endif
+
+                </div>
+            </div>
 
             <div class="calc-input-wrapper">
                 <div class="calc-input-box">
@@ -407,115 +171,115 @@
         </div>
     </section>
 
-    <!-- CHARTS -->
-    <section class="content-section">
-        <div class="charts-section animate-in delay-1">
-            <div class="chart-card">
-                <h6><i class="bi bi-bar-chart-fill" style="color:var(--grab-green)"></i> {{ __('pricing.cost_by_category') }}</h6>
-                <div class="chart-wrapper">
-                    <canvas id="barChart"></canvas>
-                </div>
-            </div>
-            <div class="chart-card">
-                <h6><i class="bi bi-graph-up-arrow" style="color:var(--grab-green)"></i> {{ __('pricing.cost_curve') }}</h6>
-                <div class="chart-controls" id="lineChartControls"></div>
-                <div class="chart-wrapper">
-                    <canvas id="lineChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- PROVIDER TABS — Compare / Amazon Location / Google Maps -->
     <section class="content-section" style="padding-bottom:0;">
         <div class="provider-tabs-wrap">
             <div class="provider-tabs" role="tablist" aria-label="Provider view">
                 <button type="button" class="provider-tab active" data-view="compare" role="tab" aria-selected="true">
-                    <span class="provider-emoji">⚖️</span>
-                    <span class="provider-label">{{ __('pricing.tab_compare') ?? 'Compare' }}</span>
+                    <i class="bi bi-arrow-left-right"></i>
+                    <span class="provider-label">{{ __('pricing.tab_compare') }}</span>
                 </button>
                 <button type="button" class="provider-tab" data-view="als" role="tab" aria-selected="false">
-                    <span class="provider-emoji">🟠</span>
+                    <i class="bi bi-cloud-fill"></i>
                     <span class="provider-label">Amazon Location</span>
                 </button>
                 <button type="button" class="provider-tab" data-view="google" role="tab" aria-selected="false">
-                    <span class="provider-emoji">🔵</span>
+                    <i class="bi bi-google"></i>
                     <span class="provider-label">Google Maps</span>
                 </button>
             </div>
         </div>
     </section>
 
-    <!-- UNIFIED PRICING TABLES -->
-    <section class="content-section pricing-tables-section animate-in delay-2">
-        <!-- Shown only in Google-only view: notice that some categories are AWS-exclusive -->
-        <div class="als-only-notice">
-            <i class="bi bi-info-circle-fill"></i>
-            {{ __('pricing.als_only_notice') ?? 'Some categories (Trackers, Geofences) are exclusive to Amazon Location Service — switch to Compare or AWS view to see them.' }}
+    {{-- Dua kolom: daftar harga di kiri, grafik menempel di kanan.
+         Grafik ditulis lebih dulu supaya saat kolomnya menumpuk di layar
+         sempit, grafik tetap muncul di atas daftar. --}}
+    <section class="content-section pricing-split">
+        <div class="split-side">
+                <div class="charts-section animate-in delay-1">
+                    <div class="chart-card">
+                        <h6><i class="bi bi-bar-chart-fill" style="color:var(--grab-green)"></i> {{ __('pricing.cost_by_category') }}</h6>
+                        <div class="chart-wrapper">
+                            <canvas id="barChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h6><i class="bi bi-graph-up-arrow" style="color:var(--grab-green)"></i> {{ __('pricing.cost_curve') }}</h6>
+                        <div class="chart-controls" id="lineChartControls"></div>
+                        <div class="chart-wrapper">
+                            <canvas id="lineChart"></canvas>
+                        </div>
+                    </div>
+                </div>
         </div>
 
-        @foreach($categories as $category)
-        @php
-        $allAlsOnly = $category->items->where('als_only', true)->count() === $category->items->count();
-        @endphp
-        <div class="pricing-card {{ $allAlsOnly ? 'als-only-card' : '' }}" data-category="{{ $category->slug }}">
-            <div class="pricing-card-header">
-                <div class="pricing-card-title-wrap">
-                    <h5>{{ $category->name_translated ?? $category->name }}</h5>
-                    @if($category->description_translated ?? $category->description)
-                    <button type="button" class="info-trigger" data-info="{{ e($category->description_translated ?? $category->description) }}" title="{{ __('pricing.what_is_this') }}"><i class="bi bi-question-circle"></i></button>
-                    @endif
+        <div class="split-main pricing-tables-section animate-in delay-2">
+                {{-- Hanya berguna kalau ada kategori yang cuma ada di ALS. Sejak katalog
+                     dipangkas ke aksi yang dipakai GrabMaps, biasanya tidak ada. --}}
+                @if($categories->contains(fn ($c) => $c->items->contains('als_only', true)))
+                <!-- Shown only in Google-only view: notice that some categories are AWS-exclusive -->
+                <div class="als-only-notice">
+                    <i class="bi bi-info-circle-fill"></i>
+                    {{ __('pricing.als_only_notice') }}
                 </div>
-                <span class="category-badge {{ $allAlsOnly ? 'badge-als-only' : 'badge-both' }}">
-                    {{ $allAlsOnly ? __('pricing.als_only') : __('pricing.both_platforms') }}
-                </span>
-            </div>
-            <div class="table-responsive">
-                <table class="unified-table">
-                    <colgroup>
-                        <col style="width:40px;">
-                        <col style="width:auto;">
-                        <col style="width:80px;">
-                        <col style="width:110px;">
-                        <col style="width:110px;">
-                        <col style="width:90px;">
-                        <col style="width:110px;">
-                        <col style="width:110px;">
-                        <col style="width:100px;">
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            @php
-                            $recCount = $category->items->where('is_recommended', true)->count();
-                            $totalCount = $category->items->count();
-                            $checkAllChecked = $recCount === $totalCount && $totalCount > 0;
-                            $checkAllIndeterminate = $recCount > 0 && $recCount < $totalCount;
-                            @endphp
-                            <th class="col-check"><input type="checkbox" class="check-all" data-category="{{ $category->slug }}" {{ $checkAllChecked ? 'checked' : '' }}></th>
-                            <th>{{ __('pricing.api') }}</th>
-                            <th>{{ __('pricing.tier') }}</th>
-                            <th class="col-price col-als-price">{{ __('pricing.als_1k') }}</th>
-                            <th class="col-price col-google-price">{{ __('pricing.google_1k') }}</th>
-                            <th class="col-free col-google-free">{{ __('pricing.free_tier') }}</th>
-                            <th class="col-cost col-als-cost">{{ __('pricing.als_cost') }}</th>
-                            <th class="col-cost col-google-cost">{{ __('pricing.google_cost') }}</th>
-                            <th class="col-savings">{{ __('pricing.savings') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($category->items as $item)
-                        <tr data-item-id="{{ $item->id }}" data-tier-group="{{ $item->tier_group ?? '' }}" data-is-recommended="{{ $item->is_recommended ? '1' : '0' }}" class="{{ !$item->is_recommended ? 'row-disabled' : '' }}">
-                            <td class="td-check"><input type="checkbox" class="item-check" data-item-id="{{ $item->id }}" data-tier-group="{{ $item->tier_group ?? '' }}" data-is-recommended="{{ $item->is_recommended ? '1' : '0' }}" {{ $item->is_recommended ? 'checked' : '' }}></td>
-                            <td class="td-api">
-                                <span class="api-name-cell">{{ $item->api_name_translated ?? $item->api_name }}</span>
-                                @if($item->description_translated ?? $item->description)
-                                <button type="button" class="info-trigger" data-info="{{ e($item->description_translated ?? $item->description) }}" title="{{ __('pricing.what_is_this') }}"><i class="bi bi-question-circle"></i></button>
-                                @endif
-                            </td>
-                            <td>
-                                @if($item->tier)
+                @endif
+
+                @foreach($categories as $category)
+                @php
+                $allAlsOnly = $category->items->where('als_only', true)->count() === $category->items->count();
+                @endphp
+                <div class="pricing-card {{ $allAlsOnly ? 'als-only-card' : '' }}" data-category="{{ $category->slug }}">
+                    <div class="pricing-card-header">
+                        <div class="pricing-card-title-wrap">
+                            <h5>{{ $category->name_translated ?? $category->name }}</h5>
+                        </div>
+                        <span class="category-badge {{ $allAlsOnly ? 'badge-als-only' : 'badge-both' }}">
+                            {{ $allAlsOnly ? __('pricing.als_only') : __('pricing.both_platforms') }}
+                        </span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="unified-table">
+                            <thead>
+                                <tr>
+                                    @php
+                                    // Satu baris = satu API. Tier (Core/Advanced/Stored) adalah pilihan
+                                    // di dalam baris itu, bukan baris tersendiri, supaya tidak terbaca
+                                    // sebagai tiga API berbeda dan tidak bisa dihitung dobel.
+                                    $groups = $category->items->groupBy('api_name');
+                                    $totalCount = $groups->count();
+                                    $recCount = $groups->filter(fn ($g) => $g->contains('is_recommended', true))->count();
+                                    $checkAllChecked = $recCount === $totalCount && $totalCount > 0;
+                                    $checkAllIndeterminate = $recCount > 0 && $recCount < $totalCount;
+                                    @endphp
+                                    {{-- Kolom dikelompokkan per penyedia: harga satuan dan biaya bulanan
+                                         milik penyedia yang sama berdampingan, dengan nama penyedianya
+                                         dicetak kecil di atas judulnya. Nama penyedia sengaja tidak memakai
+                                         colspan karena kolom bisa disembunyikan (tampilan per penyedia atau
+                                         layar sempit) dan rentang colspan-nya akan melenceng. --}}
+                                    <th class="col-check"><input type="checkbox" class="check-all" data-category="{{ $category->slug }}" {{ $checkAllChecked ? 'checked' : '' }}></th>
+                                    <th>{{ __('pricing.api') }}</th>
+                                    <th>{{ __('pricing.tier') }}</th>
+                                    <th class="col-price col-als-price band-als band-start">
+                                        <span class="th-owner owner-als">ALS-GRAB</span>{{ __('pricing.price_1k') }}
+                                    </th>
+                                    <th class="col-cost col-als-cost band-als">
+                                        <span class="th-owner owner-als">ALS-GRAB</span>{{ __('pricing.cost_col') }}
+                                    </th>
+                                    <th class="col-price col-google-price band-google band-start">
+                                        <span class="th-owner owner-google">Google Maps</span>{{ __('pricing.price_1k') }}
+                                    </th>
+                                    <th class="col-cost col-google-cost band-google">
+                                        <span class="th-owner owner-google">Google Maps</span>{{ __('pricing.cost_col') }}
+                                    </th>
+                                    <th class="col-savings band-start">{{ __('pricing.savings') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($groups as $apiName => $tierItems)
                                 @php
-                                $tierClass = match(strtolower($item->tier)) {
+                                $selected = $tierItems->firstWhere('is_recommended', true) ?? $tierItems->first();
+                                $hasTierChoice = $tierItems->count() > 1;
+                                $tierClassOf = fn ($tier) => match (strtolower((string) $tier)) {
                                 'core' => 'tier-core',
                                 'advanced' => 'tier-advanced',
                                 'premium' => 'tier-premium',
@@ -523,40 +287,68 @@
                                 default => 'tier-default',
                                 };
                                 @endphp
-                                <span class="tier-badge {{ $tierClass }}">{{ $item->tier }}</span>
-                                @else
-                                <span class="text-muted-cell">-</span>
-                                @endif
-                            </td>
-                            <td class="td-price td-als">
-                                {{ $item->als_price !== null ? '$' . number_format((float)$item->als_price, 4) : '-' }}
-                            </td>
-                            <td class="td-price td-google">
-                                {{ $item->google_price !== null ? '$' . number_format((float)$item->google_price, 4) : 'N/A' }}
-                            </td>
-                            <td class="td-free">
-                                @if($item->google_free_threshold > 0)
-                                {{ number_format($item->google_free_threshold) }}
-                                @else
-                                <span class="text-muted-cell">-</span>
-                                @endif
-                            </td>
-                            <td class="td-cost td-cost-als">-</td>
-                            <td class="td-cost td-cost-google">-</td>
-                            <td class="td-savings">-</td>
-                        </tr>
-                        @endforeach
-                        <tr class="subtotal-row" data-category-subtotal="{{ $category->slug }}">
-                            <td colspan="6"><strong>{{ __('pricing.subtotal') }}</strong></td>
-                            <td class="td-cost td-cost-als subtotal-als">-</td>
-                            <td class="td-cost td-cost-google subtotal-google">-</td>
-                            <td class="td-savings subtotal-savings">-</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                                <tr data-item-id="{{ $selected->id }}" data-is-recommended="1">
+                                    <td class="td-check"><input type="checkbox" class="item-check" data-item-id="{{ $selected->id }}" checked></td>
+                                    <td class="td-api">
+                                        <span class="api-name-cell">{{ $selected->api_name_translated ?? $selected->api_name }}</span>
+                                        {{-- Keterangan tier yang sedang dipilih: kapan tier itu kena,
+                                             bukan lagi disembunyikan di balik tombol tanda tanya. --}}
+                                        @if($selected->description_translated ?? $selected->description)
+                                        <span class="api-note note-{{ strtolower($selected->tier ?? 'plain') }}">{{ $selected->description_translated ?? $selected->description }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="td-tier">
+                                        @if($hasTierChoice)
+                                        <div class="tier-picker" role="radiogroup" aria-label="{{ __('pricing.tier') }}">
+                                            @foreach($tierItems as $tierItem)
+                                            <button type="button"
+                                                    class="tier-opt {{ $tierClassOf($tierItem->tier) }} {{ $tierItem->id === $selected->id ? 'active' : '' }}"
+                                                    role="radio"
+                                                    aria-checked="{{ $tierItem->id === $selected->id ? 'true' : 'false' }}"
+                                                    data-item-id="{{ $tierItem->id }}"
+                                                    data-als="{{ $tierItem->als_price !== null ? (float) $tierItem->als_price : '' }}"
+                                                    data-google="{{ $tierItem->google_price !== null ? (float) $tierItem->google_price : '' }}"
+                                                    data-free="{{ (int) $tierItem->google_free_threshold }}"
+                                                    data-tier="{{ $tierItem->tier }}"
+                                                    data-info="{{ e($tierItem->description_translated ?? $tierItem->description) }}">{{ $tierItem->tier }}</button>
+                                            @endforeach
+                                        </div>
+                                        @elseif($selected->tier)
+                                        <span class="tier-badge {{ $tierClassOf($selected->tier) }}">{{ $selected->tier }}</span>
+                                        @else
+                                        <span class="text-muted-cell">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="td-price td-als band-als band-start">
+                                        {{ $selected->als_price !== null ? $money($selected->als_price) : '-' }}
+                                    </td>
+                                    <td class="td-cost td-cost-als band-als">-</td>
+                                    <td class="td-price td-google band-google band-start">
+                                        {{ $selected->google_price !== null ? $money($selected->google_price) : 'N/A' }}
+                                    </td>
+                                    <td class="td-cost td-cost-google band-google">-</td>
+                                    <td class="td-savings band-start">-</td>
+                                </tr>
+                                @endforeach
+                                {{-- Satu sel per kolom, bukan colspan: kolom yang disembunyikan di
+                                     layar sempit ikut hilang di baris ini juga, jadi angkanya tetap
+                                     sejajar dengan judul kolomnya. --}}
+                                <tr class="subtotal-row" data-category-subtotal="{{ $category->slug }}">
+                                    <td class="td-check"></td>
+                                    <td class="td-api"><strong>{{ __('pricing.subtotal') }}</strong></td>
+                                    <td class="td-tier"></td>
+                                    <td class="td-price td-als band-als band-start"></td>
+                                    <td class="td-cost td-cost-als subtotal-als band-als">-</td>
+                                    <td class="td-price td-google band-google band-start"></td>
+                                    <td class="td-cost td-cost-google subtotal-google band-google">-</td>
+                                    <td class="td-savings subtotal-savings band-start">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @endforeach
         </div>
-        @endforeach
     </section>
 
     <!-- KEY INSIGHTS -->
@@ -567,9 +359,12 @@
                 <div class="insight-icon green">
                     <i class="bi bi-arrow-down-circle"></i>
                 </div>
-                <span class="insight-value" id="insightBreakeven">~14K</span>
-                <h6>{{ __('pricing.breakeven_point') }}</h6>
-                <p id="insightBreakevenDesc">{{ __('pricing.breakeven_desc', ['count' => '14,000']) }}</p>
+                {{-- Titik impas hanya masuk akal selama kuota gratis Google ikut
+                     dihitung. Sejak kuota itu diabaikan, yang berguna adalah
+                     rata-rata selisih harganya. --}}
+                <span class="insight-value" id="insightAvgSavings">-</span>
+                <h6>{{ __('pricing.avg_savings') }}</h6>
+                <p id="insightAvgSavingsDesc">{{ __('pricing.avg_savings_desc', ['count' => '-']) }}</p>
             </div>
             <div class="insight-card">
                 <div class="insight-icon blue">
@@ -579,7 +374,7 @@
                 <h6>{{ __('pricing.map_tiles_savings') }}</h6>
                 <p id="insightMapTilesDesc">{{ __('pricing.map_tiles_desc', ['als' => '0.04', 'google' => '1.00']) }}</p>
             </div>
-            <div class="insight-card">
+            <div class="insight-card" id="insightExclusiveCard">
                 <div class="insight-icon amber">
                     <i class="bi bi-star"></i>
                 </div>
@@ -605,12 +400,6 @@
         </div>
     </footer>
 
-    <!-- INFO POPOVER (single instance) -->
-    <div id="infoPopover" class="info-popover" role="dialog" aria-label="{{ __('pricing.api_description') }}">
-        <button type="button" class="info-popover-close" aria-label="{{ __('pricing.close') }}"><i class="bi bi-x-lg"></i></button>
-        <div class="info-popover-content"></div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
     @php
         $pricingT = [
@@ -624,13 +413,23 @@
             'als_only_badge' => __('pricing.als_only_badge'),
             'monthly_requests' => __('pricing.monthly_requests'),
             'cost_usd' => __('pricing.cost_usd'),
-            'breakeven_desc' => __('pricing.breakeven_desc', ['count' => ':count']),
+            'avg_savings_desc' => __('pricing.avg_savings_desc', ['count' => ':count']),
             'map_tiles_desc' => __('pricing.map_tiles_desc', ['als' => ':als', 'google' => ':google']),
         ];
     @endphp
     <script>
         // ---- TRANSLATIONS ----
         const pricingT = @json($pricingT);
+
+        // ---- MATA UANG ----
+        // Semua angka disimpan dalam USD; konversi hanya di lapisan tampilan,
+        // jadi mengganti mata uang tidak pernah mengubah data atau hitungan.
+        const currencyConf = @json($currency);
+        const currencyState = {
+            mode: 'USD',
+            rate: currencyConf ? parseFloat(currencyConf.rate) : 1,
+            decimals: currencyConf ? currencyConf.decimals : 2,
+        };
 
         // ---- DATA FROM DB ----
         const pricingData = @json($categories);
@@ -709,6 +508,7 @@
         let barChart = null;
         let lineChart = null;
         let lastCalcData = null;
+        let lastHeadTotals = [0, 0, 0];
 
         // ---- CHECKBOX LOGIC ----
         function getCheckedItemIds() {
@@ -726,54 +526,60 @@
             }
         }
 
-        // After calculate: sync tier_group checkboxes to match the tier that applies to current volume
-        function syncTierGroupFromResults(data) {
-            const tierGroupActive = new Map(); // tier_group -> item id that has cost
-            data.results.forEach(cat => {
-                cat.items.forEach(item => {
-                    if (item.tier_group && (item.als_cost !== null || item.google_cost !== null)) {
-                        tierGroupActive.set(item.tier_group, item.id);
-                    }
-                });
-            });
-            document.querySelectorAll('.item-check').forEach(cb => {
-                const tg = cb.dataset.tierGroup;
-                if (!tg) return; // Only sync tier_group items; leave recommended (non-tier) as-is
-                const activeId = tierGroupActive.get(tg);
-                const shouldCheck = activeId === parseInt(cb.dataset.itemId);
-                cb.checked = shouldCheck;
-                cb.closest('tr').classList.toggle('row-disabled', !shouldCheck);
-            });
-            // Sync "Select All" state
-            document.querySelectorAll('.pricing-card').forEach(card => {
-                const allBoxes = card.querySelectorAll('.item-check');
-                const checkAll = card.querySelector('.check-all');
-                const allChecked = [...allBoxes].every(b => b.checked);
-                const someChecked = [...allBoxes].some(b => b.checked);
-                checkAll.checked = allChecked;
-                checkAll.indeterminate = !allChecked && someChecked;
-            });
+        // Satu baris mewakili satu API; tier yang dipilih menentukan item mana yang
+        // dipakai baris itu. Peralihan tier menukar data-item-id baris berikut sel
+        // harga, kuota gratis, dan keterangannya.
+        const itemById = new Map();
+        pricingData.forEach(cat => cat.items.forEach(item => itemById.set(item.id, item)));
+
+        function usdOrDash(value, fallback) {
+            return value === null || value === undefined || value === '' ? fallback : unitPrice(value);
         }
 
-        // Mutual exclusivity: when checking a tier_group item, uncheck others in same group
-        function syncTierGroupExclusivity(checkedCb) {
-            const tg = checkedCb.dataset.tierGroup;
-            if (!tg) return;
-            const card = checkedCb.closest('.pricing-card');
-            card.querySelectorAll(`.item-check[data-tier-group="${tg}"]`).forEach(b => {
-                if (b !== checkedCb) {
-                    b.checked = false;
-                    b.closest('tr').classList.add('row-disabled');
-                }
+        function applyTierChoice(btn, silent) {
+            const row = btn.closest('tr');
+            const picker = btn.closest('.tier-picker');
+            const id = parseInt(btn.dataset.itemId);
+            const item = itemById.get(id);
+
+            picker.querySelectorAll('.tier-opt').forEach(b => {
+                const on = b === btn;
+                b.classList.toggle('active', on);
+                b.setAttribute('aria-checked', on ? 'true' : 'false');
             });
+
+            row.dataset.itemId = id;
+            row.querySelector('.item-check').dataset.itemId = id;
+            row.querySelector('.td-als').textContent = usdOrDash(btn.dataset.als, '-');
+            row.querySelector('.td-google').textContent = usdOrDash(btn.dataset.google, 'N/A');
+
+            const note = row.querySelector('.api-note');
+            if (note) {
+                note.textContent = btn.dataset.info || '';
+                note.className = 'api-note note-' + btn.dataset.tier.toLowerCase();
+            }
+
+            const nameCell = row.querySelector('.api-name-cell');
+            if (nameCell && item) nameCell.textContent = item.api_name_translated || item.api_name;
+
+            // calculateCosts() menghitung ulang dari server lalu menggambar tabel dan
+            // grafik; reRender() di sini hanya akan menampilkan angka tier lama sesaat.
+            // Saat memulihkan keadaan, hitungannya cukup sekali di akhir.
+            if (silent) return;
+            buildLineChartControls();
+            renderKeyInsights();
+            calculateCosts();
         }
 
-        // Individual checkbox → re-render + sync "Select All" + tier_group exclusivity
+        document.querySelectorAll('.tier-opt').forEach(btn => {
+            btn.addEventListener('click', () => applyTierChoice(btn));
+        });
+
+        // Individual checkbox → re-render + sync "Select All"
         document.querySelectorAll('.item-check').forEach(cb => {
             cb.addEventListener('change', () => {
                 const row = cb.closest('tr');
                 row.classList.toggle('row-disabled', !cb.checked);
-                if (cb.checked) syncTierGroupExclusivity(cb);
 
                 const card = cb.closest('.pricing-card');
                 const allBoxes = card.querySelectorAll('.item-check');
@@ -784,31 +590,22 @@
                 checkAll.indeterminate = !allChecked && someChecked;
 
                 reRender();
+                buildLineChartControls();
+                renderKeyInsights();
             });
         });
 
-        // "Select All" checkbox → toggle all in category (for tier_group: only first per group)
+        // "Select All" checkbox → toggle every API in the category
         document.querySelectorAll('.check-all').forEach(cb => {
             cb.addEventListener('change', () => {
                 const card = cb.closest('.pricing-card');
-                const seenTierGroups = new Set();
                 card.querySelectorAll('.item-check').forEach(box => {
-                    const tg = box.dataset.tierGroup;
-                    if (tg) {
-                        if (cb.checked && !seenTierGroups.has(tg)) {
-                            seenTierGroups.add(tg);
-                            box.checked = true;
-                            box.closest('tr').classList.remove('row-disabled');
-                        } else {
-                            box.checked = false;
-                            box.closest('tr').classList.add('row-disabled');
-                        }
-                    } else {
-                        box.checked = cb.checked;
-                        box.closest('tr').classList.toggle('row-disabled', !cb.checked);
-                    }
+                    box.checked = cb.checked;
+                    box.closest('tr').classList.toggle('row-disabled', !cb.checked);
                 });
                 reRender();
+                buildLineChartControls();
+                renderKeyInsights();
             });
         });
 
@@ -842,7 +639,6 @@
 
                 const data = await response.json();
                 lastCalcData = data;
-                syncTierGroupFromResults(data);
                 renderResults(data);
                 renderBarChart(data);
                 updateLineChartVolume();
@@ -852,12 +648,76 @@
         }
 
         // Format number as USD currency
+        // Ringkasan di kepala halaman memakai angka yang sama dengan kartu
+        // ringkasan kalkulator, jadi keduanya tidak mungkin berbeda.
+        function updateHeadStats(alsTotal, googleTotal, savings) {
+            const volEl = document.querySelector('#headVolume span');
+            const alsEl = document.getElementById('headAls');
+            const googleEl = document.getElementById('headGoogle');
+            const saveEl = document.getElementById('headSave');
+            if (!volEl || !alsEl) return;
+
+            volEl.textContent = getVolume().toLocaleString();
+            alsEl.textContent = formatUSD(alsTotal);
+            googleEl.textContent = formatUSD(googleTotal);
+            saveEl.textContent = googleTotal > 0 ? savings + '%' : '-';
+        }
+
+        function formatMoney(value, minDigits) {
+            const n = Number(value) || 0;
+            if (currencyState.mode === 'USD') {
+                return '$' + n.toLocaleString('en-US', {
+                    minimumFractionDigits: minDigits ?? 2,
+                    maximumFractionDigits: minDigits ?? 2,
+                });
+            }
+            const converted = n * currencyState.rate;
+            const d = currencyState.decimals;
+            return currencyConf.symbol + ' ' + converted.toLocaleString(currencyConf.js_locale, {
+                minimumFractionDigits: d,
+                maximumFractionDigits: d,
+            });
+        }
+
+        // Nama lama masih dipakai di banyak tempat; diteruskan saja.
         function formatUSD(value) {
-            return value.toLocaleString('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
+            return formatMoney(value);
+        }
+
+        // Grafik memakai nilai yang sudah dikonversi, jadi label sumbu dan tooltip
+        // tinggal memberi simbol — bukan mengonversi lagi.
+        const moneyFactor = () => (currencyState.mode === 'USD' ? 1 : currencyState.rate);
+        const moneySymbol = () => (currencyState.mode === 'USD' ? '$' : currencyConf.symbol + ' ');
+        const numLocale = () => (currencyState.mode === 'USD' ? 'en-US' : currencyConf.js_locale);
+        const axisMoney = (v) => moneySymbol() + Number(v).toLocaleString(numLocale(), { maximumFractionDigits: 0 });
+        const chartMoney = (v) => moneySymbol() + Number(v).toLocaleString(numLocale(), {
+            minimumFractionDigits: currencyState.mode === 'USD' ? 2 : currencyState.decimals,
+            maximumFractionDigits: currencyState.mode === 'USD' ? 2 : currencyState.decimals,
+        });
+
+        // Harga satuan di tabel dirender server dalam USD; saat mata uang berganti
+        // sel-selnya ditulis ulang dari data mentah.
+        function repaintUnitPrices() {
+            document.querySelectorAll('tr[data-item-id]').forEach(row => {
+                const item = itemById.get(parseInt(row.dataset.itemId));
+                if (!item) return;
+                const als = row.querySelector('.td-als');
+                const google = row.querySelector('.td-google');
+                if (als) als.textContent = item.als_price !== null ? unitPrice(item.als_price) : '-';
+                if (google) google.textContent = item.google_price !== null ? unitPrice(item.google_price) : 'N/A';
+            });
+        }
+
+        // Harga per 1.000 request: dua desimal, lebih rinci hanya untuk angka kecil.
+        function unitPrice(value) {
+            const n = Number(value);
+            if (currencyState.mode === 'USD') {
+                return '$' + (n < 0.1 ? String(parseFloat(n.toFixed(4))) : n.toFixed(2));
+            }
+            const converted = n * currencyState.rate;
+            return currencyConf.symbol + ' ' + converted.toLocaleString(currencyConf.js_locale, {
+                minimumFractionDigits: currencyState.decimals,
+                maximumFractionDigits: currencyState.decimals,
             });
         }
 
@@ -883,7 +743,14 @@
             const savings = comparableGoogle > 0 ? ((1 - (comparableAls / comparableGoogle)) * 100).toFixed(1) : 0;
             const savedAmount = comparableGoogle - comparableAls;
 
+            // Katalog GrabMaps tidak punya item ALS-only, jadi kartu "ALS exclusive"
+            // hanya ikut tampil kalau datanya memang ada.
+            const hasExclusive = data.results.some(cat => cat.items.some(item => item.als_only));
+
             // --- Summary cards ---
+            lastHeadTotals = [comparableAls, comparableGoogle, savings];
+            updateHeadStats(comparableAls, comparableGoogle, savings);
+
             const summaryContainer = document.getElementById('calculatorSummary');
             summaryContainer.innerHTML = `<div class="result-summary">
                 <div class="summary-card summary-als">
@@ -901,11 +768,12 @@
                     <div class="summary-value">${savings}%</div>
                     <div class="summary-sub">${formatUSD(savedAmount)}${pricingT.per_month}</div>
                 </div>
+                ${hasExclusive ? `
                 <div class="summary-card summary-exclusive">
                     <div class="summary-label">${pricingT.als_exclusive}</div>
                     <div class="summary-value">${formatUSD(exclusiveAls)}</div>
                     <div class="summary-sub">${pricingT.trackers_geofences}</div>
-                </div>
+                </div>` : ''}
             </div>`;
 
             // --- Update table cells per item ---
@@ -979,8 +847,8 @@
                     alsTotal += item.als_cost || 0;
                     googleTotal += item.google_cost || 0;
                 });
-                alsData.push(parseFloat(alsTotal.toFixed(2)));
-                googleData.push(parseFloat(googleTotal.toFixed(2)));
+                alsData.push(parseFloat((alsTotal * moneyFactor()).toFixed(2)));
+                googleData.push(parseFloat((googleTotal * moneyFactor()).toFixed(2)));
             });
 
             if (barChart) barChart.destroy();
@@ -1019,7 +887,7 @@
                         },
                         tooltip: {
                             callbacks: {
-                                label: ctx => `${ctx.dataset.label}: $${ctx.raw.toFixed(2)}`
+                                label: ctx => `${ctx.dataset.label}: ${chartMoney(ctx.raw)}`
                             }
                         }
                     },
@@ -1027,7 +895,7 @@
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                callback: v => '$' + v
+                                callback: v => axisMoney(v)
                             }
                         }
                     }
@@ -1039,31 +907,47 @@
         let activeLineChartItem = null;
         let comparableLineItems = [];
 
+        // Chip kurva mengikuti daftar harga: satu chip per API (bukan per tier),
+        // memakai tier yang sedang dipilih di baris itu, dan hanya API yang
+        // dicentang. Dibangun ulang setiap centang atau tier berubah.
+        function shortLabel(item) {
+            const full = item.api_name_translated || item.api_name;
+            const head = full.split(' / ')[0].trim();
+            return head + (item.tier ? ` (${item.tier})` : '');
+        }
+
         function buildLineChartControls() {
             const container = document.getElementById('lineChartControls');
+            const previous = activeLineChartItem ? activeLineChartItem.key : null;
+            container.innerHTML = '';
             comparableLineItems = [];
 
-            pricingData.forEach(cat => {
-                cat.items.forEach(item => {
-                    if (item.als_price !== null && item.google_price !== null) {
-                        const label = (item.api_name_translated || item.api_name) + (item.tier ? ` (${item.tier})` : '');
-                        comparableLineItems.push({
-                            label,
-                            alsRate: parseFloat(item.als_price),
-                            googleRate: parseFloat(item.google_price),
-                            freeThreshold: item.google_free_threshold || 0,
-                        });
-                    }
+            document.querySelectorAll('.item-check:checked').forEach(cb => {
+                const item = itemById.get(parseInt(cb.dataset.itemId));
+                if (!item || item.als_price === null || item.google_price === null) return;
+                comparableLineItems.push({
+                    key: (item.api_name_translated || item.api_name),
+                    label: shortLabel(item),
+                    title: (item.api_name_translated || item.api_name) + (item.tier ? ` — ${item.tier}` : ''),
+                    alsRate: parseFloat(item.als_price),
+                    googleRate: parseFloat(item.google_price),
                 });
             });
 
-            if (comparableLineItems.length === 0) return;
+            if (comparableLineItems.length === 0) {
+                activeLineChartItem = null;
+                if (lineChart) { lineChart.destroy(); lineChart = null; }
+                return;
+            }
 
-            comparableLineItems.forEach((item, idx) => {
+            const keep = comparableLineItems.find(i => i.key === previous);
+            activeLineChartItem = keep || comparableLineItems[0];
+
+            comparableLineItems.forEach(item => {
                 const btn = document.createElement('button');
-                btn.className = 'btn-chip' + (idx === 0 ? ' active' : '');
-                btn.textContent = item.label.length > 25 ? item.label.substring(0, 22) + '...' : item.label;
-                btn.title = item.label;
+                btn.className = 'btn-chip' + (item === activeLineChartItem ? ' active' : '');
+                btn.textContent = item.label;
+                btn.title = item.title;
                 btn.onclick = () => {
                     container.querySelectorAll('.btn-chip').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
@@ -1073,7 +957,6 @@
                 container.appendChild(btn);
             });
 
-            activeLineChartItem = comparableLineItems[0];
             renderLineChart(activeLineChartItem);
         }
 
@@ -1094,9 +977,8 @@
             for (let i = 0; i <= steps; i++) {
                 const v = Math.round(i * stepSize);
                 volumes.push(v);
-                alsLine.push(parseFloat(((v / 1000) * item.alsRate).toFixed(2)));
-                const billable = Math.max(0, v - item.freeThreshold);
-                googleLine.push(parseFloat(((billable / 1000) * item.googleRate).toFixed(2)));
+                alsLine.push(parseFloat(((v / 1000) * item.alsRate * moneyFactor()).toFixed(2)));
+                googleLine.push(parseFloat(((v / 1000) * item.googleRate * moneyFactor()).toFixed(2)));
             }
 
             if (lineChart) lineChart.destroy();
@@ -1140,7 +1022,7 @@
                         },
                         tooltip: {
                             callbacks: {
-                                label: ctx => `${ctx.dataset.label}: $${ctx.raw.toFixed(2)}`
+                                label: ctx => `${ctx.dataset.label}: ${chartMoney(ctx.raw)}`
                             }
                         }
                     },
@@ -1158,7 +1040,7 @@
                                 text: pricingT.cost_usd
                             },
                             ticks: {
-                                callback: v => '$' + v
+                                callback: v => axisMoney(v)
                             }
                         }
                     }
@@ -1168,33 +1050,35 @@
 
         // ---- KEY INSIGHTS (dynamic from pricingData) ----
         function renderKeyInsights() {
-            let breakeven = null;
             let mapTilesItem = null;
             let exclusiveCount = 0;
+            let savingsSum = 0;
+            let savingsCount = 0;
 
-            pricingData.forEach(cat => {
-                cat.items.forEach(item => {
-                    if (item.als_only) exclusiveCount++;
-                    if (item.api_name === 'Map Tiles' && item.als_price != null && item.google_price != null) {
-                        mapTilesItem = item;
-                    }
-                    if (breakeven == null && item.als_price != null && item.google_price != null && (item.google_free_threshold || 0) > 0) {
-                        const als = parseFloat(item.als_price);
-                        const google = parseFloat(item.google_price);
-                        const free = item.google_free_threshold || 0;
-                        if (als < google) {
-                            const v = (google * free) / (google - als);
-                            breakeven = Math.round(v);
-                        }
-                    }
-                });
+            pricingData.forEach(cat => cat.items.forEach(item => {
+                if (item.als_only) exclusiveCount++;
+                if (item.api_name === 'Map Tiles' && item.als_price != null && item.google_price != null) {
+                    mapTilesItem = item;
+                }
+            }));
+
+            // Rata-rata dihitung dari API yang sedang dicentang beserta tier yang
+            // dipilih, jadi angkanya mengikuti apa yang terlihat di daftar.
+            document.querySelectorAll('.item-check:checked').forEach(cb => {
+                const item = itemById.get(parseInt(cb.dataset.itemId));
+                if (!item || item.als_price == null || item.google_price == null) return;
+                const als = parseFloat(item.als_price);
+                const google = parseFloat(item.google_price);
+                if (google <= 0) return;
+                savingsSum += (1 - als / google) * 100;
+                savingsCount++;
             });
 
-            const breakevenEl = document.getElementById('insightBreakeven');
-            const breakevenDescEl = document.getElementById('insightBreakevenDesc');
-            if (breakeven != null && breakevenEl) {
-                breakevenEl.textContent = breakeven >= 1000 ? '~' + (breakeven / 1000) + 'K' : '~' + breakeven;
-                breakevenDescEl.textContent = pricingT.breakeven_desc.replace(':count', breakeven.toLocaleString());
+            const avgEl = document.getElementById('insightAvgSavings');
+            const avgDescEl = document.getElementById('insightAvgSavingsDesc');
+            if (avgEl) {
+                avgEl.textContent = savingsCount > 0 ? (savingsSum / savingsCount).toFixed(1) + '%' : '-';
+                avgDescEl.textContent = pricingT.avg_savings_desc.replace(':count', savingsCount);
             }
 
             const mapTilesEl = document.getElementById('insightMapTiles');
@@ -1208,70 +1092,15 @@
             }
 
             const exclusiveEl = document.getElementById('insightExclusive');
-            if (exclusiveEl) exclusiveEl.textContent = exclusiveCount > 0 ? exclusiveCount + '+' : '4+';
+            const exclusiveCard = document.getElementById('insightExclusiveCard');
+            if (exclusiveCount > 0) {
+                if (exclusiveEl) exclusiveEl.textContent = exclusiveCount + '+';
+                if (exclusiveCard) exclusiveCard.hidden = false;
+            } else if (exclusiveCard) {
+                exclusiveCard.hidden = true;
+            }
         }
 
-        // ---- INFO POPOVER ----
-        (function initInfoPopover() {
-            const popover = document.getElementById('infoPopover');
-            const content = popover.querySelector('.info-popover-content');
-            let hideTimeout = null;
-
-            function show(trigger, text) {
-                if (hideTimeout) clearTimeout(hideTimeout);
-                content.textContent = text;
-                popover.style.top = '-9999px';
-                popover.style.left = '0';
-                popover.classList.add('visible');
-
-                requestAnimationFrame(() => {
-                    const rect = trigger.getBoundingClientRect();
-                    const popRect = popover.getBoundingClientRect();
-                    let top = rect.top - popRect.height - 10;
-                    let left = rect.left + (rect.width / 2) - (popRect.width / 2);
-
-                    if (top < 10) {
-                        top = rect.bottom + 10;
-                        popover.classList.add('above');
-                    } else {
-                        popover.classList.remove('above');
-                    }
-                    if (left < 10) left = 10;
-                    if (left + popRect.width > window.innerWidth - 10) left = window.innerWidth - popRect.width - 10;
-
-                    popover.style.top = top + 'px';
-                    popover.style.left = left + 'px';
-                });
-            }
-
-            function hide() {
-                hideTimeout = setTimeout(() => popover.classList.remove('visible'), 50);
-            }
-
-            document.querySelectorAll('.info-trigger').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const text = btn.dataset.info;
-                    if (!text) return;
-                    if (popover.classList.contains('visible') && content.textContent === text) {
-                        popover.classList.remove('visible');
-                        return;
-                    }
-                    show(btn, text);
-                });
-            });
-
-            const closeBtn = popover.querySelector('.info-popover-close');
-            if (closeBtn) closeBtn.addEventListener('click', () => popover.classList.remove('visible'));
-
-            document.addEventListener('click', (e) => {
-                if (e.target.closest('.info-trigger') || e.target.closest('#infoPopover')) return;
-                hide();
-            });
-        })();
-
-        // Sync "Select All" state based on current item checkboxes
         function syncCheckAllState() {
             document.querySelectorAll('.pricing-card').forEach(card => {
                 const allBoxes = card.querySelectorAll('.item-check');
@@ -1283,7 +1112,386 @@
             });
         }
 
+        // ---- KEADAAN YANG BERTAHAN SAAT GANTI BAHASA ----
+        // Ganti bahasa tetap memuat ulang halaman (semua teksnya dirender server),
+        // jadi yang sudah diisi pengguna disimpan dulu lalu dipasang kembali:
+        // volume, tier yang dipilih, dan posisi gulir.
+        const STATE_KEY = 'gm-pricing-state';
+
+        function savePageState() {
+            try {
+                sessionStorage.setItem(STATE_KEY, JSON.stringify({
+                    volume: volumeInput.value,
+                    scroll: Math.round(window.scrollY),
+                    // Id item tetap sama di semua bahasa, jadi pilihan tier aman dibawa.
+                    tiers: [...document.querySelectorAll('.tier-opt.active')].map(b => b.dataset.itemId),
+                    unchecked: [...document.querySelectorAll('.item-check:not(:checked)')].map(cb => cb.dataset.itemId),
+                }));
+            } catch (e) { /* mode privat */ }
+        }
+
+        function restorePageState() {
+            let state = null;
+            try {
+                const raw = sessionStorage.getItem(STATE_KEY);
+                sessionStorage.removeItem(STATE_KEY);
+                state = raw ? JSON.parse(raw) : null;
+            } catch (e) { return; }
+            if (!state) return;
+
+            if (state.volume) {
+                volumeInput.value = state.volume;
+                volumeSlider.value = Math.min(500000, getVolume());
+            }
+
+            (state.tiers || []).forEach(id => {
+                const btn = document.querySelector(`.tier-opt[data-item-id="${id}"]`);
+                if (btn && !btn.classList.contains('active')) applyTierChoice(btn, true);
+            });
+
+            (state.unchecked || []).forEach(id => {
+                const cb = document.querySelector(`.item-check[data-item-id="${id}"]`);
+                if (cb && cb.checked) {
+                    cb.checked = false;
+                    cb.closest('tr').classList.add('row-disabled');
+                }
+            });
+
+            if (state.scroll) {
+                requestAnimationFrame(() => window.scrollTo({ top: state.scroll, behavior: 'instant' }));
+            }
+        }
+
+        // ---- RODA BAHASA ----
+        // Kode yang berada di tengah diberi penekanan; sisanya meredup ke tepi.
+        // Gulir roda tetikus dipetakan ke gulir mendatar supaya terasa seperti
+        // pemilih angka, bukan daftar yang harus digeser dengan bilah gulir.
+        (function () {
+            const track = document.getElementById('langTrack');
+            const wheel = document.getElementById('langWheel');
+            if (!track || !wheel) return;
+
+            const items = [...track.querySelectorAll('.lang-item')];
+
+            // Tepi yang sudah mentok tidak diberi gradien pudar — kalau tidak, pil
+            // terlihat seperti terpotong padahal memang tidak bisa digeser lagi.
+            function markEdges() {
+                const max = track.scrollWidth - track.clientWidth;
+                wheel.classList.toggle('at-start', track.scrollLeft <= 1);
+                wheel.classList.toggle('at-end', track.scrollLeft >= max - 1);
+            }
+
+            function markCenter() {
+                const mid = track.scrollLeft + track.clientWidth / 2;
+                let nearest = items[0];
+                let best = Infinity;
+                items.forEach(item => {
+                    const c = item.offsetLeft + item.offsetWidth / 2;
+                    const d = Math.abs(c - mid);
+                    if (d < best) { best = d; nearest = item; }
+                });
+                items.forEach(i => i.classList.toggle('is-center', i === nearest));
+                markEdges();
+            }
+
+            const centerActive = () => {
+                const active = track.querySelector('.lang-item.active') || items[0];
+                const prev = track.style.scrollBehavior;
+                track.style.scrollBehavior = 'auto';
+                track.scrollLeft = active.offsetLeft + active.offsetWidth / 2 - track.clientWidth / 2;
+                track.style.scrollBehavior = prev;
+                markCenter();
+            };
+
+            // Berhenti di antara dua kode terasa seperti macet, jadi setiap gulir
+            // yang mereda dikunci ke kode terdekat.
+            let snapTimer = null;
+            let goTimer = null;
+            let userMoved = false;
+
+            // Roda ini pemilih, bukan sekadar sorotan: begitu berhenti di kode
+            // lain, bahasanya benar-benar berpindah. Ditunda sesaat supaya kode
+            // yang cuma terlewat saat menggeser tidak ikut membuka halaman.
+            const goToCentered = () => {
+                const nearest = track.querySelector('.lang-item.is-center');
+                if (!nearest || !userMoved) return;
+                if (nearest.classList.contains('active')) return;
+                wheel.classList.add('is-loading');
+                savePageState();
+                window.location.href = nearest.href;
+            };
+
+            const snapToNearest = () => {
+                const nearest = track.querySelector('.lang-item.is-center');
+                if (!nearest) return;
+                const target = nearest.offsetLeft + nearest.offsetWidth / 2 - track.clientWidth / 2;
+                clearTimeout(goTimer);
+                if (Math.abs(target - track.scrollLeft) >= 1) {
+                    track.scrollTo({ left: target, behavior: 'smooth' });
+                }
+                goTimer = setTimeout(goToCentered, 420);
+            };
+            const scheduleSnap = () => {
+                clearTimeout(snapTimer);
+                snapTimer = setTimeout(snapToNearest, 140);
+            };
+
+            track.addEventListener('scroll', () => {
+                markCenter();
+                clearTimeout(goTimer);
+                if (!dragging) scheduleSnap();
+            }, { passive: true });
+
+            track.addEventListener('wheel', (e) => {
+                if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+                e.preventDefault();
+                userMoved = true;
+                track.scrollLeft += e.deltaY;
+            }, { passive: false });
+
+            // Geser dengan tetikus atau jari. Kalau jaraknya cukup jauh, klik
+            // pada kode yang kebetulan ada di bawah kursor tidak ikut jalan.
+            let dragging = false;
+            let startX = 0;
+            let startScroll = 0;
+            let moved = 0;
+
+            track.addEventListener('pointerdown', (e) => {
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                dragging = true;
+                userMoved = true;
+                moved = 0;
+                startX = e.clientX;
+                startScroll = track.scrollLeft;
+                track.setPointerCapture(e.pointerId);
+                track.classList.add('is-dragging');
+            });
+
+            track.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                const dx = e.clientX - startX;
+                moved = Math.max(moved, Math.abs(dx));
+                track.scrollLeft = startScroll - dx;
+            });
+
+            const endDrag = (e) => {
+                if (!dragging) return;
+                dragging = false;
+                track.classList.remove('is-dragging');
+                try { track.releasePointerCapture(e.pointerId); } catch (err) { /* sudah lepas */ }
+                snapToNearest();
+            };
+            track.addEventListener('pointerup', endDrag);
+            track.addEventListener('pointercancel', endDrag);
+
+            track.addEventListener('click', (e) => {
+                if (moved > 6) {
+                    e.preventDefault();
+                    moved = 0;
+                    return;
+                }
+                if (e.target.closest('.lang-item')) savePageState();
+            });
+
+            window.addEventListener('resize', centerActive);
+            centerActive();
+        })();
+
+        // ---- SAKELAR MATA UANG ----
+        // Pilihan mata uang dan kurs yang disunting disimpan per browser; kursnya
+        // hanya lapisan tampilan, hitungan tetap berjalan dalam USD.
+        (function () {
+            const group = document.querySelector('.cur-switch');
+            const rateBox = document.getElementById('rateBox');
+            const rateInput = document.getElementById('rateInput');
+            if (!group || !currencyConf) return;
+
+            const RATE_KEY = 'gm-rate-' + currencyConf.code;
+            const MODE_KEY = 'gm-currency';
+
+            const store = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* mode privat */ } };
+            const read = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+
+            const savedRate = parseFloat(read(RATE_KEY));
+            if (savedRate > 0) currencyState.rate = savedRate;
+
+            function repaintAll() {
+                repaintUnitPrices();
+                reRender();
+                updateLineChartVolume();
+                if (lastCalcData) updateHeadStats(...lastHeadTotals);
+            }
+
+            function setMode(mode) {
+                currencyState.mode = mode === 'LOCAL' ? 'LOCAL' : 'USD';
+                group.querySelectorAll('.cur-opt').forEach(b => {
+                    b.classList.toggle('active', b.dataset.cur === currencyState.mode);
+                });
+                rateBox.hidden = currencyState.mode !== 'LOCAL';
+                const tag = document.getElementById('curTag');
+                if (tag) tag.textContent = currencyState.mode === 'LOCAL' ? currencyConf.code : 'USD';
+                store(MODE_KEY, currencyState.mode);
+                repaintAll();
+            }
+
+            group.addEventListener('click', (e) => {
+                const btn = e.target.closest('.cur-opt');
+                if (btn) setMode(btn.dataset.cur);
+            });
+
+            // Angka kurs ditulis dengan pemisah ribuan sesuai negaranya
+            // (17.900, bukan 17900). Pemisah dibersihkan saat dibaca, dan
+            // penulisan ulang dilakukan saat lepas fokus supaya kursor tidak
+            // meloncat waktu mengetik.
+            const parseRate = (text) => {
+                const cleaned = String(text).replace(/[^0-9.,]/g, '');
+                const lastDot = cleaned.lastIndexOf('.');
+                const lastComma = cleaned.lastIndexOf(',');
+                const sep = Math.max(lastDot, lastComma);
+                // Pemisah desimal = tanda terakhir yang diikuti kurang dari 3 angka.
+                if (sep > -1 && cleaned.length - sep - 1 < 3 && cleaned.length - sep - 1 > 0) {
+                    const int = cleaned.slice(0, sep).replace(/[.,]/g, '');
+                    return parseFloat(int + '.' + cleaned.slice(sep + 1).replace(/[.,]/g, ''));
+                }
+                return parseFloat(cleaned.replace(/[.,]/g, ''));
+            };
+
+            const showRate = (value) => {
+                rateInput.value = Number(value).toLocaleString(currencyConf.js_locale, {
+                    maximumFractionDigits: 4,
+                });
+            };
+
+            // Pemisah ribuan dipasang sambil mengetik. Posisi kursor dikembalikan
+            // dengan menghitung selisih panjang teks, jadi tidak meloncat ke ujung
+            // setiap kali satu titik bertambah.
+            const sepParts = new Intl.NumberFormat(currencyConf.js_locale).formatToParts(12345.6);
+            const groupSep = (sepParts.find(x => x.type === 'group') || { value: ',' }).value;
+            const decSep = (sepParts.find(x => x.type === 'decimal') || { value: '.' }).value;
+
+            const splitRate = (text) => {
+                const cleaned = String(text).replace(/[^0-9.,]/g, '');
+                const sep = Math.max(cleaned.lastIndexOf('.'), cleaned.lastIndexOf(','));
+                const tail = sep > -1 ? cleaned.length - sep - 1 : -1;
+                if (sep > -1 && tail >= 0 && tail < 3) {
+                    return [cleaned.slice(0, sep).replace(/[.,]/g, ''), cleaned.slice(sep + 1).replace(/[.,]/g, '')];
+                }
+                return [cleaned.replace(/[.,]/g, ''), null];
+            };
+
+            const groupDigits = (digits) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, groupSep);
+
+            rateInput.addEventListener('input', () => {
+                const caret = rateInput.selectionStart;
+                const beforeLen = rateInput.value.length;
+
+                const [intPart, decPart] = splitRate(rateInput.value);
+                rateInput.value = groupDigits(intPart) + (decPart === null ? '' : decSep + decPart);
+
+                const shift = rateInput.value.length - beforeLen;
+                const next = Math.max(0, caret + shift);
+                rateInput.setSelectionRange(next, next);
+
+                const value = parseRate(rateInput.value);
+                if (!(value > 0)) return;
+                currencyState.rate = value;
+                store(RATE_KEY, String(value));
+                repaintAll();
+            });
+
+            rateInput.addEventListener('blur', () => showRate(currencyState.rate));
+            rateInput.addEventListener('focus', () => rateInput.select());
+            showRate(currencyState.rate);
+
+            if (read(MODE_KEY) === 'LOCAL') setMode('LOCAL');
+        })();
+
+        // Menekan angka volume di kepala membawa kembali ke kolom isian.
+        (function () {
+            const btn = document.getElementById('headVolume');
+            if (!btn) return;
+            btn.addEventListener('click', () => {
+                document.querySelector('.calculator-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => volumeInput.focus({ preventScroll: true }), 320);
+            });
+        })();
+
+        // Kepala halaman: melebar penuh saat di puncak, menyusut jadi kartu
+        // mengambang begitu digulir. Tingginya dibagikan lewat --head-h supaya
+        // kolom grafik yang sticky berhenti tepat di bawahnya.
+        (function () {
+            const head = document.getElementById('pageHead');
+            const shell = document.getElementById('headShell');
+            if (!head || !shell) return;
+
+            const sync = () => {
+                const stuck = window.scrollY > 12;
+                head.classList.toggle('is-stuck', stuck);
+                shell.classList.toggle('is-stuck', stuck);
+                document.documentElement.style.setProperty('--head-h', shell.offsetHeight + 'px');
+            };
+
+            window.addEventListener('scroll', sync, { passive: true });
+            window.addEventListener('resize', sync);
+            sync();
+        })();
+
+        // ---- TEMA: terang / gelap / ikut sistem ----
+        // Warna teks & garis grafik diambil dari token CSS supaya ikut tema.
+        function applyChartTheme() {
+            if (typeof Chart === 'undefined') return;
+            const cs = getComputedStyle(document.documentElement);
+            Chart.defaults.color = cs.getPropertyValue('--muted').trim() || '#8a938f';
+            Chart.defaults.borderColor = cs.getPropertyValue('--line').trim() || '#ebeeee';
+        }
+
+        function repaintCharts() {
+            applyChartTheme();
+            reRender();
+            updateLineChartVolume();
+        }
+
+        (function () {
+            const group = document.getElementById('themeToggle');
+            if (!group) return;
+
+            const current = () => {
+                try { return localStorage.getItem('gm-theme') || 'system'; } catch (e) { return 'system'; }
+            };
+            const paint = () => group.querySelectorAll('[data-theme-set]').forEach(
+                b => b.classList.toggle('active', b.dataset.themeSet === current())
+            );
+
+            group.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-theme-set]');
+                if (!btn) return;
+
+                const root = document.documentElement;
+                root.classList.add('theme-anim');
+                root.setAttribute('data-theme', btn.dataset.themeSet);
+                try { localStorage.setItem('gm-theme', btn.dataset.themeSet); } catch (err) { /* mode privat */ }
+
+                paint();
+                btn.classList.add('pop');
+                setTimeout(() => btn.classList.remove('pop'), 450);
+                setTimeout(() => root.classList.remove('theme-anim'), 350);
+                repaintCharts();
+                btn.blur();
+            });
+
+            // Saat pilihan "ikut sistem", tema OS yang berubah langsung diikuti.
+            if (window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                    if (current() === 'system') repaintCharts();
+                });
+            }
+
+            paint();
+        })();
+
         document.addEventListener('DOMContentLoaded', () => {
+            applyChartTheme();
+            restorePageState();
             renderKeyInsights();
             syncCheckAllState();
             buildLineChartControls();

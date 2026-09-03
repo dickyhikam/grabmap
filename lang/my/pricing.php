@@ -106,4 +106,11 @@ return [
         'geofence_event_forecast' => ['name' => 'Geofence Event Forecast Requested', 'description' => 'ကိရိယာ geofence သို့ ဝင်ရောက်မည် သို့မဟုတ် ထွက်သွားမည့်အချိန် ခန့်မှန်းခြင်း။'],
         'resource_crud_list' => ['name' => 'Resource CRUD/List Requests', 'description' => 'API ရင်းမြစ်များ ဖန်တီးခြင်း၊ ဖတ်ခြင်း၊ ပြင်ဆင်ခြင်း၊ ဖျက်ခြင်း သို့မဟုတ် စာရင်း။'],
     ],
+
+    'theme_light' => 'အလင်းမုဒ်',
+    'theme_dark' => 'အမှောင်မုဒ်',
+    'theme_system' => 'စနစ်အတိုင်း',
+
+    'tab_compare' => 'နှိုင်းယှဉ်',
+    'als_only_notice' => 'အချို့အမျိုးအစားများ (Trackers, Geofences) ကို Amazon Location Service တွင်သာ ရရှိနိုင်သည် — ကြည့်ရန် နှိုင်းယှဉ် သို့မဟုတ် Amazon Location မြင်ကွင်းသို့ ပြောင်းပါ။',
 ];

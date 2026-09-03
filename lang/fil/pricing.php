@@ -106,4 +106,11 @@ return [
         'geofence_event_forecast' => ['name' => 'Geofence Event Forecast Requested', 'description' => 'I-predict kung kailan papasok o lalabas ang device sa geofence.'],
         'resource_crud_list' => ['name' => 'Resource CRUD/List Requests', 'description' => 'Gumawa, magbasa, mag-update, mag-delete, o maglista ng API resources.'],
     ],
+
+    'theme_light' => 'Maliwanag na mode',
+    'theme_dark' => 'Madilim na mode',
+    'theme_system' => 'Sundin ang sistema',
+
+    'tab_compare' => 'Ihambing',
+    'als_only_notice' => 'Ang ilang kategorya (Trackers, Geofences) ay eksklusibo sa Amazon Location Service — lumipat sa view na Ihambing o Amazon Location para makita ang mga ito.',
 ];

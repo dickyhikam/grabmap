@@ -43,7 +43,18 @@ class PricingController extends Controller
             }
         }
 
-        return view('pricing.index', compact('categories'));
+        // Mata uang lokal untuk locale yang sedang dipakai. Kursnya hanya nilai
+        // awal — pengunjung boleh menggantinya di halaman. Khusus IDR diambil
+        // dari kurs aktif modul tagihan supaya tidak beda dengan invoice.
+        $currency = config('pricing_currencies.' . app()->getLocale());
+        if ($currency && $currency['code'] === 'IDR') {
+            $rate = \App\Models\ExchangeRate::current();
+            if ($rate) {
+                $currency['rate'] = (float) $rate->rate;
+            }
+        }
+
+        return view('pricing.index', compact('categories', 'currency'));
     }
 
     public function calculate(Request $request)
@@ -104,8 +115,11 @@ class PricingController extends Controller
 
                 $googleCost = null;
                 if ($item->google_price !== null) {
-                    $billableVolume = max(0, $volume - $item->google_free_threshold);
-                    $googleCost = round(($billableVolume / 1000) * (float) $item->google_price, 2);
+                    // Kuota gratis Google sengaja tidak dipotong: sisi ALS ditagih dari
+                    // request pertama, jadi kalau satu sisi dapat potongan kuota,
+                    // perbandingannya jadi timpang dan baris yang volumenya masih di
+                    // bawah kuota terlihat seperti tidak terhitung sama sekali.
+                    $googleCost = round(($volume / 1000) * (float) $item->google_price, 2);
                 }
 
                 $savings = null;

@@ -106,4 +106,11 @@ return [
         'geofence_event_forecast' => ['name' => 'Geofence Event Forecast Requested', 'description' => 'Dự đoán khi thiết bị vào hoặc ra geofence.'],
         'resource_crud_list' => ['name' => 'Resource CRUD/List Requests', 'description' => 'Tạo, đọc, cập nhật, xóa hoặc liệt kê tài nguyên API.'],
     ],
+
+    'theme_light' => 'Chế độ sáng',
+    'theme_dark' => 'Chế độ tối',
+    'theme_system' => 'Theo hệ thống',
+
+    'tab_compare' => 'So sánh',
+    'als_only_notice' => 'Một số hạng mục (Trackers, Geofences) chỉ có ở Amazon Location Service — chuyển sang chế độ So sánh hoặc Amazon Location để xem.',
 ];
