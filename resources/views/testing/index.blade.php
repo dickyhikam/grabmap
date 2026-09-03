@@ -4,7 +4,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AWS Location Service API Tester</title>
+    <title>{{ __('tester.title') }}</title>
+    {{-- Tema dipasang sebelum CSS supaya tidak ada kedipan putih saat mode gelap.
+         Kuncinya sama dengan /pricing dan panel admin, jadi pilihan pengguna
+         terbawa antar halaman. --}}
+    <script>
+        (function () {
+            var root = document.documentElement;
+            var choice = 'system';
+            try { choice = localStorage.getItem('gm-theme') || 'system'; } catch (e) { /* mode privat */ }
+
+            // Pilihan disimpan di data-theme-choice, sedangkan data-theme selalu
+            // berisi hasil akhirnya (light/dark). Dengan begitu aturan gelap di
+            // CSS cukup ditulis sekali sebagai [data-theme="dark"], tidak perlu
+            // digandakan untuk kasus "ikut sistem".
+            window.gmApplyTheme = function (next) {
+                if (next) choice = next;
+                var dark = choice === 'dark' ||
+                    (choice === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                root.setAttribute('data-theme-choice', choice);
+                root.setAttribute('data-theme', dark ? 'dark' : 'light');
+            };
+
+            window.gmApplyTheme();
+            if (window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+                    if (choice !== 'system') return;
+                    window.gmApplyTheme();
+                    if (typeof window.applyMapTheme === 'function') window.applyMapTheme();
+                });
+            }
+        })();
+    </script>
 
     <link rel="shortcut icon" href="{{ asset('logo2.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('logo2.png') }}" type="image/png" sizes="32x32">
@@ -12,6 +43,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/gm-page-head.css?v={{ filemtime(public_path('css/gm-page-head.css')) }}">
     <style>
         :root {
             --grab-green: #00B14F;
@@ -243,47 +275,9 @@
             position: relative;
         }
 
-        .tester-rail button::after {
-            content: attr(data-tip);
-            position: absolute;
-            left: calc(100% + 10px);
-            top: 50%;
-            transform: translateY(-50%);
-            background: #111827;
-            color: #fff;
-            font-size: .72rem;
-            font-weight: 600;
-            padding: 5px 10px;
-            border-radius: 8px;
-            white-space: nowrap;
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-            transition: opacity .12s ease;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
-        }
-
-        .tester-rail button::before {
-            content: '';
-            position: absolute;
-            left: calc(100% + 4px);
-            top: 50%;
-            transform: translateY(-50%);
-            border: 6px solid transparent;
-            border-right-color: #111827;
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-            transition: opacity .12s ease;
-        }
-
-        .tester-rail button:hover::after,
-        .tester-rail button:hover::before,
-        .tester-rail button:focus-visible::after,
-        .tester-rail button:focus-visible::before {
-            opacity: 1;
-            visibility: visible;
-        }
+        /* Tooltip rail lama dilepas: sekarang dipakai tooltip bersama di
+           gm-page-head.css yang digerakkan skrip, supaya bentuknya sama dengan
+           halaman /pricing dan tidak muncul dua kali. */
 
         .tester-rail .rail-sep {
             height: 1px;
@@ -997,27 +991,19 @@
             }
         }
 
-        /* Header buttons — modern pill */
-        #btnChangeApiKey,
-        .container-fluid>.row:first-child .btn-outline-success {
-            border-radius: 12px !important;
-            padding: 9px 18px !important;
-            font-size: 0.8rem !important;
-            font-weight: 700 !important;
-            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
-
+        /* Tombol API Key di kepala halaman. Bayangan ungu lamanya dibuang —
+           warnanya tidak nyambung dengan tombol hijau dan kepala halaman yang
+           sekarang rata tanpa bayangan. */
         #btnChangeApiKey {
             background: linear-gradient(135deg, #00B14F, #009543) !important;
             color: #fff !important;
             border: 1px solid #009543 !important;
-            box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35) !important;
+            box-shadow: none !important;
         }
 
         #btnChangeApiKey:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(124, 58, 237, 0.45) !important;
+            filter: brightness(1.06);
+            box-shadow: none !important;
         }
 
         .container-fluid>.row:first-child .btn-outline-success {
@@ -1259,10 +1245,8 @@
             }
         }
 
-        /* Floating action ripple for API key badge */
-        #apiKeyStatusBadge {
-            animation: pulse 2s infinite;
-        }
+        /* Denyut lama dilepas: titik statusnya sekarang kecil dan berdampingan
+           dengan tooltip, jadi kedipan malah mengganggu. */
 
         @keyframes pulse {
 
@@ -1356,6 +1340,198 @@
                 padding: 7px 12px !important;
             }
         }
+
+        /* ================= TEMA GELAP =================
+           Halaman ini ditulis dengan warna terang yang dipatok langsung di tiap
+           aturan (227 nilai), jadi mode gelapnya dipasang sebagai lapisan
+           penimpa di akhir berkas — bukan dengan menulis ulang semua aturan.
+           Yang ditimpa hanya permukaan besar dan teksnya; warna merek (hijau
+           Grab, biru, merah) tetap karena sudah kontras di kedua tema. */
+        :root {
+            --t-page: #f4f6f8;
+            --t-card: #ffffff;
+            --t-surface: #f8f9fa;
+            --t-line: rgba(0, 0, 0, 0.08);
+            --t-ink: #212529;
+            --t-muted: #6b7280;
+            --t-faint: #9ca3af;
+            --t-input: #ffffff;
+            --t-code: #0f172a;
+        }
+
+        :root[data-theme="dark"] {
+            color-scheme: dark;
+            --t-page: #0e1210;
+            --t-card: #191e1b;
+            --t-surface: #232926;
+            --t-line: #2b322e;
+            --t-ink: #eaf0ec;
+            --t-muted: #9aa5a0;
+            --t-faint: #6b7671;
+            --t-input: #232926;
+            --t-code: #0b0f0d;
+        }
+
+        /* Kepala halaman memakai token bersama --gm-*; dipetakan ke token
+           halaman ini supaya ikut gelap. */
+        [data-theme="dark"] {
+            --gm-card: var(--t-card);
+            --gm-page: var(--t-page);
+            --gm-surface: var(--t-surface);
+            --gm-line: var(--t-line);
+            --gm-ink: var(--t-ink);
+            --gm-muted: var(--t-muted);
+            --gm-glass: rgba(25, 30, 27, 0.94);
+        }
+
+        [data-theme="dark"] body {
+            background: var(--t-page);
+            color: var(--t-ink);
+        }
+
+        /* Permukaan utama */
+        [data-theme="dark"] .card-glass,
+        [data-theme="dark"] .tester-dock,
+        [data-theme="dark"] .ref-card,
+        [data-theme="dark"] .modal-content,
+        [data-theme="dark"] .dropdown-menu {
+            background: var(--t-card) !important;
+            border-color: var(--t-line) !important;
+            color: var(--t-ink);
+        }
+
+        [data-theme="dark"] .tester-rail {
+            background: var(--t-card);
+            border-color: var(--t-line);
+        }
+        [data-theme="dark"] .tester-rail button { color: var(--t-muted); }
+        [data-theme="dark"] .tester-rail button:hover { background: var(--t-surface); color: var(--t-ink); }
+        [data-theme="dark"] .tester-rail .rail-sep { background: var(--t-line); }
+
+        /* Kotak isian */
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select,
+        [data-theme="dark"] .coord-input,
+        [data-theme="dark"] .input-group-text {
+            background: var(--t-input);
+            border-color: var(--t-line);
+            color: var(--t-ink);
+        }
+        [data-theme="dark"] .form-control::placeholder,
+        [data-theme="dark"] .coord-input::placeholder { color: var(--t-faint); }
+        [data-theme="dark"] .form-control:focus,
+        [data-theme="dark"] .form-select:focus {
+            background: var(--t-input);
+            color: var(--t-ink);
+            border-color: var(--grab-green);
+        }
+
+        /* Daftar hasil dan potongan kecil lain */
+        [data-theme="dark"] .history-item,
+        [data-theme="dark"] .waypoint-item,
+        [data-theme="dark"] .matrix-dest-item,
+        [data-theme="dark"] .trk-result-item,
+        [data-theme="dark"] .loc-result-item,
+        [data-theme="dark"] .geo-result-item,
+        [data-theme="dark"] .mode-info-chip,
+        [data-theme="dark"] .route-status-bar {
+            background: var(--t-surface);
+            border-color: var(--t-line);
+            color: var(--t-ink);
+        }
+
+        [data-theme="dark"] .api-mode-toggle,
+        [data-theme="dark"] .trk-submode-toggle,
+        [data-theme="dark"] .maps-submode-toggle,
+        [data-theme="dark"] .loc-submode-toggle,
+        [data-theme="dark"] .geo-submode-toggle {
+            background: var(--t-surface);
+            border-color: var(--t-line);
+        }
+        [data-theme="dark"] .api-mode-btn,
+        [data-theme="dark"] .trk-submode-btn,
+        [data-theme="dark"] .maps-submode-btn,
+        [data-theme="dark"] .loc-submode-btn,
+        [data-theme="dark"] .geo-submode-btn { color: var(--t-muted); }
+        [data-theme="dark"] .api-mode-btn.active,
+        [data-theme="dark"] .trk-submode-btn.active,
+        [data-theme="dark"] .maps-submode-btn.active,
+        [data-theme="dark"] .loc-submode-btn.active,
+        [data-theme="dark"] .geo-submode-btn.active { background: var(--t-card); color: var(--t-ink); }
+
+        /* Blok kode dan log */
+        [data-theme="dark"] .log-box,
+        [data-theme="dark"] pre,
+        [data-theme="dark"] code {
+            background: var(--t-code);
+            color: #cfe0d7;
+            border-color: var(--t-line);
+        }
+
+        /* Teks bawaan Bootstrap */
+        [data-theme="dark"] .text-muted { color: var(--t-muted) !important; }
+        [data-theme="dark"] .text-dark { color: var(--t-ink) !important; }
+        [data-theme="dark"] .bg-white,
+        [data-theme="dark"] .bg-light { background: var(--t-surface) !important; }
+        [data-theme="dark"] .border,
+        [data-theme="dark"] .border-top,
+        [data-theme="dark"] .border-bottom,
+        [data-theme="dark"] .border-start,
+        [data-theme="dark"] .border-end { border-color: var(--t-line) !important; }
+        [data-theme="dark"] .table { --bs-table-bg: transparent; color: var(--t-ink); }
+        [data-theme="dark"] .table > :not(caption) > * > * { border-color: var(--t-line); }
+        [data-theme="dark"] .section-title { color: var(--t-ink); }
+        [data-theme="dark"] hr { border-color: var(--t-line); }
+
+        /* Tombol garis bawaan Bootstrap agar tetap terbaca */
+        [data-theme="dark"] .btn-light {
+            background: var(--t-surface);
+            border-color: var(--t-line);
+            color: var(--t-ink);
+        }
+        [data-theme="dark"] .btn-outline-secondary { color: var(--t-muted); border-color: var(--t-line); }
+        [data-theme="dark"] .btn-outline-secondary:hover { background: var(--t-surface); color: var(--t-ink); }
+
+        /* Kotak isian di dalam modal/kartu punya aturan yang lebih kuat, jadi di
+           sini perlu !important. */
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select,
+        [data-theme="dark"] .coord-input {
+            background: var(--t-input) !important;
+            color: var(--t-ink) !important;
+            border-color: var(--t-line) !important;
+        }
+
+        /* Panel bernuansa yang warnanya ditulis langsung di atribut style markup.
+           Gaya sebaris hanya bisa ditimpa dengan !important; kalau nanti sempat,
+           lebih baik warna-warna ini dipindah jadi kelas sendiri. */
+        [data-theme="dark"] [style*="background:#f3f4f6"] { background: var(--t-surface) !important; color: var(--t-ink); }
+        [data-theme="dark"] [style*="background:#f0f9ff"] { background: rgba(56, 189, 248, 0.12) !important; border-color: rgba(56, 189, 248, 0.28) !important; }
+        [data-theme="dark"] [style*="background:#ecfeff"] { background: rgba(34, 211, 238, 0.12) !important; border-color: rgba(34, 211, 238, 0.28) !important; }
+        [data-theme="dark"] [style*="background:#fff7ed"] { background: rgba(249, 115, 22, 0.12) !important; border-color: rgba(249, 115, 22, 0.28) !important; }
+        [data-theme="dark"] [style*="background:#fdf2f8"] { background: rgba(236, 72, 153, 0.12) !important; border-color: rgba(236, 72, 153, 0.28) !important; }
+        [data-theme="dark"] [style*="background:#fce7f3"] { background: rgba(236, 72, 153, 0.16) !important; color: #f9a8d4 !important; }
+        [data-theme="dark"] [style*="background:#dcfce7"] { background: rgba(0, 177, 79, 0.16) !important; color: #6ee7a8 !important; }
+        [data-theme="dark"] [style*="background:#fef3c7"] { background: rgba(245, 158, 11, 0.16) !important; color: #fbbf24 !important; }
+        [data-theme="dark"] [style*="background:#f8f9fa"] { background: var(--t-surface) !important; }
+
+        /* Gerbang API key dan kartu berlatar putih yang dipatok di markup. */
+        [data-theme="dark"] .modal-body,
+        [data-theme="dark"] .modal-header,
+        [data-theme="dark"] .modal-footer { border-color: var(--t-line); }
+        [data-theme="dark"] .card,
+        [data-theme="dark"] .list-group-item,
+        [data-theme="dark"] .accordion-item,
+        [data-theme="dark"] .accordion-button {
+            background: var(--t-card);
+            border-color: var(--t-line);
+            color: var(--t-ink);
+        }
+        [data-theme="dark"] .accordion-button:not(.collapsed) { background: var(--t-surface); }
+        [data-theme="dark"] .form-check-input { background-color: var(--t-surface); border-color: var(--t-line); }
+        [data-theme="dark"] .form-label { color: var(--t-ink); }
+        [data-theme="dark"] .small,
+        [data-theme="dark"] small { color: inherit; }
     </style>
 </head>
 
@@ -1365,36 +1541,54 @@
         <div class="tester-progress-fill" id="testerProgressFill"></div>
     </div>
 
-    <div class="container-fluid py-4">
-        <!-- Header -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="d-flex align-items-center gap-3">
-                    <a href="{{ route('pageHome') }}" class="btn btn-light rounded-circle shadow-sm" style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;">
-                        <i class="bi bi-arrow-left"></i>
-                    </a>
-                    <div class="flex-grow-1">
-                        <h4 class="mb-0 fw-bold">AWS Location Service API Tester</h4>
-                        <small class="text-muted">Debug & test AWS Location Service APIs — Routes, Places, Maps, Geofencing & Tracking (Grab)</small>
-                    </div>
-                    <button class="btn rounded-pill px-3" type="button" id="btnChangeApiKey" onclick="showApiKeyGate(document.getElementById('awsApiKey').value)" style="background:#00B14F;color:#fff;font-weight:600;border:none;">
-                        <i class="bi bi-key-fill me-1"></i> API Key
-                        <span class="badge bg-light text-dark ms-1" id="apiKeyStatusBadge" style="font-size:0.6rem;font-weight:600;">●</span>
-                    </button>
-                    <button class="btn btn-outline-success rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#refModal">
-                        <i class="bi bi-book me-1"></i> API Reference
-                    </button>
+    <x-page-head :title="__('tester.title')"
+                 :subtitle="__('tester.subtitle')"
+                 :back="route('pageHome')"
+                 :back-label="__('tester.back_to_map')">
+        <x-slot:tools>
+            {{-- Bahasa: baru EN dan ID, menyusul begitu teks halaman ini selesai
+                 dipindah ke lang/{locale}/tester.php. --}}
+            <div class="lang-wheel" id="langWheel" role="listbox" aria-label="{{ __('tester.language') }}">
+                <div class="lang-track" id="langTrack">
+                    @foreach(['en' => 'English', 'id' => 'Indonesia'] as $code => $label)
+                    <a href="{{ route('pageRouteTester') }}?lang={{ $code }}"
+                       class="lang-item {{ app()->getLocale() === $code ? 'active' : '' }}"
+                       data-lang="{{ $code }}"
+                       role="option"
+                       aria-selected="{{ app()->getLocale() === $code ? 'true' : 'false' }}"
+                       data-tip="{{ $label }}">{{ strtoupper($code) }}</a>
+                    @endforeach
                 </div>
             </div>
-        </div>
 
+            {{-- Tema: terang / gelap / ikut sistem --}}
+            <div class="theme-switch" id="themeToggle">
+                <button type="button" data-theme-set="light" data-tip="{{ __('tester.theme_light') }}" aria-label="{{ __('tester.theme_light') }}"><i class="bi bi-sun"></i></button>
+                <button type="button" data-theme-set="dark" data-tip="{{ __('tester.theme_dark') }}" aria-label="{{ __('tester.theme_dark') }}"><i class="bi bi-moon"></i></button>
+                <button type="button" data-theme-set="system" data-tip="{{ __('tester.theme_system') }}" aria-label="{{ __('tester.theme_system') }}"><i class="bi bi-circle-half"></i></button>
+            </div>
+        </x-slot:tools>
+
+        <button class="head-btn is-solid is-icon" type="button" id="btnChangeApiKey"
+                data-tip="{{ __('tester.api_key') }}" aria-label="{{ __('tester.api_key') }}"
+                onclick="showApiKeyGate(document.getElementById('awsApiKey').value)">
+            <i class="bi bi-key-fill"></i>
+            <span class="head-btn-dot" id="apiKeyStatusBadge"></span>
+        </button>
+        <button class="head-btn is-icon" type="button" data-tip="{{ __('tester.api_reference') }}" aria-label="{{ __('tester.api_reference') }}"
+                data-bs-toggle="modal" data-bs-target="#refModal">
+            <i class="bi bi-book"></i>
+        </button>
+    </x-page-head>
+
+    <div class="container-fluid py-4">
         <nav class="tester-rail" id="testerRail">
-            <button type="button" data-rail="route" class="active" data-tip="Calculate Route" onclick="railGo('route')"><i class="bi bi-signpost-split"></i></button>
-            <button type="button" data-rail="matrix" data-tip="Route Matrix" onclick="railGo('matrix')"><i class="bi bi-grid-3x3"></i></button>
-            <button type="button" data-rail="location" data-tip="Places" onclick="railGo('location')"><i class="bi bi-geo-alt"></i></button>
-            <button type="button" data-rail="maps" data-tip="Maps" onclick="railGo('maps')"><i class="bi bi-map"></i></button>
+            <button type="button" data-rail="route" class="active" data-tip="{{ __('tester.rail_route') }}" onclick="railGo('route')"><i class="bi bi-signpost-split"></i></button>
+            <button type="button" data-rail="matrix" data-tip="{{ __('tester.rail_matrix') }}" onclick="railGo('matrix')"><i class="bi bi-grid-3x3"></i></button>
+            <button type="button" data-rail="location" data-tip="{{ __('tester.rail_places') }}" onclick="railGo('location')"><i class="bi bi-geo-alt"></i></button>
+            <button type="button" data-rail="maps" data-tip="{{ __('tester.rail_maps') }}" onclick="railGo('maps')"><i class="bi bi-map"></i></button>
             <div class="rail-sep"></div>
-            <button type="button" data-tip="Sembunyikan panel" onclick="document.body.classList.toggle('panel-hidden')"><i class="bi bi-layout-sidebar-inset"></i></button>
+            <button type="button" data-tip="{{ __('tester.rail_hide') }}" onclick="document.body.classList.toggle('panel-hidden')"><i class="bi bi-layout-sidebar-inset"></i></button>
         </nav>
 
         <div class="tester-dock" id="testerDock">
@@ -1450,9 +1644,7 @@
                             <div>
                                 <div class="fw-bold small text-primary">calculate/route</div>
                                 <div style="font-size:0.78rem;color:#475569;">
-                                    Single route A&rarr;B with optional waypoints.
-                                    Returns <b>full geometry (LineString)</b>, distance, duration, dan leg details.
-                                    Cocok untuk <b>menggambar rute di peta</b>.
+                                    {!! __('tester.mode_route_desc') !!}
                                 </div>
                             </div>
                         </div>
@@ -1463,9 +1655,7 @@
                             <div>
                                 <div class="fw-bold small text-warning">calculate/route-matrix</div>
                                 <div style="font-size:0.78rem;color:#475569;">
-                                    N origins &times; M destinations matrix.
-                                    Returns <b>distance + duration</b> per pair saja (tanpa geometry).
-                                    Cocok untuk <b>optimasi urutan, cari terdekat, batch comparison</b>.
+                                    {!! __('tester.mode_matrix_desc') !!}
                                 </div>
                             </div>
                         </div>
@@ -1488,7 +1678,7 @@
                             <div>
                                 <div class="fw-bold small" style="color:#0891b2;">Maps API</div>
                                 <div style="font-size:0.78rem;color:#475569;">
-                                    Inspect map resources: <b>style descriptor, tiles, glyphs, sprites</b>.
+                                    {!! __('tester.mode_maps_desc') !!}
                                     Test Maps rendering endpoints langsung.
                                 </div>
                             </div>
@@ -1530,9 +1720,9 @@
                         <!-- Departure -->
                         <div class="mb-3" id="cardDeparture">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label class="form-label small fw-semibold mb-0"><i class="bi bi-geo-alt-fill text-success me-1"></i> Departure Position</label>
+                                <label class="form-label small fw-semibold mb-0"><i class="bi bi-geo-alt-fill text-success me-1"></i> {{ __('tester.departure_position') }}</label>
                                 <button type="button" class="btn btn-sm btn-outline-success rounded-pill py-0 px-2" onclick="setPickFromMapTarget('dep')" title="Klik peta untuk set koordinat">
-                                    <i class="bi bi-crosshair me-1"></i> Pick from map
+                                    <i class="bi bi-crosshair me-1"></i> {{ __('tester.pick_from_map') }}
                                 </button>
                             </div>
                             <div class="row g-2">
@@ -1550,20 +1740,20 @@
                         <!-- Waypoints (route only) -->
                         <div class="mb-3" id="waypointsCard">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label class="form-label small fw-semibold mb-0"><i class="bi bi-three-dots-vertical text-info me-1"></i> Waypoints <span class="text-muted fw-normal">(Route only)</span></label>
+                                <label class="form-label small fw-semibold mb-0"><i class="bi bi-three-dots-vertical text-info me-1"></i> {{ __('tester.waypoints') }} <span class="text-muted fw-normal">{{ __('tester.waypoints_route_only') }}</span></label>
                                 <div class="d-flex gap-1">
                                     <button class="btn btn-sm btn-outline-info rounded-pill py-0 px-2" onclick="setPickFromMapTarget('waypoint')" title="Klik peta untuk tambah waypoint">
-                                        <i class="bi bi-crosshair me-1"></i> From map
+                                        <i class="bi bi-crosshair me-1"></i> {{ __('tester.from_map') }}
                                     </button>
                                     <button class="btn btn-sm btn-outline-success rounded-pill py-0 px-2" onclick="addWaypoint()">
-                                        <i class="bi bi-plus-lg"></i> Add
+                                        <i class="bi bi-plus-lg"></i> {{ __('tester.add') }}
                                     </button>
                                 </div>
                             </div>
                             <div id="waypointsContainer">
                                 <div class="text-center text-muted small py-2" id="waypointEmpty">
                                     <i class="bi bi-three-dots d-block mb-1" style="color:#ddd;font-size:1rem;"></i>
-                                    No waypoints (optional)
+                                    {{ __('tester.no_waypoints') }}
                                 </div>
                             </div>
                         </div>
@@ -1571,9 +1761,9 @@
                         <!-- Destination (route) -->
                         <div class="mb-3" id="cardDestination">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label class="form-label small fw-semibold mb-0"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Destination Position</label>
+                                <label class="form-label small fw-semibold mb-0"><i class="bi bi-geo-alt-fill text-danger me-1"></i> {{ __('tester.destination_position') }}</label>
                                 <button type="button" class="btn btn-sm btn-outline-danger rounded-pill py-0 px-2" onclick="setPickFromMapTarget('dest')" title="Klik peta untuk set koordinat">
-                                    <i class="bi bi-crosshair me-1"></i> Pick from map
+                                    <i class="bi bi-crosshair me-1"></i> {{ __('tester.pick_from_map') }}
                                 </button>
                             </div>
                             <div class="row g-2">
@@ -1594,10 +1784,10 @@
                                 <label class="form-label small fw-semibold mb-0"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Destinations <span class="badge bg-danger rounded-pill ms-1" id="matrixDestCount">1</span></label>
                                 <div class="d-flex gap-1">
                                     <button class="btn btn-sm btn-outline-danger rounded-pill py-0 px-2" onclick="setPickFromMapTarget('matrixDest')" title="Klik peta untuk tambah destination">
-                                        <i class="bi bi-crosshair me-1"></i> From map
+                                        <i class="bi bi-crosshair me-1"></i> {{ __('tester.from_map') }}
                                     </button>
                                     <button class="btn btn-sm btn-outline-danger rounded-pill py-0 px-2" onclick="addMatrixDest()">
-                                        <i class="bi bi-plus-lg"></i> Add
+                                        <i class="bi bi-plus-lg"></i> {{ __('tester.add') }}
                                     </button>
                                 </div>
                             </div>
@@ -1626,35 +1816,35 @@
 
                     <small class="text-muted dock-hint mt-2" id="mapHintRoute" style="display:block;">
                         <i class="bi bi-info-circle me-1"></i>
-                        Klik tombol <b>Pick from map</b> lalu klik peta untuk set koordinat.
+                        {!! __('tester.hint_route') !!}
                     </small>
                     <small class="text-muted dock-hint mt-2" id="mapHintMatrix" style="display:none;">
                         <i class="bi bi-info-circle me-1"></i>
-                        Klik tombol <b>Pick from map</b> / <b>Add from map</b> lalu klik peta untuk set koordinat.
+                        {!! __('tester.hint_matrix') !!}
                     </small>
                     <small class="text-muted dock-hint mt-2" id="mapHintLocation" style="display:none;">
                         <i class="bi bi-info-circle me-1"></i>
-                        Click map to fill reverse geocode coordinates. Search results appear as markers.
+                        {{ __('tester.hint_location') }}
                     </small>
                     <small class="text-muted dock-hint mt-2" id="mapHintMaps" style="display:none;">
                         <i class="bi bi-info-circle me-1"></i>
-                        Click "Fill from map center" to get tile coordinates from current view.
+                        {{ __('tester.hint_maps') }}
                     </small>
                     <small class="text-muted dock-hint mt-2" id="mapHintGeofence" style="display:none;">
                         <i class="bi bi-info-circle me-1"></i>
-                        Click map to set geofence center / evaluation position. Geofence boundaries shown as polygons.
+                        {{ __('tester.hint_geofence') }}
                     </small>
                     <small class="text-muted dock-hint mt-2" id="mapHintTracking" style="display:none;">
                         <i class="bi bi-info-circle me-1"></i>
-                        Click map to set device position. Device markers and history trails shown on map.
+                        {{ __('tester.hint_tracking') }}
                     </small>
                     <div class="dock-legend" id="mapLegend">
-                        <span><i class="bi bi-circle-fill text-success me-1" style="font-size:0.5rem;"></i> Departure</span>
-                        <span><i class="bi bi-circle-fill text-danger me-1" style="font-size:0.5rem;"></i> Destination</span>
-                        <span><i class="bi bi-dash-lg text-primary me-1"></i> Route</span>
-                        <span style="color:#6d28d9;"><i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i> Location result</span>
-                        <span style="color:#ea580c;" class="d-none"><i class="bi bi-square-fill me-1" style="font-size:0.5rem;"></i> Geofence</span>
-                        <span style="color:#db2777;" class="d-none"><i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i> Tracking</span>
+                        <span><i class="bi bi-circle-fill text-success me-1" style="font-size:0.5rem;"></i> {{ __('tester.legend_departure') }}</span>
+                        <span><i class="bi bi-circle-fill text-danger me-1" style="font-size:0.5rem;"></i> {{ __('tester.legend_destination') }}</span>
+                        <span><i class="bi bi-dash-lg text-primary me-1"></i> {{ __('tester.legend_route') }}</span>
+                        <span style="color:#6d28d9;"><i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i> {{ __('tester.legend_result') }}</span>
+                        <span style="color:#ea580c;" class="d-none"><i class="bi bi-square-fill me-1" style="font-size:0.5rem;"></i> {{ __('tester.legend_geofence') }}</span>
+                        <span style="color:#db2777;" class="d-none"><i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i> {{ __('tester.legend_tracking') }}</span>
                     </div>
                 </div>
 
@@ -1944,7 +2134,7 @@
                             <span class="badge bg-secondary ms-1" id="locResultCount">0</span>
                         </div>
                         <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="clearLocResults()">
-                            <i class="bi bi-x-lg me-1"></i> Clear
+                            <i class="bi bi-x-lg me-1"></i> {{ __('tester.clear') }}
                         </button>
                     </div>
                     <div id="locResultsContainer" style="max-height:250px;overflow-y:auto;"></div>
@@ -2146,7 +2336,7 @@
                                 <input type="number" class="form-control coord-input" id="mapsY" value="2050" min="0">
                             </div>
                         </div>
-                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i> Returns PBF vector tile. Response info will be shown.</small>
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i> {{ __('tester.hint_tile') }}</small>
                         <button class="btn btn-sm btn-outline-info rounded-pill mt-2" onclick="fillTileFromMapCenter()">
                             <i class="bi bi-crosshair me-1"></i> Fill from map center
                         </button>
@@ -2160,7 +2350,7 @@
                             <label class="form-label small fw-semibold">Unicode Range</label>
                             <input type="text" class="form-control coord-input" id="mapsGlyphRange" value="0-255" placeholder="e.g. 0-255">
                         </div>
-                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i> Returns PBF glyph data for map label rendering.</small>
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i> {{ __('tester.hint_glyph') }}</small>
                     </div>
                     <div id="mapsPane-sprites" style="display:none;">
                         <div class="mb-2">
@@ -2242,7 +2432,7 @@
                             <button class="btn btn-sm btn-outline-warning rounded-pill" onclick="drawGeofenceOnMap(event)">
                                 <i class="bi bi-pencil me-1"></i> Draw on map
                             </button>
-                            <small class="text-muted d-block mt-1"><i class="bi bi-info-circle me-1"></i> First and last coordinates must be identical (closed ring).</small>
+                            <small class="text-muted d-block mt-1"><i class="bi bi-info-circle me-1"></i> {{ __('tester.hint_ring') }}</small>
                         </div>
                     </div>
                     <div id="geoPane-get" style="display:none;">
@@ -2272,7 +2462,7 @@
                                 <input type="number" step="any" class="form-control coord-input" id="geoEvalLat" value="-6.2088">
                             </div>
                         </div>
-                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i> Click map to set evaluation position.</small>
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i> {{ __('tester.hint_eval_click') }}</small>
                     </div>
                 </div>
 
@@ -2280,10 +2470,10 @@
                 <div class="card-glass p-4 mb-4" id="cardGeoResults" style="display:none;">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="section-title mb-0">
-                            <i class="bi bi-list-ul me-1"></i> Geofences
+                            <i class="bi bi-list-ul me-1"></i> {{ __('tester.geofences') }}
                             <span class="badge bg-secondary ms-1" id="geoResultCount">0</span>
                         </div>
-                        <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="clearGeoResults()"><i class="bi bi-x-lg me-1"></i> Clear</button>
+                        <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="clearGeoResults()"><i class="bi bi-x-lg me-1"></i> {{ __('tester.clear') }}</button>
                     </div>
                     <div id="geoResultsContainer" style="max-height:250px;overflow-y:auto;"></div>
                 </div>
@@ -2328,7 +2518,7 @@
                                 <input type="number" step="any" class="form-control coord-input" id="trkUpdateLat" value="-6.2088">
                             </div>
                         </div>
-                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i> Click map to set device position. Timestamp auto-generated.</small>
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i> {{ __('tester.hint_device_click') }}</small>
                     </div>
                     <div id="trkPane-get" style="display:none;">
                         <div class="mb-2">
@@ -2364,17 +2554,17 @@
                 <div class="card-glass p-4 mb-4" id="cardTrkResults" style="display:none;">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <div class="section-title mb-0">
-                            <i class="bi bi-list-ul me-1"></i> Devices
+                            <i class="bi bi-list-ul me-1"></i> {{ __('tester.devices') }}
                             <span class="badge bg-secondary ms-1" id="trkResultCount">0</span>
                         </div>
-                        <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="clearTrkResults()"><i class="bi bi-x-lg me-1"></i> Clear</button>
+                        <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="clearTrkResults()"><i class="bi bi-x-lg me-1"></i> {{ __('tester.clear') }}</button>
                     </div>
                     <div id="trkResultsContainer" style="max-height:250px;overflow-y:auto;"></div>
                 </div>
 
                 <!-- Send Button -->
                 <button class="btn btn-grab w-100 py-3 mb-4" onclick="sendRequest()" id="btnSend">
-                    <i class="bi bi-send-fill me-2"></i> Send <span id="btnModeLabel">Route</span> Request
+                    <i class="bi bi-send-fill me-2"></i> {!! str_replace(':mode', '<span id="btnModeLabel">Route</span>', e(__('tester.send_request'))) !!}
                 </button>
             </div>
 
@@ -2398,14 +2588,14 @@
                 <div class="card-glass p-4 mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="section-title mb-0">
-                            <i class="bi bi-arrow-up-circle me-1"></i> Request
+                            <i class="bi bi-arrow-up-circle me-1"></i> {{ __('tester.request') }}
                         </div>
                         <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="copyToClipboard('requestLog', event)">
-                            <i class="bi bi-clipboard me-1"></i> Copy
+                            <i class="bi bi-clipboard me-1"></i> {{ __('tester.copy') }}
                         </button>
                     </div>
                     <div class="log-box" id="requestLog">
-                        <span class="log-key">// Click "Send" to see the request payload here</span>
+                        <span class="log-key">{{ __('tester.request_placeholder') }}</span>
                     </div>
                 </div>
 
@@ -2413,14 +2603,14 @@
                 <div class="card-glass p-4 mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="section-title mb-0">
-                            <i class="bi bi-arrow-down-circle me-1"></i> Response
+                            <i class="bi bi-arrow-down-circle me-1"></i> {{ __('tester.response') }}
                         </div>
                         <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="copyToClipboard('responseLog', event)">
-                            <i class="bi bi-clipboard me-1"></i> Copy
+                            <i class="bi bi-clipboard me-1"></i> {{ __('tester.copy') }}
                         </button>
                     </div>
                     <div class="log-box" id="responseLog">
-                        <span class="log-key">// Response will appear here</span>
+                        <span class="log-key">{{ __('tester.response_placeholder') }}</span>
                     </div>
                 </div>
 
@@ -2428,14 +2618,14 @@
                 <div class="card-glass p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="section-title mb-0">
-                            <i class="bi bi-clock-history me-1"></i> Request History
+                            <i class="bi bi-clock-history me-1"></i> {{ __('tester.request_history') }}
                         </div>
                         <button class="btn btn-sm btn-outline-danger rounded-pill" onclick="clearHistory()">
                             <i class="bi bi-trash3 me-1"></i> Clear
                         </button>
                     </div>
                     <div id="historyContainer">
-                        <div class="text-center text-muted small py-3">No requests yet</div>
+                        <div class="text-center text-muted small py-3">{{ __('tester.no_requests') }}</div>
                     </div>
                 </div>
             </div>
@@ -2450,8 +2640,8 @@
                     <div class="d-flex align-items-center gap-2">
                         <i class="bi bi-shield-lock-fill" style="font-size:1.4rem;"></i>
                         <div>
-                            <h5 class="modal-title mb-0" style="font-weight:700;">API Key Required</h5>
-                            <small style="opacity:0.85;font-size:0.75rem;">Enter your AWS Location Service API key to continue</small>
+                            <h5 class="modal-title mb-0" style="font-weight:700;">{{ __('tester.gate_title') }}</h5>
+                            <small style="opacity:0.85;font-size:0.75rem;">{{ __('tester.gate_subtitle') }}</small>
                         </div>
                     </div>
                 </div>
@@ -2460,14 +2650,13 @@
                         <div class="d-flex align-items-start gap-2">
                             <i class="bi bi-info-circle-fill" style="color:#00B14F;font-size:1rem;margin-top:2px;"></i>
                             <div style="font-size:0.8rem;color:#00713a;line-height:1.5;">
-                                Tester ini butuh <b>AWS API Key</b> untuk render map dan call API.
-                                Key kamu akan disimpan di browser (<code>localStorage</code>) dan tidak dikirim ke server kami.
+                                {{ __('tester.gate_note') }}
                             </div>
                         </div>
                     </div>
 
                     <label class="form-label small fw-semibold">
-                        AWS Location Service API Key <span class="text-danger">*</span>
+                        {{ __('tester.gate_label') }} <span class="text-danger">*</span>
                     </label>
                     <div class="input-group mb-2">
                         <span class="input-group-text" style="background:#f3f4f6;border-radius:10px 0 0 10px;">
@@ -2479,12 +2668,12 @@
                         </button>
                     </div>
                     <div id="gateError" class="text-danger small mb-2" style="display:none;font-size:0.78rem;">
-                        <i class="bi bi-exclamation-triangle-fill me-1"></i> <span id="gateErrorMsg">API Key tidak boleh kosong</span>
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i> <span id="gateErrorMsg">{{ __('tester.gate_empty') }}</span>
                     </div>
 
                     <details class="mt-3">
                         <summary style="cursor:pointer;color:#00B14F;font-weight:600;font-size:0.8rem;">
-                            <i class="bi bi-question-circle me-1"></i> Bagaimana cara dapat API Key?
+                            <i class="bi bi-question-circle me-1"></i> {{ __('tester.gate_how') }}
                         </summary>
                         <div class="mt-2 p-3 rounded-3 small" style="background:#f9fafb;border:1px solid #e5e7eb;color:#4b5563;font-size:0.75rem;line-height:1.6;">
                             <ol class="mb-0 ps-3">
@@ -2500,7 +2689,7 @@
                 </div>
                 <div class="modal-footer" style="border:none;padding:0 24px 24px;">
                     <button type="button" class="btn rounded-pill px-4 w-100 py-2" id="gateContinueBtn" style="background:#00B14F;color:#fff;font-weight:600;">
-                        <i class="bi bi-arrow-right-circle-fill me-1"></i> Continue
+                        <i class="bi bi-arrow-right-circle-fill me-1"></i> {{ __('tester.gate_continue') }}
                     </button>
                 </div>
             </div>
@@ -2559,7 +2748,7 @@
                         <div class="ref-card-title">
                             <i class="bi bi-map-fill text-primary"></i> Maps API
                         </div>
-                        <div class="mb-2 small text-muted">2 map styles available — vector only, no satellite imagery</div>
+                        <div class="mb-2 small text-muted">{{ __('tester.maps_styles_note') }}</div>
                         <div class="ref-endpoint">
                             <span class="ref-method ref-method-get">GET</span>
                             <code>/maps/v0/maps/{mapName}/style-descriptor</code>
@@ -2596,7 +2785,7 @@
                         <div class="ref-card-title">
                             <i class="bi bi-geo-alt-fill" style="color:#00B14F;"></i> Places API <span class="badge bg-success ms-1" style="font-size:0.6rem;">v2</span>
                         </div>
-                        <div class="mb-2 small text-muted">Search, autocomplete, reverse geocode & get place details (Standalone v2)</div>
+                        <div class="mb-2 small text-muted">{!! __('tester.mode_places_desc') !!}</div>
                         <div class="ref-endpoint">
                             <span class="ref-method ref-method-post">POST</span>
                             <code>/v2/suggest</code>
@@ -2729,7 +2918,7 @@
                         <div class="ref-card-title">
                             <i class="bi bi-sign-turn-right-fill text-primary"></i> Routes API
                         </div>
-                        <div class="mb-2 small text-muted">Calculate route & route matrix — no distance limit!</div>
+                        <div class="mb-2 small text-muted">{!! __('tester.mode_routes_desc') !!}</div>
                         <div class="ref-endpoint">
                             <span class="ref-method ref-method-post">POST</span>
                             <code>/routes/v0/calculators/{calc}/calculate/route</code>
@@ -2875,7 +3064,7 @@
                             <i class="bi bi-bounding-box" style="color:#ea580c;"></i> Geofencing API
                             <span class="ref-badge ref-badge-auth ms-auto">IAM/Cognito Required</span>
                         </div>
-                        <div class="mb-2 small text-muted">Manage geofences dan evaluate positions. Provider-independent (AWS-native).</div>
+                        <div class="mb-2 small text-muted">{{ __('tester.mode_geofence_desc') }}</div>
                         <div class="ref-endpoint">
                             <span class="ref-method ref-method-put">PUT</span>
                             <code>/geofencing/v0/collections/{collection}/geofences/{id}</code>
@@ -2904,7 +3093,7 @@
                             <i class="bi bi-broadcast-pin" style="color:#db2777;"></i> Tracking API
                             <span class="ref-badge ref-badge-auth ms-auto">IAM/Cognito Required</span>
                         </div>
-                        <div class="mb-2 small text-muted">Track device positions dan retrieve history. Provider-independent (AWS-native).</div>
+                        <div class="mb-2 small text-muted">{{ __('tester.mode_tracking_desc') }}</div>
                         <div class="ref-endpoint">
                             <span class="ref-method ref-method-post">POST</span>
                             <code>/tracking/v0/trackers/{tracker}/update-positions</code>
@@ -2939,6 +3128,22 @@
         </div>
     </div>
 
+    @php
+        // @json TIDAK boleh menerima array multi-baris — Blade memotongnya di
+        // baris pertama dan hasil kompilasinya jadi PHP yang rusak. Array-nya
+        // dirakit lebih dulu di sini, lalu dilempar sebagai satu variabel.
+        $testerT = [
+            'gate_empty' => __('tester.gate_empty'),
+            'api_key_saved' => __('tester.api_key_saved'),
+            'api_key_missing' => __('tester.api_key_missing'),
+            'no_requests' => __('tester.no_requests'),
+        ];
+    @endphp
+    <script>
+        // Teks yang dirakit di JavaScript diambil dari berkas lang yang sama
+        // dengan yang dipakai Blade, jadi tidak ada dua sumber terjemahan.
+        const testerT = @json($testerT);
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.js"></script>
 
@@ -3294,13 +3499,33 @@
         /* =========================================
            MINI MAP
            ========================================= */
+        // Peta ikut tema: descriptor v2 punya varian Light dan Dark, jadi cukup
+        // menukar parameter color-nya lewat proxy.
+        function mapStyleUrl() {
+            const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+            return '/api/v2/map-style?style=Standard&color=' + (dark ? 'Dark' : 'Light');
+        }
+
+        // Rute terakhir disimpan supaya bisa digambar ulang setelah gaya peta
+        // ditukar — setStyle() membuang semua source dan layer buatan sendiri.
+        let lastRouteCoordinates = null;
+
+        window.applyMapTheme = applyMapTheme;
+        function applyMapTheme() {
+            if (!miniMap) return;
+            miniMap.setStyle(mapStyleUrl());
+            miniMap.once('styledata', () => {
+                if (lastRouteCoordinates) drawRealRouteOnMap(lastRouteCoordinates);
+            });
+        }
+
         function initMiniMap() {
             // Use Laravel proxy v2 endpoint (consistent with /docs/aws-api docs and main app).
             // Proxy handles API key injection server-side — works regardless of user's pasted key.
             // (User's pasted key is used for the Try-It panels below, not for the preview map.)
             miniMap = new maplibregl.Map({
                 container: 'miniMap',
-                style: '/api/v2/map-style?style=Standard&color=Light',
+                style: mapStyleUrl(),
                 center: [106.8456, -6.2088],
                 zoom: 11,
                 attributionControl: false
@@ -3517,6 +3742,7 @@
         }
 
         function clearAllMapLayers() {
+            lastRouteCoordinates = null;
             removeRouteFromMap();
             clearLocationMarkers();
             clearGeofenceLayers();
@@ -3924,6 +4150,7 @@
         }
 
         function drawRealRouteOnMap(coordinates) {
+            lastRouteCoordinates = coordinates;
             removeRouteFromMap();
             miniMap.addSource('routeSource', {
                 type: 'geojson',
@@ -5171,7 +5398,7 @@
         function renderHistory() {
             const container = document.getElementById('historyContainer');
             if (requestHistory.length === 0) {
-                container.innerHTML = '<div class="text-center text-muted small py-3">No requests yet</div>';
+                container.innerHTML = '<div class="text-center text-muted small py-3">{{ __('tester.no_requests') }}</div>';
                 return;
             }
 
@@ -5289,7 +5516,7 @@
             const submit = () => {
                 const val = gateInput.value.trim();
                 if (!val) {
-                    gateError.querySelector('#gateErrorMsg').textContent = 'API Key tidak boleh kosong';
+                    gateError.querySelector('#gateErrorMsg').textContent = testerT.gate_empty;
                     gateError.style.display = 'block';
                     gateInput.focus();
                     return;
@@ -5323,8 +5550,10 @@
             if (!badge) return;
             const apiKeyInput = document.getElementById('awsApiKey');
             const hasKey = apiKeyInput && apiKeyInput.value.trim().length > 0;
-            badge.style.color = hasKey ? '#16a34a' : '#dc2626';
-            badge.title = hasKey ? 'API Key configured' : 'API Key not set';
+            // Titik status sekarang elemen CSS, bukan karakter '●' berwarna.
+            badge.classList.toggle('is-ok', hasKey);
+            const button = badge.closest('.head-btn');
+            if (button) button.dataset.tip = hasKey ? testerT.api_key_saved : testerT.api_key_missing;
         }
 
         /* === Shared API Key storage with /docs/aws-api Inspector ===
@@ -5484,6 +5713,37 @@
             });
         });
     </script>
+    <script>
+        // Sakelar tema. Pilihan disimpan dengan kunci gm-theme, sama dengan
+        // /pricing dan panel admin, lalu gmApplyTheme() dari boot script yang
+        // menerjemahkannya jadi atribut data-theme.
+        (function () {
+            const group = document.getElementById('themeToggle');
+            if (!group || !window.gmApplyTheme) return;
+
+            const current = () => {
+                try { return localStorage.getItem('gm-theme') || 'system'; } catch (e) { return 'system'; }
+            };
+            const paint = () => group.querySelectorAll('[data-theme-set]').forEach(
+                b => b.classList.toggle('active', b.dataset.themeSet === current())
+            );
+
+            group.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-theme-set]');
+                if (!btn) return;
+                try { localStorage.setItem('gm-theme', btn.dataset.themeSet); } catch (err) { /* mode privat */ }
+                window.gmApplyTheme(btn.dataset.themeSet);
+                if (typeof applyMapTheme === 'function') applyMapTheme();
+                paint();
+                btn.classList.add('pop');
+                setTimeout(() => btn.classList.remove('pop'), 450);
+                btn.blur();
+            });
+
+            paint();
+        })();
+    </script>
+
 </body>
 
 </html>

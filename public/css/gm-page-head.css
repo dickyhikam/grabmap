@@ -1,0 +1,393 @@
+/* =========================================================
+   Kepala halaman GrabMaps — komponen bersama
+   Dipakai /pricing dan /tester-api. Warnanya membaca token halaman kalau ada
+   (--card, --line, --ink, ...), dan jatuh ke warna terang kalau tidak.
+   ========================================================= */
+/* Nilai bawaan berdiri sendiri. Halaman yang punya token temanya sendiri
+   memetakan --gm-* itu ke tokennya (lihat pricing-v2.css) — bukan komponen ini
+   yang menebak nama token halaman, karena nama seperti --surface bisa berarti
+   hal berbeda di tiap halaman. */
+:root {
+    --gm-card: #ffffff;
+    --gm-page: #eceeef;
+    --gm-surface: #f2f4f4;
+    --gm-line: #ebeeee;
+    --gm-ink: #141b18;
+    --gm-muted: #8a938f;
+    --gm-green: #00B14F;
+    --gm-radius: 22px;
+    --gm-shadow-pop: 0 12px 40px rgba(20, 27, 24, 0.14);
+    --gm-glass: rgba(255, 255, 255, 0.94);
+    --gm-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Cangkang selebar layar yang melekat di atas. Saat mengatup ia menyalakan
+   latar buram, jadi isi halaman yang lewat di bawahnya tidak terlihat sebagai
+   serpihan putih di sela kiri-kanan kartu. */
+.head-shell {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    padding: 0;
+    background: transparent;
+    transition: padding 0.45s var(--gm-ease), background-color 0.3s ease;
+}
+
+.head-shell.is-stuck {
+    padding: 10px 0;
+    background: color-mix(in srgb, var(--gm-page) 88%, transparent);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+}
+
+@supports not (background: color-mix(in srgb, red 50%, transparent)) {
+    .head-shell.is-stuck { background: var(--gm-page); }
+}
+
+/* Kartu kepala: melebar penuh di puncak, menyusut jadi kartu saat digulir. */
+.page-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    padding: 16px clamp(18px, 4vw, 44px);
+    background: var(--gm-card);
+    border: 1px solid transparent;
+    border-bottom-color: var(--gm-line);
+    border-radius: 0;
+    box-shadow: none;
+    transform-origin: top center;
+    will-change: max-width, padding, border-radius, box-shadow;
+    animation: headDrop 0.55s var(--gm-ease) both;
+    transition:
+        max-width 0.45s var(--gm-ease),
+        width 0.45s var(--gm-ease),
+        margin 0.45s var(--gm-ease),
+        padding 0.45s var(--gm-ease),
+        border-radius 0.45s var(--gm-ease),
+        box-shadow 0.45s ease,
+        background-color 0.3s ease,
+        border-color 0.3s ease;
+}
+
+@keyframes headDrop {
+    from { opacity: 0; transform: translateY(-14px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.page-head.is-stuck {
+    /* Selalu sisakan sela di kiri-kanan: dengan max-width saja, di layar yang
+       lebih sempit dari 1100px kartunya menempel ke tepi dan sudutnya terpotong. */
+    max-width: 1100px;
+    width: calc(100% - 28px);
+    margin: 0 auto;
+    padding: 11px 16px;
+    border-color: var(--gm-line);
+    border-radius: var(--gm-radius);
+    box-shadow: var(--gm-shadow-pop);
+    background: var(--gm-glass);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+}
+
+.head-back {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gm-surface);
+    border: 1px solid var(--gm-line);
+    color: var(--gm-ink);
+    text-decoration: none;
+    transition: background 0.18s, transform 0.18s, width 0.45s var(--gm-ease), height 0.45s var(--gm-ease);
+}
+.head-back:hover { background: var(--gm-card); color: var(--gm-ink); transform: translateX(-2px); }
+.page-head.is-stuck .head-back { width: 34px; height: 34px; }
+
+.head-logo {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    padding-right: 14px;
+    border-right: 1px solid var(--gm-line);
+    transition: padding-right 0.45s var(--gm-ease);
+}
+.head-logo img {
+    height: 26px;
+    width: auto;
+    display: block;
+    transition: height 0.45s var(--gm-ease);
+}
+.page-head.is-stuck .head-logo { padding-right: 12px; }
+.page-head.is-stuck .head-logo img { height: 22px; }
+
+.head-text { flex: 1; min-width: 0; }
+.head-text h1 {
+    margin: 0;
+    font-size: 1.28rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--gm-ink);
+    transition: font-size 0.45s var(--gm-ease);
+}
+/* Subjudul mengatup: tinggi dan buramnya beranimasi, bukan hilang mendadak. */
+.head-text p {
+    margin: 2px 0 0;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--gm-muted);
+    overflow: hidden;
+    max-height: 3em;
+    opacity: 1;
+    transition: max-height 0.4s var(--gm-ease), opacity 0.25s ease, margin 0.4s var(--gm-ease);
+}
+.page-head.is-stuck .head-text h1 { font-size: 1.08rem; }
+.page-head.is-stuck .head-text p { max-height: 0; opacity: 0; margin-top: 0; }
+
+/* Tombol aksi di kanan kepala. */
+.head-btn {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 38px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid var(--gm-green);
+    background: transparent;
+    color: var(--gm-green);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s;
+}
+.head-btn:hover { background: var(--gm-green); color: #fff; }
+
+/* Varian ringkas: hanya ikon, keterangannya lewat tooltip. */
+.head-btn.is-icon {
+    position: relative;
+    width: 38px;
+    padding: 0;
+    justify-content: center;
+    font-size: 0.95rem;
+}
+.head-btn.is-icon .head-btn-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #d64545;
+    border: 2px solid var(--gm-card);
+    transition: background 0.2s;
+}
+.head-btn.is-icon .head-btn-dot.is-ok { background: #16a34a; }
+.head-btn.is-solid.is-icon .head-btn-dot { border-color: var(--gm-green); }
+.head-btn.is-solid { background: var(--gm-green); color: #fff; }
+.head-btn.is-solid:hover { filter: brightness(1.06); }
+
+@media (max-width: 720px) {
+    .page-head { flex-wrap: wrap; }
+    .head-text { order: 2; flex-basis: 100%; }
+    .head-btn { order: 3; }
+    .head-text h1 { font-size: 1.1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .head-shell,
+    .page-head,
+    .page-head .head-logo img,
+    .page-head .head-text h1,
+    .page-head .head-text p,
+    .page-head .head-back { animation: none; transition: none; }
+}
+
+
+
+
+/* Bahasa + tema di kepala halaman. Kebalikan dari ringkasan angka: terlihat
+   saat di puncak, mengatup begitu kepala menyusut supaya ruangnya bergantian. */
+.head-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+    max-width: 620px;
+    opacity: 1;
+    overflow: hidden;
+    transition:
+        max-width 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.25s ease;
+}
+.page-head.is-stuck .head-tools {
+    max-width: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+@media (max-width: 1180px) {
+    .head-tools { max-width: 320px; }
+}
+
+@media (max-width: 820px) {
+    .head-tools { display: none; }
+}
+
+/* Roda bahasa: hanya kode di tengah yang tegas, tetangganya memudar ke tepi.
+   Delapan locale muat di ruang selebar tiga kode. */
+.lang-wheel {
+    position: relative;
+    width: 132px;
+    flex: none;
+    border-radius: 999px;
+    background: var(--gm-surface);
+    border: 1px solid var(--gm-line);
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 26%, #000 74%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 26%, #000 74%, transparent 100%);
+}
+
+/* Sudah mentok kiri: tepi kiri tidak dipudarkan, jadi pilnya terlihat utuh. */
+.lang-wheel.at-start {
+    -webkit-mask-image: linear-gradient(90deg, #000 0, #000 74%, transparent 100%);
+    mask-image: linear-gradient(90deg, #000 0, #000 74%, transparent 100%);
+}
+.lang-wheel.at-end {
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 26%, #000 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 26%, #000 100%);
+}
+.lang-wheel.at-start.at-end {
+    -webkit-mask-image: none;
+    mask-image: none;
+}
+
+.lang-track {
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding: 5px 44px;
+    scroll-behavior: smooth;
+    overscroll-behavior-x: contain;
+}
+.lang-track::-webkit-scrollbar { display: none; }
+
+.lang-item {
+    flex: 0 0 44px;
+    scroll-snap-align: center;
+    text-align: center;
+    text-decoration: none;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--gm-muted);
+    transition: color 0.2s, transform 0.2s, opacity 0.2s;
+    opacity: 0.75;
+}
+
+/* Kode yang sedang berada di tengah — penanda posisi gulir. */
+.lang-item.is-center {
+    color: var(--gm-ink);
+    font-size: 0.8rem;
+    transform: scale(1.06);
+    opacity: 1;
+}
+
+/* Bahasa yang benar-benar sedang dipakai halaman. */
+.lang-item.active { color: var(--gm-green); }
+.lang-item.active.is-center { color: var(--gm-green); }
+
+/* Bisa digeser: kursor tangan, dan teks tidak ikut terseleksi saat menyeret. */
+.lang-track { cursor: grab; touch-action: pan-y; user-select: none; }
+/* Saat halaman bahasa baru sedang dimuat. */
+.lang-wheel.is-loading { opacity: 0.55; pointer-events: none; }
+.lang-track.is-dragging { cursor: grabbing; scroll-behavior: auto; }
+.lang-item { -webkit-user-drag: none; }
+
+/* Cincin fokus yang rapi — bawaan browser tampil sebagai kotak biru mencolok. */
+.lang-item:focus { outline: none; }
+.lang-item:focus-visible {
+    outline: 2px solid var(--gm-green);
+    outline-offset: -2px;
+    border-radius: 999px;
+}
+
+/* ---------- Sakelar tema tiga keadaan ---------- */
+.theme-switch {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 999px;
+    background: var(--gm-surface);
+    border: 1px solid var(--gm-line);
+}
+.theme-switch button {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--gm-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, transform 0.2s;
+}
+.theme-switch button:hover { color: var(--gm-ink); }
+.theme-switch button.active {
+    background: var(--gm-card);
+    color: var(--gm-green);
+    box-shadow: 0 1px 2px rgba(20, 27, 24, 0.12);
+}
+.theme-switch button.pop { transform: scale(1.18); }
+
+/* ---------- Tooltip ----------
+   Tooltip bawaan peramban muncul sekitar satu detik dan tampilannya tidak bisa
+   diatur. Ini penggantinya: satu elemen yang dipakai bersama, muncul 60ms
+   setelah kursor mampir, dan tidak terpotong pembungkus ber-overflow hidden
+   karena ditempel langsung ke <body>. */
+.gm-tip {
+    position: fixed;
+    z-index: 4000;
+    max-width: 260px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: var(--gm-ink);
+    color: var(--gm-card);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+.gm-tip.is-on { opacity: 1; transform: translateY(0); }
+.gm-tip::after {
+    content: '';
+    position: absolute;
+    left: var(--tip-arrow, 50%);
+    margin-left: -5px;
+    border: 5px solid transparent;
+}
+.gm-tip.is-below::after { top: -10px; border-bottom-color: var(--gm-ink); }
+.gm-tip:not(.is-below)::after { bottom: -10px; border-top-color: var(--gm-ink); }
+
+@media (prefers-reduced-motion: reduce) {
+    .gm-tip { transition: none; }
+}

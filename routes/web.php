@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Http\Request;
+
 use App\Http\Controllers\Admin\ApiKeyController;
 use App\Http\Controllers\UsageReportController;
 use App\Http\Controllers\Admin\AwsAccountController;
@@ -112,7 +114,19 @@ Route::delete('/pricing/admin/items/{item}', [PricingController::class, 'destroy
 Route::get('/', function () {
     return view('home.index');
 })->name('pageHome');
-Route::get('/tester-api', function () {
+Route::get('/tester-api', function (Request $request) {
+    // Bahasa halaman tester: sementara baru EN dan ID, sisanya menyusul begitu
+    // teksnya dipindah ke lang/{locale}/tester.php.
+    $supported = ['en', 'id'];
+    $lang = $request->get('lang');
+
+    if (in_array($lang, $supported, true)) {
+        app()->setLocale($lang);
+        session(['tester_lang' => $lang]);
+    } elseif (in_array(session('tester_lang'), $supported, true)) {
+        app()->setLocale(session('tester_lang'));
+    }
+
     return view('testing.index');
 })->name('pageRouteTester');
 

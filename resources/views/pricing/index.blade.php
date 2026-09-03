@@ -37,6 +37,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/gm-page-head.css?v={{ filemtime(public_path('css/gm-page-head.css')) }}">
     <link rel="stylesheet" href="/css/pricing.css">
     <link rel="stylesheet" href="/css/pricing-v2.css?v={{ filemtime(public_path('css/pricing-v2.css')) }}">
 
@@ -45,29 +46,13 @@
 <body>
     <div class="price-progress"><div class="price-progress-fill" id="priceProgressFill"></div></div>
 
-    {{-- Kepala halaman: satu kartu mengambang berisi tombol kembali, judul, dan
-         aksi — menggantikan navbar berlogo plus hero hijau yang mengulang judul
-         yang sama.
-
-         Yang melekat di atas adalah cangkangnya, bukan kartunya. Tanpa cangkang
-         selebar layar, isi halaman yang lewat di sela kiri-kanan kartu terlihat
-         sebagai serpihan putih di sekelilingnya saat digulir. --}}
-    <div class="head-shell" id="headShell">
-    <header class="page-head" id="pageHead">
-        <a href="{{ route('pageHome') }}" class="head-back" aria-label="{{ __('pricing.back_to_map') }}">
-            <i class="bi bi-arrow-left"></i>
-        </a>
-        <a href="{{ route('pageHome') }}" class="head-logo" aria-label="GrabMaps">
-            <img src="{{ asset('logo.png') }}" alt="GrabMaps">
-        </a>
-        <div class="head-text">
-            <h1>{{ __('pricing.title') }}</h1>
-            <p>{{ __('pricing.subtitle') }}</p>
-        </div>
-        {{-- Bahasa dan tema: pengaturan yang jarang disentuh, jadi ditaruh di
-             kepala halaman dan mengatup saat digulir supaya ruangnya bisa
-             dipakai ringkasan angka. --}}
-        <div class="head-tools">
+    <x-page-head :title="__('pricing.title')"
+                 :subtitle="__('pricing.subtitle')"
+                 :back="route('pageHome')"
+                 :back-label="__('pricing.back_to_map')">
+        {{-- Bahasa dan tema: pengaturan yang jarang disentuh, jadi mengatup saat
+             digulir supaya ruangnya bisa dipakai ringkasan angka. --}}
+        <x-slot:tools>
             {{-- Bahasa: roda pilih. Hanya kode di tengah yang menonjol, tetangganya
                  meredup di tepi — delapan locale muat di ruang selebar tiga. Bisa
                  digulir (roda tetikus atau geser) dan diklik. --}}
@@ -79,39 +64,30 @@
                        data-lang="{{ $code }}"
                        role="option"
                        aria-selected="{{ app()->getLocale() === $code ? 'true' : 'false' }}"
-                       title="{{ $info['label'] }} ({{ $info['country'] }})">{{ strtoupper($code) }}</a>
+                       data-tip="{{ $info['label'] }} ({{ $info['country'] }})">{{ strtoupper($code) }}</a>
                     @endforeach
                 </div>
             </div>
 
             {{-- Tema: terang / gelap / ikut sistem --}}
             <div class="theme-switch" id="themeToggle">
-            <button type="button" data-theme-set="light" title="{{ __('pricing.theme_light') }}" aria-label="{{ __('pricing.theme_light') }}"><i class="bi bi-sun"></i></button>
-            <button type="button" data-theme-set="dark" title="{{ __('pricing.theme_dark') }}" aria-label="{{ __('pricing.theme_dark') }}"><i class="bi bi-moon"></i></button>
-            <button type="button" data-theme-set="system" title="{{ __('pricing.theme_system') }}" aria-label="{{ __('pricing.theme_system') }}"><i class="bi bi-circle-half"></i></button>
+                <button type="button" data-theme-set="light" data-tip="{{ __('pricing.theme_light') }}" aria-label="{{ __('pricing.theme_light') }}"><i class="bi bi-sun"></i></button>
+                <button type="button" data-theme-set="dark" data-tip="{{ __('pricing.theme_dark') }}" aria-label="{{ __('pricing.theme_dark') }}"><i class="bi bi-moon"></i></button>
+                <button type="button" data-theme-set="system" data-tip="{{ __('pricing.theme_system') }}" aria-label="{{ __('pricing.theme_system') }}"><i class="bi bi-circle-half"></i></button>
             </div>
-        </div>
+        </x-slot:tools>
 
-        {{-- Ringkasan ringkas yang muncul saat kepala mengatup: volume yang sudah
-             diketik beserta hasilnya, supaya angka kalkulator tetap terbaca
-             walau kartunya sudah tergulir jauh ke atas. --}}
-        <div class="head-stats" id="headStats" aria-live="polite">
-            <button type="button" class="head-stat head-volume" id="headVolume" title="{{ __('pricing.cost_calculator') }}">
-                <i class="bi bi-hash"></i><span>-</span>
+        {{-- Volume yang sudah diketik beserta hasilnya, muncul saat kepala
+             mengatup supaya angka kalkulator tetap terbaca sambil menggulir. --}}
+        <x-slot:stats>
+            <button type="button" class="head-stat head-volume" id="headVolume" data-tip="{{ __('pricing.cost_calculator') }}">
+            <i class="bi bi-hash"></i><span>-</span>
             </button>
             <span class="head-stat"><i class="stat-dot als"></i>ALS <b id="headAls">-</b></span>
             <span class="head-stat"><i class="stat-dot google"></i>Google <b id="headGoogle">-</b></span>
             <span class="head-stat head-save" id="headSave">-</span>
-        </div>
-
-        <a href="{{ route('pricing.admin') }}" class="head-btn" hidden>
-            <i class="bi bi-gear"></i> {{ __('pricing.admin') }}
-        </a>
-        <a href="{{ route('pageHome') }}" class="head-btn">
-            <i class="bi bi-map"></i> {{ __('pricing.back_to_map') }}
-        </a>
-    </header>
-    </div>
+        </x-slot:stats>
+    </x-page-head>
 
     <!-- CALCULATOR -->
     <section class="content-section">
@@ -947,7 +923,7 @@
                 const btn = document.createElement('button');
                 btn.className = 'btn-chip' + (item === activeLineChartItem ? ' active' : '');
                 btn.textContent = item.label;
-                btn.title = item.title;
+                btn.dataset.tip = item.title;
                 btn.onclick = () => {
                     container.querySelectorAll('.btn-chip').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
@@ -1162,140 +1138,11 @@
             }
         }
 
-        // ---- RODA BAHASA ----
-        // Kode yang berada di tengah diberi penekanan; sisanya meredup ke tepi.
-        // Gulir roda tetikus dipetakan ke gulir mendatar supaya terasa seperti
-        // pemilih angka, bukan daftar yang harus digeser dengan bilah gulir.
-        (function () {
-            const track = document.getElementById('langTrack');
-            const wheel = document.getElementById('langWheel');
-            if (!track || !wheel) return;
 
-            const items = [...track.querySelectorAll('.lang-item')];
-
-            // Tepi yang sudah mentok tidak diberi gradien pudar — kalau tidak, pil
-            // terlihat seperti terpotong padahal memang tidak bisa digeser lagi.
-            function markEdges() {
-                const max = track.scrollWidth - track.clientWidth;
-                wheel.classList.toggle('at-start', track.scrollLeft <= 1);
-                wheel.classList.toggle('at-end', track.scrollLeft >= max - 1);
-            }
-
-            function markCenter() {
-                const mid = track.scrollLeft + track.clientWidth / 2;
-                let nearest = items[0];
-                let best = Infinity;
-                items.forEach(item => {
-                    const c = item.offsetLeft + item.offsetWidth / 2;
-                    const d = Math.abs(c - mid);
-                    if (d < best) { best = d; nearest = item; }
-                });
-                items.forEach(i => i.classList.toggle('is-center', i === nearest));
-                markEdges();
-            }
-
-            const centerActive = () => {
-                const active = track.querySelector('.lang-item.active') || items[0];
-                const prev = track.style.scrollBehavior;
-                track.style.scrollBehavior = 'auto';
-                track.scrollLeft = active.offsetLeft + active.offsetWidth / 2 - track.clientWidth / 2;
-                track.style.scrollBehavior = prev;
-                markCenter();
-            };
-
-            // Berhenti di antara dua kode terasa seperti macet, jadi setiap gulir
-            // yang mereda dikunci ke kode terdekat.
-            let snapTimer = null;
-            let goTimer = null;
-            let userMoved = false;
-
-            // Roda ini pemilih, bukan sekadar sorotan: begitu berhenti di kode
-            // lain, bahasanya benar-benar berpindah. Ditunda sesaat supaya kode
-            // yang cuma terlewat saat menggeser tidak ikut membuka halaman.
-            const goToCentered = () => {
-                const nearest = track.querySelector('.lang-item.is-center');
-                if (!nearest || !userMoved) return;
-                if (nearest.classList.contains('active')) return;
-                wheel.classList.add('is-loading');
-                savePageState();
-                window.location.href = nearest.href;
-            };
-
-            const snapToNearest = () => {
-                const nearest = track.querySelector('.lang-item.is-center');
-                if (!nearest) return;
-                const target = nearest.offsetLeft + nearest.offsetWidth / 2 - track.clientWidth / 2;
-                clearTimeout(goTimer);
-                if (Math.abs(target - track.scrollLeft) >= 1) {
-                    track.scrollTo({ left: target, behavior: 'smooth' });
-                }
-                goTimer = setTimeout(goToCentered, 420);
-            };
-            const scheduleSnap = () => {
-                clearTimeout(snapTimer);
-                snapTimer = setTimeout(snapToNearest, 140);
-            };
-
-            track.addEventListener('scroll', () => {
-                markCenter();
-                clearTimeout(goTimer);
-                if (!dragging) scheduleSnap();
-            }, { passive: true });
-
-            track.addEventListener('wheel', (e) => {
-                if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
-                e.preventDefault();
-                userMoved = true;
-                track.scrollLeft += e.deltaY;
-            }, { passive: false });
-
-            // Geser dengan tetikus atau jari. Kalau jaraknya cukup jauh, klik
-            // pada kode yang kebetulan ada di bawah kursor tidak ikut jalan.
-            let dragging = false;
-            let startX = 0;
-            let startScroll = 0;
-            let moved = 0;
-
-            track.addEventListener('pointerdown', (e) => {
-                if (e.pointerType === 'mouse' && e.button !== 0) return;
-                dragging = true;
-                userMoved = true;
-                moved = 0;
-                startX = e.clientX;
-                startScroll = track.scrollLeft;
-                track.setPointerCapture(e.pointerId);
-                track.classList.add('is-dragging');
-            });
-
-            track.addEventListener('pointermove', (e) => {
-                if (!dragging) return;
-                const dx = e.clientX - startX;
-                moved = Math.max(moved, Math.abs(dx));
-                track.scrollLeft = startScroll - dx;
-            });
-
-            const endDrag = (e) => {
-                if (!dragging) return;
-                dragging = false;
-                track.classList.remove('is-dragging');
-                try { track.releasePointerCapture(e.pointerId); } catch (err) { /* sudah lepas */ }
-                snapToNearest();
-            };
-            track.addEventListener('pointerup', endDrag);
-            track.addEventListener('pointercancel', endDrag);
-
-            track.addEventListener('click', (e) => {
-                if (moved > 6) {
-                    e.preventDefault();
-                    moved = 0;
-                    return;
-                }
-                if (e.target.closest('.lang-item')) savePageState();
-            });
-
-            window.addEventListener('resize', centerActive);
-            centerActive();
-        })();
+        // Roda bahasanya sendiri hidup di komponen x-page-head. Halaman ini
+        // cuma menitipkan satu hal: simpan dulu isian dan posisi gulir sebelum
+        // pindah bahasa.
+        window.gmBeforeLangChange = savePageState;
 
         // ---- SAKELAR MATA UANG ----
         // Pilihan mata uang dan kurs yang disunting disimpan per browser; kursnya
@@ -1416,25 +1263,6 @@
             });
         })();
 
-        // Kepala halaman: melebar penuh saat di puncak, menyusut jadi kartu
-        // mengambang begitu digulir. Tingginya dibagikan lewat --head-h supaya
-        // kolom grafik yang sticky berhenti tepat di bawahnya.
-        (function () {
-            const head = document.getElementById('pageHead');
-            const shell = document.getElementById('headShell');
-            if (!head || !shell) return;
-
-            const sync = () => {
-                const stuck = window.scrollY > 12;
-                head.classList.toggle('is-stuck', stuck);
-                shell.classList.toggle('is-stuck', stuck);
-                document.documentElement.style.setProperty('--head-h', shell.offsetHeight + 'px');
-            };
-
-            window.addEventListener('scroll', sync, { passive: true });
-            window.addEventListener('resize', sync);
-            sync();
-        })();
 
         // ---- TEMA: terang / gelap / ikut sistem ----
         // Warna teks & garis grafik diambil dari token CSS supaya ikut tema.
