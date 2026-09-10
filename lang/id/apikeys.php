@@ -133,6 +133,13 @@ return [
     'budget_over'   => 'lewat :amount',
     'budget_over_t' => 'Batas biaya terlampaui',
     'budget_near_t' => 'Mendekati batas biaya',
+    'budget_src_key' => 'Batas khusus key ini',
+    'budget_src_global' => 'Ambang global',
+    'budget_note_key' => 'Key ini punya batas sendiri, jadi ambang global tidak dipakai untuknya.',
+    'budget_note_global' => 'Key ini belum diberi batas sendiri — yang dipakai ambang global dari Pengaturan Biaya, sama untuk semua key.',
+    'budget_set_own' => 'Atur batas khusus key ini',
+    'budget_edit_own' => 'Ubah batas key ini',
+    'budget_edit_global' => 'Ambang global',
     'err_name'      => 'Hanya huruf, angka, underscore, hyphen, dan titik.',
     'err_actions'   => 'Pilih minimal satu aksi yang boleh dipakai key ini.',
 

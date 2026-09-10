@@ -26,6 +26,13 @@
     // Label sumbu X diselang supaya tidak lebih dari ±8 label.
     $bcEvery = max(1, (int) ceil($bcData->count() / 8));
 
+    // Skala log dipakai kalau rentang nilainya lebar — batang 300 tidak boleh
+    // terlihat sama dengan batang 0 saat puncaknya 18.000.
+    $bcNonZero = $bcData->filter(fn ($v) => $v > 0);
+    $bcMin     = $bcNonZero->count() ? $bcNonZero->min() : 0;
+    $bcWide    = $bcMin > 0 && $bcMax / $bcMin >= 20;
+    $bcLogMax  = log10(1 + $bcMax);
+
     $bcShort = function ($n) {
         if ($n >= 1000000) return rtrim(rtrim(number_format($n / 1000000, 1), '0'), '.') . 'jt';
         if ($n >= 1000)    return rtrim(rtrim(number_format($n / 1000, 1), '0'), '.') . 'k';
@@ -41,12 +48,14 @@
         display: flex; flex-direction: column; justify-content: space-between;
         height: 215px; font-size: 0.68rem; color: var(--muted); text-align: right; flex-shrink: 0;
     }
+    .q-yaxis[hidden] { display: none; }
     .q-plot { position: relative; flex: 1; height: 215px; min-width: 0; }
     .q-gl { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--line); }
     .q-bars { position: absolute; inset: 0; display: flex; align-items: flex-end; gap: 4px; }
     .q-bar-col { flex: 1; height: 100%; display: flex; align-items: flex-end; justify-content: center; min-width: 0; }
     .q-bar {
-        width: 100%; max-width: 46px; min-height: 4px;
+        width: 100%; max-width: 46px;
+        height: var(--h-lin);
         border-radius: 13px;
         background: repeating-linear-gradient(45deg, var(--bar-a) 0 5px, var(--bar-b) 5px 10px);
         position: relative;
@@ -55,6 +64,24 @@
     /* Bar yang disentuh yang menggelap — tidak ada bar yang ditandai permanen. */
     .q-bar:hover { background: repeating-linear-gradient(45deg, var(--bar-top-a) 0 5px, var(--bar-top-b) 5px 10px); }
     .dense .q-bar { max-width: 14px; border-radius: 7px; }
+    .scale-log .q-bar { height: var(--h-log); }
+    /* Hari tanpa permintaan: garis dasar tipis, bukan batang — supaya beda jelas
+       dengan nilai kecil yang tetap punya batang. */
+    .q-bar.is-zero { height: 3px !important; background: var(--line); opacity: 0.85; }
+    .q-bar.is-zero:hover { background: var(--line); }
+
+    .q-scale {
+        position: absolute; right: 0; top: -26px; z-index: 1;
+        display: inline-flex; gap: 2px; padding: 2px;
+        background: var(--soft, rgba(127,127,127,0.10)); border-radius: 999px;
+    }
+    .q-scale button {
+        border: none; background: transparent; color: var(--muted);
+        font-size: 0.66rem; font-weight: 700; letter-spacing: 0.02em;
+        padding: 3px 10px; border-radius: 999px; cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+    }
+    .q-scale button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
     .dense .q-bars { gap: 2px; }
 
     .q-knob {
@@ -105,21 +132,36 @@
 @endpush
 @endonce
 
-<div class="chart-pane {{ $bcDense ? 'dense' : '' }}" data-pane="{{ $bcPane }}" @if($bcHidden) hidden @endif>
+<div class="chart-pane {{ $bcDense ? 'dense' : '' }}" data-pane="{{ $bcPane }}"
+     data-suggest-scale="{{ $bcWide ? 'log' : 'lin' }}" @if($bcHidden) hidden @endif>
     <div class="q-chart">
-        <div class="q-yaxis">
+        <div class="q-yaxis" data-axis="lin">
             @for($t = 4; $t >= 0; $t--)
                 <span>{{ $bcShort($bcAxis * $t / 4) }}</span>
             @endfor
         </div>
+        <div class="q-yaxis" data-axis="log" hidden>
+            @for($t = 4; $t >= 0; $t--)
+                <span>{{ $bcShort(round(pow(1 + $bcMax, $t / 4) - 1)) }}</span>
+            @endfor
+        </div>
         <div class="q-plot">
+            <div class="q-scale" role="group" aria-label="Skala sumbu Y">
+                <button type="button" data-scale="lin">Linear</button>
+                <button type="button" data-scale="log">Log</button>
+            </div>
             @for($t = 0; $t <= 4; $t++)
                 <div class="q-gl" style="top: {{ $t * 25 }}%;"></div>
             @endfor
             <div class="q-bars">
                 @foreach($bcData as $date => $count)
                     <div class="q-bar-col">
-                        <div class="q-bar" style="height: {{ max(($count / $bcAxis) * 100, 1.5) }}%;"
+                        @php
+                            $bcLin = $count > 0 ? max(($count / $bcAxis) * 100, 2) : 0;
+                            $bcLog = $count > 0 && $bcLogMax > 0 ? max(log10(1 + $count) / $bcLogMax * 100, 2) : 0;
+                        @endphp
+                        <div class="q-bar {{ $count > 0 ? '' : 'is-zero' }}"
+                             style="--h-lin: {{ round($bcLin, 2) }}%; --h-log: {{ round($bcLog, 2) }}%;"
                              data-label="{{ \Carbon\Carbon::parse($date)->wib()->translatedFormat('D, d M') }}">
                             <span class="q-bar-badge">{{ number_format($count) }}</span>
                             <span class="q-knob"></span>
@@ -143,6 +185,35 @@
 @once
 @push('scripts')
 <script>
+    // Skala sumbu Y: log dipilih otomatis saat sebaran nilainya lebar, kecuali
+    // pengguna sudah pernah memilih sendiri.
+    const gmScaleSaved = (() => {
+        try { return localStorage.getItem('gm_chart_scale'); } catch (e) { return null; }
+    })();
+
+    function gmApplyScale(scale) {
+        document.querySelectorAll('.chart-pane').forEach((pane) => {
+            const log = scale === 'log';
+            pane.classList.toggle('scale-log', log);
+            pane.querySelectorAll('.q-yaxis').forEach((ax) => {
+                ax.hidden = (ax.dataset.axis === 'log') !== log;
+            });
+            pane.querySelectorAll('.q-scale button').forEach((b) => {
+                b.classList.toggle('on', b.dataset.scale === scale);
+            });
+        });
+    }
+
+    document.querySelectorAll('.q-scale button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const scale = btn.dataset.scale;
+            try { localStorage.setItem('gm_chart_scale', scale); } catch (e) {}
+            gmApplyScale(scale);
+        });
+    });
+
+    gmApplyScale(gmScaleSaved || (document.querySelector('.chart-pane')?.dataset.suggestScale ?? 'lin'));
+
     // Hover bar → angkanya di badge, tanggalnya ditulis di label sumbu bawah.
     document.querySelectorAll('.chart-pane').forEach((pane) => {
         const bars = pane.querySelectorAll('.q-bar');

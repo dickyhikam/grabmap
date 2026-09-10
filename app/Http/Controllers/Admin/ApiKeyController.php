@@ -506,12 +506,15 @@ class ApiKeyController extends Controller
         $taxRate = (float) Setting::get('tax_rate', config('aws.tax_rate', 0.11));
 
         $budget = ApiKeyBudget::forKey($account?->id, $keyName);
+        // Key tanpa batas sendiri ikut ambang global dari menu Pengaturan Biaya.
+        $globalBudget = (float) Setting::get('budget_alert_usd', 170);
         $share = ApiKeyUsageShare::forKey($account?->id, $keyName);
 
         return view('admin.api-keys.usage', compact(
             'keyName', 'keyInfo', 'keyError', 'metrics', 'assignedCompany',
             'startDate', 'endDate', 'days', 'filterOperation', 'operations',
-            'fetchedAt', 'idrRate', 'taxRate', 'activeRate', 'account', 'budget', 'share'
+            'fetchedAt', 'idrRate', 'taxRate', 'activeRate', 'account', 'budget',
+            'globalBudget', 'share'
         ));
     }
 

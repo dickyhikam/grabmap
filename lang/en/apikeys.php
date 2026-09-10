@@ -133,6 +133,13 @@ return [
     'budget_over'   => 'Over by :amount',
     'budget_over_t' => 'Cost limit exceeded',
     'budget_near_t' => 'Close to the cost limit',
+    'budget_src_key' => 'Limit for this key',
+    'budget_src_global' => 'Global threshold',
+    'budget_note_key' => 'This key has its own limit, so the global threshold does not apply to it.',
+    'budget_note_global' => 'No limit set for this key yet — the global threshold from Cost settings is used, shared with every other key.',
+    'budget_set_own' => 'Set a limit for this key',
+    'budget_edit_own' => 'Change this key\'s limit',
+    'budget_edit_global' => 'Global threshold',
     'err_name'      => 'Letters, numbers, underscore, hyphen, and dot only.',
     'err_actions'   => 'Pick at least one action this key may use.',
 

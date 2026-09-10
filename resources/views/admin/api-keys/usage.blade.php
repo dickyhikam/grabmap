@@ -72,6 +72,20 @@
     .bg-foot { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); margin-top: 8px; }
     .bg-foot .over { color: var(--danger-fg); font-weight: 700; }
 
+    /* Penanda asal batas: milik key sendiri atau ambang global. */
+    .bg-src {
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 0.68rem; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+        white-space: nowrap;
+    }
+    .bg-src.key    { background: var(--green-soft, rgba(0,177,79,0.12)); color: var(--green-text); }
+    .bg-src.global { background: var(--surface); color: var(--muted); }
+
+    .bg-note { font-size: 0.72rem; color: var(--muted); line-height: 1.5; margin-top: 12px; }
+    .bg-acts { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .bg-acts .btn-soft { flex: 1 1 46%; justify-content: center; }
+    .bg-acts .btn-soft.alt { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
+
     .usage-grid {
         display: grid; grid-template-columns: minmax(0, 2.6fr) minmax(0, 1.15fr);
         gap: 16px; align-items: start;
@@ -183,9 +197,14 @@
 
     // Batas biaya per key dibandingkan dengan biaya AWS (sebelum PPN), sama seperti
     // AWS Budgets — PPN itu pajak lokal, tidak ikut ditagih AWS.
-    $budgetLimit = $budget ? (float) $budget->limit_usd : 0.0;
-    $budgetRatio = $budgetLimit > 0 ? $totalCost / $budgetLimit : 0.0;
-    $budgetState = $budgetLimit <= 0 ? null
+    // Kalau key ini belum punya batas sendiri, yang dipakai ambang global dari
+    // menu Pengaturan Biaya — jadi tetap ada rambu, bukan "tanpa batas".
+    $budgetOwn    = $budget !== null && (float) $budget->limit_usd > 0;
+    $budgetGlobal = (float) ($globalBudget ?? 0);
+    $budgetLimit  = $budgetOwn ? (float) $budget->limit_usd : $budgetGlobal;
+    $budgetSource = $budgetOwn ? 'key' : ($budgetLimit > 0 ? 'global' : null);
+    $budgetRatio  = $budgetLimit > 0 ? $totalCost / $budgetLimit : 0.0;
+    $budgetState  = $budgetLimit <= 0 ? null
         : ($budgetRatio >= 1 ? 'over' : ($budgetRatio >= \App\Models\ApiKeyBudget::NEAR_RATIO ? 'near' : 'ok'));
 @endphp
 
@@ -223,6 +242,7 @@
                 'limit' => '$' . number_format($budgetLimit, 2),
             ]) }}
             ({{ number_format($budgetRatio * 100, 0) }}%) · {{ $rangeLabel }}
+            · {{ $budgetSource === 'key' ? __('apikeys.budget_src_key') : __('apikeys.budget_src_global') }}
         </div>
         @can('api_keys.update')
             <a href="{{ route('admin.api-keys.edit', ['keyName' => $keyName, 'account' => $account?->getRouteKey()]) }}" class="q-alert-action">
@@ -459,6 +479,12 @@
                         <div class="q-card-sub">{{ __('apikeys.budget_sub') }}</div>
                     </div>
                 </div>
+                @if($budgetSource)
+                    <span class="bg-src {{ $budgetSource }}">
+                        <i class="bi bi-{{ $budgetSource === 'key' ? 'bookmark-star-fill' : 'globe2' }}"></i>
+                        {{ $budgetSource === 'key' ? __('apikeys.budget_src_key') : __('apikeys.budget_src_global') }}
+                    </span>
+                @endif
             </div>
 
             @if($budgetLimit > 0)
@@ -480,6 +506,21 @@
                             {{ __('apikeys.budget_left', ['amount' => '$' . number_format($budgetLimit - $totalCost, 2)]) }}
                         @endif
                     </span>
+                </div>
+                <div class="bg-note">
+                    {{ $budgetSource === 'key' ? __('apikeys.budget_note_key') : __('apikeys.budget_note_global') }}
+                </div>
+
+                <div class="bg-acts">
+                    @can('api_keys.update')
+                        <a href="{{ route('admin.api-keys.edit', ['keyName' => $keyName, 'account' => $account?->getRouteKey()]) }}" class="btn-soft">
+                            <i class="bi bi-sliders"></i>
+                            {{ $budgetSource === 'key' ? __('apikeys.budget_edit_own') : __('apikeys.budget_set_own') }}
+                        </a>
+                    @endcan
+                    <a href="{{ route('admin.cost-settings.index') }}" class="btn-soft alt">
+                        <i class="bi bi-globe2"></i> {{ __('apikeys.budget_edit_global') }}
+                    </a>
                 </div>
             @else
                 <div class="q-empty" style="padding:18px 10px;">
