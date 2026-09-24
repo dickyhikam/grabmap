@@ -917,6 +917,30 @@
             box-shadow: 0 3px 10px rgba(0, 177, 79, .12);
         }
 
+        /* Tempat terkait (tidak ada di `renders`): gedung induk, pintu masuk, dsb. */
+        .res-group {
+            margin-top: 10px;
+            padding: 0 2px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--ink-3);
+        }
+
+        .res-group small {
+            display: block;
+            margin-top: 3px;
+            font-size: 11.5px;
+            font-weight: 500;
+            letter-spacing: 0;
+            text-transform: none;
+            line-height: 1.45;
+        }
+
+        .res.related { background: var(--surface-2); }
+        .res.related .res-idx { background: var(--line-strong); color: var(--ink-2); }
+
         .res-idx {
             grid-column: 1;
             width: 22px;
@@ -1240,6 +1264,55 @@
             line-height: 1.5;
             margin-bottom: 10px;
         }
+
+        /* Sakelar tampilan hasil: daftar kartu atau request + response mentah */
+        .view-toggle {
+            margin-left: auto;
+            display: inline-flex;
+            padding: 2px;
+            border-radius: 8px;
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+        }
+
+        .view-toggle button {
+            border: 0;
+            background: transparent;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink-3);
+            padding: 3px 8px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .view-toggle button:hover { color: var(--ink-2); }
+
+        .view-toggle button.on {
+            background: var(--surface);
+            color: var(--ink);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .view-toggle + .link-btn { margin-left: 0; }
+
+        /* minmax(0, 1fr): tanpa ini baris JSON panjang (URL) melebarkan grid dan tombol salin terdorong keluar panel */
+        .json-view { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+
+        .json-head {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 7px;
+        }
+
+        .json-head .pane-title { margin: 0 4px 0 0; }
+
+        .json-head .chip { margin-left: auto; padding: 3px 9px; font-size: 11px; }
+        .json-head .chip + .chip { margin-left: 0; }
 
         .side-foot {
             padding: 9px 16px;
@@ -1712,6 +1785,10 @@
                     <div class="pane-head">
                         <h3 class="pane-title">Search results</h3>
                         <span class="count-pill" id="searchCount" hidden>0</span>
+                        <div class="view-toggle" role="group" aria-label="Result view">
+                            <button type="button" data-view="list" title="Result list"><i class="bi bi-list-ul"></i> List</button>
+                            <button type="button" data-view="json" title="Request and response as JSON"><i class="bi bi-braces"></i> JSON</button>
+                        </div>
                         <button class="link-btn" id="searchClear" hidden>
                             <i class="bi bi-eraser"></i> Clear
                         </button>
@@ -1785,6 +1862,10 @@
                     <div class="pane-head">
                         <h3 class="pane-title">Results</h3>
                         <span class="count-pill" id="nearbyCount" hidden>0</span>
+                        <div class="view-toggle" role="group" aria-label="Result view">
+                            <button type="button" data-view="list" title="Result list"><i class="bi bi-list-ul"></i> List</button>
+                            <button type="button" data-view="json" title="Request and response as JSON"><i class="bi bi-braces"></i> JSON</button>
+                        </div>
                         <button class="link-btn" id="nearbyClear" hidden>
                             <i class="bi bi-eraser"></i> Clear
                         </button>
@@ -1849,6 +1930,10 @@
 
                     <div class="pane-head">
                         <h3 class="pane-title">Route results</h3>
+                        <div class="view-toggle" role="group" aria-label="Result view">
+                            <button type="button" data-view="list" title="Route list"><i class="bi bi-list-ul"></i> List</button>
+                            <button type="button" data-view="json" title="Request and response as JSON"><i class="bi bi-braces"></i> JSON</button>
+                        </div>
                         <button class="link-btn" id="routeClear" hidden>
                             <i class="bi bi-eraser"></i> Clear
                         </button>
@@ -1959,6 +2044,7 @@
             const TILESET = 'karta-v3';
             const LS_KEY = 'grabmaps.playground.key';
             const LS_CITY = 'grabmaps.playground.city';
+            const LS_VIEW = 'grabmaps.playground.view';
 
             const CITIES = [
                 { code: 'IDN', name: 'Jakarta, Indonesia', center: [106.8272, -6.1751] },
@@ -2010,6 +2096,13 @@
             let reqCount = 0;
             let lastResponse = null;
             let lastUrl = '';
+
+            // Mode tampilan hasil ('list' | 'json'), berlaku untuk Search, Nearby, dan Routes sekaligus.
+            let resultView = 'list';
+            // Request + response terakhir milik tiap panel, diisi lewat argumen trace di grabGet.
+            const exchanges = { search: null, nearby: null, route: null };
+            // Fungsi penggambar daftar kartu tiap panel, supaya bisa kembali dari JSON tanpa request ulang.
+            const listPainters = { search: null, nearby: null, route: null };
 
             /* ===================== Util ===================== */
             const $ = (sel, root) => (root || document).querySelector(sel);
@@ -2077,7 +2170,11 @@
                 return BASE + path + (q ? '?' + q : '');
             }
 
-            async function grabGet(path, params, signal) {
+            /**
+             * `trace` (opsional) adalah objek yang diisi detail request dan response,
+             * dipakai mode tampilan JSON. Tetap terisi walau request gagal.
+             */
+            async function grabGet(path, params, signal, trace) {
                 const url = buildUrl(path, params);
                 const t0 = performance.now();
                 let res;
@@ -2090,7 +2187,9 @@
                 } catch (e) {
                     if (e.name === 'AbortError') throw e;
                     // Network/CORS failure: there is no HTTP response at all.
-                    recordRequest(url, null, performance.now() - t0, { error: 'network_or_cors_failure' });
+                    const failBody = { error: 'network_or_cors_failure' };
+                    recordRequest(url, null, performance.now() - t0, failBody);
+                    if (trace) Object.assign(trace, { path, params, url, status: null, ms: performance.now() - t0, body: failBody });
                     throw new Error('Could not reach GrabMaps (network or CORS failure).');
                 }
 
@@ -2100,6 +2199,7 @@
                 try { body = text ? JSON.parse(text) : null; } catch (_) { body = { raw: text }; }
 
                 recordRequest(url, res.status, ms, body);
+                if (trace) Object.assign(trace, { path, params, url, status: res.status, ms, body });
 
                 if (!res.ok) throw new Error(httpMessage(res, body));
 
@@ -2157,6 +2257,105 @@
                         return '<span class="n">' + num + '</span>';
                     }
                 );
+            }
+
+            /* ===================== Result view: list / JSON ===================== */
+
+            /** Simpan penggambar daftar sebuah panel, lalu tampilkan sesuai mode aktif. */
+            function paintResults(which, paintList) {
+                listPainters[which] = paintList;
+                refreshResults(which);
+            }
+
+            function refreshResults(which) {
+                const box = $('#' + which + 'Results');
+                if (resultView === 'json' && exchanges[which]) {
+                    box.innerHTML = jsonViewHtml(exchanges[which]);
+                    bindJsonView(box, exchanges[which]);
+                } else if (listPainters[which]) {
+                    listPainters[which]();
+                }
+            }
+
+            /** Bentuk request yang ditampilkan. Key asli tidak pernah ikut, diganti placeholder. */
+            function exchangeRequest(x) {
+                const query = {};
+                Object.keys(x.params || {}).forEach(k => {
+                    const v = x.params[k];
+                    if (v === undefined || v === null || v === '') return;
+                    query[k] = v;
+                });
+                return {
+                    method: 'GET',
+                    endpoint: x.path,
+                    query: query,
+                    headers: { Authorization: 'Bearer YOUR_API_KEY' },
+                    url: x.url
+                };
+            }
+
+            function jsonViewHtml(x) {
+                const ok = x.status !== null && x.status < 400;
+                return '<div class="json-view">' +
+                    '<div>' +
+                    '<div class="json-head">' +
+                    '<h3 class="pane-title">Request</h3>' +
+                    '<span class="method">GET</span>' +
+                    '<button type="button" class="chip" data-copy="curl"><i class="bi bi-terminal"></i> cURL</button>' +
+                    '<button type="button" class="chip" data-copy="request"><i class="bi bi-clipboard"></i> Copy</button>' +
+                    '</div>' +
+                    '<pre class="code">' + highlightJson(exchangeRequest(x)) + '</pre>' +
+                    '</div>' +
+                    '<div>' +
+                    '<div class="json-head">' +
+                    '<h3 class="pane-title">Response</h3>' +
+                    '<span class="status-pill ' + (ok ? 'ok' : 'bad') + '">' +
+                    (x.status === null ? 'network error' : x.status) + '</span>' +
+                    '<span class="status-pill">' + Math.round(x.ms) + ' ms</span>' +
+                    '<button type="button" class="chip" data-copy="response"><i class="bi bi-clipboard"></i> Copy</button>' +
+                    '</div>' +
+                    '<pre class="code">' + highlightJson(x.body) + '</pre>' +
+                    '</div>' +
+                    '</div>';
+            }
+
+            function bindJsonView(box, x) {
+                $$('[data-copy]', box).forEach(btn => {
+                    btn.onclick = () => {
+                        const kind = btn.dataset.copy;
+                        if (kind === 'curl') {
+                            copy("curl --request GET \\\n  '" + x.url + "' \\\n" +
+                                "  --header 'Authorization: Bearer YOUR_API_KEY'",
+                                'cURL command copied (key replaced with a placeholder).');
+                        } else if (kind === 'request') {
+                            copy(JSON.stringify(exchangeRequest(x), null, 2), 'Request JSON copied.');
+                        } else {
+                            copy(JSON.stringify(x.body, null, 2), 'Response JSON copied.');
+                        }
+                    };
+                });
+            }
+
+            function initViewToggle() {
+                try {
+                    const saved = localStorage.getItem(LS_VIEW);
+                    if (saved === 'list' || saved === 'json') resultView = saved;
+                } catch (_) { /* mode privat */ }
+
+                const paint = () => $$('[data-view]').forEach(b =>
+                    b.classList.toggle('on', b.dataset.view === resultView));
+
+                $$('[data-view]').forEach(btn => {
+                    btn.onclick = () => {
+                        if (btn.dataset.view === resultView) return;
+                        resultView = btn.dataset.view;
+                        try { localStorage.setItem(LS_VIEW, resultView); } catch (_) { /* mode privat */ }
+                        paint();
+                        ['search', 'nearby', 'route'].forEach(refreshResults);
+                    };
+                });
+
+                paint();
             }
 
             /* ===================== Map ===================== */
@@ -2410,6 +2609,7 @@
                 let seq = 0;
                 let timer = null;
                 let items = [];
+                let itemsTrace = null;   // request autocomplete yang menghasilkan `items`
                 let cursor = -1;
 
                 function close() { boxEl.hidden = true; cursor = -1; }
@@ -2435,7 +2635,7 @@
 
                 function pick(p) {
                     close();
-                    onPick(p);
+                    onPick(p, itemsTrace);
                 }
 
                 async function query(kw) {
@@ -2444,16 +2644,18 @@
                     const mine = ++seq;
 
                     const bias = biasLocation();
+                    const trace = {};
                     try {
                         const data = await grabGet('/api/v1/autocomplete', {
                             keyword: kw,
                             country: $('#country').value || '',
                             location: bias,
                             limit: 6
-                        }, controller.signal);
+                        }, controller.signal, trace);
 
                         if (mine !== seq) return;               // never let a stale response overwrite a newer one
                         items = (data && data.places) || [];
+                        itemsTrace = trace;
                         render();
                     } catch (e) {
                         if (e.name === 'AbortError' || mine !== seq) return;
@@ -2500,9 +2702,10 @@
                 ).join('');
 
                 const input = $('#q');
-                attachAutocomplete(input, $('#qSuggests'), (p) => {
+                attachAutocomplete(input, $('#qSuggests'), (p, trace) => {
                     input.value = p.name || p.formatted_address || '';
                     $('#qClear').hidden = !input.value;
+                    exchanges.search = trace;
                     renderSearchResults([p]);
                     focusPlace(p, 0);
                 });
@@ -2536,6 +2739,7 @@
                 }
 
                 $('#searchResults').innerHTML = loadingBlock('Searching places…');
+                const trace = {};
                 try {
                     const data = await grabGet('/api/v1/search-text', {
                         keyword: kw,
@@ -2543,27 +2747,58 @@
                         location: bias,
                         limit: readNum('searchLimit'),
                         type: $('#searchType').value
-                    });
-                    renderSearchResults((data && data.places) || []);
+                    }, null, trace);
+                    exchanges.search = trace;
+                    const split = splitRendered(data);
+                    renderSearchResults(split.main, split.related);
                 } catch (e) {
-                    $('#searchResults').innerHTML = emptyBlock('bi-exclamation-triangle', e.message);
+                    exchanges.search = trace.url ? trace : null;
+                    paintResults('search', () => {
+                        $('#searchResults').innerHTML = emptyBlock('bi-exclamation-triangle', e.message);
+                    });
                     toast(e.message, 'err');
                 }
             }
 
-            function renderSearchResults(places) {
+            /**
+             * search-text menerapkan `limit` pada `renders` (daftar poi_id hasil utama), sedangkan
+             * `places` ikut membawa tempat terkait seperti gedung induk dan pintu masuk.
+             * Hasil utama diurutkan mengikuti `renders`; sisanya dikembalikan sebagai `related`.
+             */
+            function splitRendered(data) {
+                const places = (data && data.places) || [];
+                const renders = (data && data.renders) || [];
+                if (!renders.length) return { main: places, related: [] };
+
+                const byId = new Map(places.map(p => [p.poi_id, p]));
+                const main = renders.map(r => byId.get(r.id)).filter(Boolean);
+                const mainIds = new Set(main.map(p => p.poi_id));
+                return { main: main, related: places.filter(p => !mainIds.has(p.poi_id)) };
+            }
+
+            function renderSearchResults(places, related) {
+                related = related || [];
                 clearSearchMarkers();
                 const box = $('#searchResults');
 
-                if (!places.length) {
-                    box.innerHTML = emptyBlock('bi-inbox', 'No matching places. Try another keyword or change the country.');
-                    setListMeta('search', 0);
-                    return;
-                }
-
-                box.innerHTML = '<div class="results">' + places.map((p, i) => placeRow(p, i)).join('') + '</div>';
-                bindResultRows(box, places);
+                paintResults('search', () => {
+                    if (!places.length) {
+                        box.innerHTML = emptyBlock('bi-inbox', 'No matching places. Try another keyword or change the country.');
+                        return;
+                    }
+                    box.innerHTML = '<div class="results">' +
+                        places.map((p, i) => placeRow(p, i)).join('') +
+                        (related.length
+                            ? '<div class="res-group">Related places · ' + related.length +
+                              '<small>Returned alongside the matches (parent buildings, entrances, nearby POIs). ' +
+                              'Not counted by <code>limit</code>.</small></div>' +
+                              related.map((p, j) => placeRow(p, places.length + j, null, true)).join('')
+                            : '') +
+                        '</div>';
+                    bindResultRows(box, places.concat(related));
+                });
                 setListMeta('search', places.length);
+                if (!places.length) return;
 
                 const bounds = new maplibregl.LngLatBounds();
                 places.forEach((p, i) => {
@@ -2584,7 +2819,7 @@
                 }
             }
 
-            function placeRow(p, i, distanceKm) {
+            function placeRow(p, i, distanceKm, related) {
                 // Badge nomor duduk di kolomnya sendiri; alamat dan tag mewarisi kolom teks,
                 // jadi tidak perlu padding-left manual dan tidak bisa melimpah keluar kartu.
                 const tags = [];
@@ -2594,8 +2829,8 @@
                 if (area) tags.push({ text: area });
                 if (p.poi_id) tags.push({ text: p.poi_id, mono: true });
 
-                return '<div class="res" data-i="' + i + '">' +
-                    '<span class="res-idx">' + (i + 1) + '</span>' +
+                return '<div class="res' + (related ? ' related' : '') + '" data-i="' + i + '">' +
+                    '<span class="res-idx">' + (related ? '<i class="bi bi-arrow-return-right"></i>' : (i + 1)) + '</span>' +
                     '<div class="res-top">' +
                     '<span class="res-name">' + esc(p.name || p.short_name || 'Unnamed place') + '</span>' +
                     (distanceKm != null ? '<span class="res-dist">' + fmtDist(distanceKm * 1000) + '</span>' : '') +
@@ -2679,6 +2914,8 @@
             function clearList(which) {
                 const isSearch = which === 'search';
                 if (markerOwner === which) clearSearchMarkers();
+                exchanges[which] = null;
+                listPainters[which] = null;
 
                 $('#' + which + 'Results').innerHTML = isSearch
                     ? emptyBlock('bi-search',
@@ -2699,6 +2936,8 @@
             function clearRouteResults() {
                 lastRoutes = [];
                 activeRouteIdx = 0;
+                exchanges.route = null;
+                listPainters.route = null;
                 const src = map && map.getSource('route-line');
                 if (src) src.setData(emptyFC());
                 $('#routeResults').innerHTML = emptyBlock('bi-signpost-split',
@@ -2851,6 +3090,7 @@
             async function runNearby() {
                 const c = nearbyCenter || [map.getCenter().lng, map.getCenter().lat];
                 $('#nearbyResults').innerHTML = loadingBlock('Searching nearby places…');
+                const trace = {};
 
                 try {
                     const data = await grabGet('/api/v1/search-nearby', {
@@ -2858,25 +3098,27 @@
                         radius: readNum('nbRadius'),       // kilometres, not metres
                         limit: readNum('nbLimit'),
                         rankBy: rankBy
-                    });
+                    }, null, trace);
+                    exchanges.nearby = trace;
 
                     const places = (data && data.places) || [];
                     const box = $('#nearbyResults');
                     clearSearchMarkers();
 
-                    if (!places.length) {
-                        box.innerHTML = emptyBlock('bi-inbox', 'No places within this radius. Try widening it.');
-                        setListMeta('nearby', 0);
-                        return;
-                    }
-
-                    box.innerHTML = '<div class="results">' + places.map((p, i) => {
-                        const ll = placeLngLat(p);
-                        const d = ll ? haversine(c, ll) / 1000 : null;
-                        return placeRow(p, i, d);
-                    }).join('') + '</div>';
-                    bindResultRows(box, places);
+                    paintResults('nearby', () => {
+                        if (!places.length) {
+                            box.innerHTML = emptyBlock('bi-inbox', 'No places within this radius. Try widening it.');
+                            return;
+                        }
+                        box.innerHTML = '<div class="results">' + places.map((p, i) => {
+                            const ll = placeLngLat(p);
+                            const d = ll ? haversine(c, ll) / 1000 : null;
+                            return placeRow(p, i, d);
+                        }).join('') + '</div>';
+                        bindResultRows(box, places);
+                    });
                     setListMeta('nearby', places.length);
+                    if (!places.length) return;
 
                     const bounds = new maplibregl.LngLatBounds();
                     bounds.extend(c);
@@ -2893,7 +3135,10 @@
                     updateClearMapBtn();
                     map.fitBounds(bounds, { padding: 70, maxZoom: 17, duration: 700 });
                 } catch (e) {
-                    $('#nearbyResults').innerHTML = emptyBlock('bi-exclamation-triangle', e.message);
+                    exchanges.nearby = trace.url ? trace : null;
+                    paintResults('nearby', () => {
+                        $('#nearbyResults').innerHTML = emptyBlock('bi-exclamation-triangle', e.message);
+                    });
                     toast(e.message, 'err');
                 }
             }
@@ -3016,6 +3261,7 @@
                 }
 
                 $('#routeResults').innerHTML = loadingBlock('Calculating route…');
+                const trace = {};
                 try {
                     const data = await grabGet('/api/v1/routes', {
                         // Default order: longitude,latitude
@@ -3025,7 +3271,8 @@
                         geometries: 'polyline6',
                         avoid: Array.from(avoidSet).join(','),
                         alternatives: $('#alts').value
-                    });
+                    }, null, trace);
+                    exchanges.route = trace;
 
                     if (!data || data.code !== 'ok' || !data.routes || !data.routes.length) {
                         throw new Error('GrabMaps returned no route (code: ' + ((data && data.code) || '—') + ')');
@@ -3037,10 +3284,15 @@
                     });
 
                     activeRouteIdx = 0;
-                    renderRouteResults();
+                    paintResults('route', renderRouteResults);
+                    $('#routeClear').hidden = false;
                     drawRoutes(true);
                 } catch (e) {
-                    $('#routeResults').innerHTML = emptyBlock('bi-exclamation-triangle', e.message);
+                    // Rute kosong (code bukan 'ok') tetap punya response yang layak dilihat.
+                    exchanges.route = trace.url ? trace : null;
+                    paintResults('route', () => {
+                        $('#routeResults').innerHTML = emptyBlock('bi-exclamation-triangle', e.message);
+                    });
                     toast(e.message, 'err');
                 }
             }
@@ -3076,7 +3328,7 @@
             function selectRoute(i) {
                 if (i < 0 || i >= lastRoutes.length) return;
                 activeRouteIdx = i;
-                renderRouteResults();
+                if (resultView === 'list') renderRouteResults();
                 drawRoutes(false);
             }
 
@@ -3342,6 +3594,7 @@
                     initApiPane();
                     initSteppers();
                     initClearControls();
+                    initViewToggle();
 
                     $$('.tab').forEach(t => { t.onclick = () => switchPane(t.dataset.pane); });
                     $('#keyChip').onclick = resetKey;
