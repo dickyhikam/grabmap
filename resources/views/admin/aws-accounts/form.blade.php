@@ -325,6 +325,14 @@
                 </div>
             </div>
 
+            {{-- Service charge --}}
+            <div class="sec">
+                @include('admin.partials.service-charge-fields', [
+                    'scCurrent' => $scCurrent ?? null,
+                    'scHistory' => $scHistory ?? collect(),
+                ])
+            </div>
+
             {{-- Status & catatan --}}
             <div class="sec">
                 <div class="sec-head">

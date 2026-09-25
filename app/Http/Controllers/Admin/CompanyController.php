@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AwsAccount;
 use App\Models\ApiKeyUsageShare;
 use App\Models\Company;
+use App\Models\ServiceCharge;
 use App\Models\CompanyApiKey;
 use App\Models\UsageShareVisit;
 use App\Models\ExchangeRate;
@@ -61,7 +62,7 @@ class CompanyController extends Controller
             'aws_account_id' => 'nullable|exists:aws_accounts,id',
             'aws_api_key'  => 'nullable|string|max:1000',
             'aws_key_active' => 'nullable|boolean',
-        ]);
+        ] + ServiceCharge::validationRules(true), ServiceCharge::validationMessages());
 
         $logoPath = null;
         if ($request->hasFile('logo')) {
@@ -83,6 +84,8 @@ class CompanyController extends Controller
             'aws_key_active' => $request->boolean('aws_key_active', true),
         ]);
 
+        ServiceCharge::saveFromRequest($request, $company->aws_account_id, $company->id);
+
         // Fitur peta tidak lagi diatur dari formulir perusahaan — pembatas yang
         // sebenarnya ada di izin API key-nya. Barisnya tetap dibuat aktif supaya
         // halaman peta klien punya nilai bawaan yang masuk akal.
@@ -100,9 +103,16 @@ class CompanyController extends Controller
 
     public function edit(Company $company)
     {
+        $today = now()->wib()->toDateString();
+        $own = ServiceCharge::history(null, $company->id)
+            ->first(fn ($row) => $row->effective_from->toDateString() <= $today);
+
         return view('admin.companies.form', [
-            'company'     => $company,
-            'awsAccounts' => $this->awsAccounts(),
+            'company'       => $company,
+            'awsAccounts'   => $this->awsAccounts(),
+            'scCurrent'     => $own,
+            'scAccountRule' => $company->aws_account_id ? ServiceCharge::ruleFor($company->aws_account_id, null, $today) : null,
+            'scHistory'     => ServiceCharge::history(null, $company->id),
         ]);
     }
 
@@ -368,7 +378,7 @@ class CompanyController extends Controller
             'aws_account_id' => 'nullable|exists:aws_accounts,id',
             'aws_api_key'  => 'nullable|string|max:1000',
             'aws_key_active' => 'nullable|boolean',
-        ]);
+        ] + ServiceCharge::validationRules(true), ServiceCharge::validationMessages());
 
         $logoPath = $company->logo_path;
         if ($request->hasFile('logo')) {
@@ -398,6 +408,8 @@ class CompanyController extends Controller
         }
 
         $company->update($updateData);
+
+        ServiceCharge::saveFromRequest($request, $company->aws_account_id, $company->id);
 
         // Perusahaan lama bisa saja belum punya baris fitur — lengkapi seperlunya,
         // tapi jangan mengubah yang sudah ada.
@@ -446,8 +458,10 @@ class CompanyController extends Controller
         $idrRate    = $activeRate ? (float) $activeRate->rate : (float) config('aws.usd_to_idr', 16500);
         $taxRate    = (float) Setting::get('tax_rate', config('aws.tax_rate', 0.11));
 
+        $sc = ServiceCharge::calculate($company->aws_account_id, $company->id, $totalCost, $startDate, $endDate, $idrRate, $taxRate);
+
         return view('admin.companies.usage', compact(
-            'company', 'keyName', 'metrics', 'fetchedAt', 'totalCost',
+            'company', 'keyName', 'metrics', 'fetchedAt', 'totalCost', 'sc',
             'idrRate', 'taxRate', 'activeRate', 'startDate', 'endDate'
         ));
     }
@@ -478,8 +492,10 @@ class CompanyController extends Controller
         $activeRate = ExchangeRate::current();
         $idrRate    = $activeRate ? (float) $activeRate->rate : (float) config('aws.usd_to_idr', 16500);
         $taxRate    = (float) Setting::get('tax_rate', config('aws.tax_rate', 0.11));
-        $tax        = $subtotal * $taxRate;
-        $grand      = $subtotal + $tax;
+        // Service charge ditagihkan sebelum PPN; PPN dihitung dari keduanya.
+        $sc         = ServiceCharge::calculate($company->aws_account_id, $company->id, $subtotal, $startDate, $endDate, $idrRate, $taxRate);
+        $tax        = $sc['tax'];
+        $grand      = $sc['grand'];
 
         // Nomor invoice deterministik dari periode + slug company.
         $invoiceNo = 'INV/' . \Carbon\Carbon::parse($endDate)->format('Ym') . '/' . strtoupper($company->slug);
@@ -488,7 +504,7 @@ class CompanyController extends Controller
 
         return view('admin.companies.invoice', compact(
             'company', 'keyName', 'metrics', 'operations', 'fetchedAt',
-            'subtotal', 'tax', 'grand', 'idrRate', 'taxRate', 'activeRate',
+            'subtotal', 'sc', 'tax', 'grand', 'idrRate', 'taxRate', 'activeRate',
             'startDate', 'endDate', 'invoiceNo', 'issuedAt', 'backUrl'
         ));
     }

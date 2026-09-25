@@ -177,8 +177,8 @@
     $ops       = $metrics['operations'] ?? [];
     $totalReq  = $metrics['total'] ?? 0;
     $totalCost = AwsLocationService::estimateCost($ops);
-    $tax       = $totalCost * $taxRate;
-    $grand     = $totalCost + $tax;
+    $tax       = $sc['tax'];
+    $grand     = $sc['grand'];
     $opMax     = $ops ? max(array_values($ops)) : 1;
 
     $money = function ($v) {
@@ -292,7 +292,9 @@
             <div class="q-num val">${{ $grandParts['int'] }}<span class="cents">.{{ $grandParts['cents'] }}</span></div>
             <div class="lbl">{{ __('apikeys.est_cost') }}</div>
             <div class="sub">
-                {{ __('apikeys.incl_tax', ['pct' => round($taxRate * 100, 2)]) }} ·
+                {{ $sc['active']
+                    ? __('servicecharge.incl', ['pct' => round($taxRate * 100, 2)])
+                    : __('apikeys.incl_tax', ['pct' => round($taxRate * 100, 2)]) }} ·
                 ≈ Rp {{ number_format($grand * $idrRate, 0, ',', '.') }}
             </div>
         </div>
@@ -406,6 +408,14 @@
                                 <td></td>
                                 <td class="text-end fw-semibold">${{ number_format($totalCost, 2) }}</td>
                             </tr>
+                            @if($sc['active'])
+                                <tr>
+                                    <td colspan="4" style="color:var(--muted);">
+                                        {{ __('servicecharge.line') }} ({{ \App\Models\ServiceCharge::basisLabel($sc) }})
+                                    </td>
+                                    <td class="text-end" style="color:var(--muted);">${{ number_format($sc['charge'], 2) }}</td>
+                                </tr>
+                            @endif
                             <tr>
                                 <td colspan="4" style="color:var(--muted);">{{ __('apikeys.vat', ['pct' => round($taxRate * 100, 2)]) }}</td>
                                 <td class="text-end" style="color:var(--muted);">${{ number_format($tax, 2) }}</td>

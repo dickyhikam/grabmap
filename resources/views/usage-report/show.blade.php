@@ -56,11 +56,14 @@
         transition: background 0.15s, color 0.15s, transform 0.12s;
     }
     .print-btn:hover { background: var(--green); color: #fff; }
+    a.print-btn { text-decoration: none; }
+    .report-actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
     .print-btn:active { transform: scale(0.96); }
 
     @media (max-width: 620px) {
         .report-id { flex-wrap: wrap; }
-        .print-btn { width: 100%; justify-content: center; }
+        .report-actions { width: 100%; }
+        .print-btn { flex: 1; justify-content: center; }
     }
 
     /* ---------- Kartu biaya (jangkar visual) ---------- */
@@ -87,6 +90,10 @@
         line-height: 1.1; margin: 8px 0 10px;
     }
     .cc-val .cents { color: rgba(255, 255, 255, 0.62); }
+    .cc-break {
+        display: flex; flex-wrap: wrap; gap: 2px 10px; margin: -4px 0 10px;
+        font-size: 0.68rem; color: rgba(255, 255, 255, 0.82);
+    }
     .cc-foot {
         display: flex; justify-content: space-between; gap: 10px;
         font-size: 0.7rem; color: rgba(255, 255, 255, 0.85);
@@ -94,7 +101,7 @@
 
     /* ---------- Cetak / simpan PDF ---------- */
     @media print {
-        .print-btn, .dr, .report-top .dr, [data-dr] { display: none !important; }
+        .print-btn, .report-actions, .dr, .report-top .dr, [data-dr] { display: none !important; }
         body { background: #fff; }
         .q-card, .report-id { box-shadow: none; border: 1px solid #e6e9eb; break-inside: avoid; }
         /* ---------- Kurs yang bisa digeser ---------- */
@@ -388,8 +395,16 @@
     $ops       = $metrics['operations'] ?? [];
     $totalReq  = $metrics['total'] ?? 0;
     $totalCost = AwsLocationService::estimateCost($ops);
-    $tax       = $totalCost * $taxRate;
-    $grand     = $totalCost + $tax;
+
+    // Service charge + PPN dihitung di controller (App\Models\ServiceCharge).
+    $sc        = $charge;
+    $tax       = $sc['tax'];
+    $grand     = $sc['grand'];
+
+    // Minimum service charge tertulis dalam Rupiah, jadi saat kurs digeser
+    // bagian itu tetap; hanya bagian dolarnya yang ikut kurs.
+    $idrFixed  = $sc['basis'] === 'minimum' ? $sc['min_idr'] * (1 + $taxRate) : 0;
+    $idrUsd    = $sc['basis'] === 'minimum' ? $totalCost * (1 + $taxRate) : $grand;
     $opMax     = $ops ? max(array_values($ops)) : 1;
 
     $money = function ($v) {
@@ -449,9 +464,23 @@
         </div>
     </div>
 
-    <button type="button" class="print-btn" onclick="window.print()">
-        <i class="bi bi-printer"></i> {{ __('apikeys.share_print') }}
-    </button>
+    <div class="report-actions">
+        {{-- Rentang dan tab key yang sedang dilihat ikut dibawa; kurs hasil
+             geseran ditambahkan oleh skrip di bawah saat tombol diklik. --}}
+        <a class="print-btn" data-export data-no-loader
+           href="{{ route('usage-report.export', array_filter([
+               'token' => $share->share_token,
+               'start' => $startDate,
+               'end'   => $endDate,
+               'key'   => $activeKey ?? null,
+               'lang'  => app()->getLocale(),
+           ])) }}">
+            <i class="bi bi-file-earmark-spreadsheet"></i> {{ __('apikeys.share_export') }}
+        </a>
+        <button type="button" class="print-btn" onclick="window.print()">
+            <i class="bi bi-printer"></i> {{ __('apikeys.share_print') }}
+        </button>
+    </div>
 </div>
 
 @if(!$fetchedAt)
@@ -508,9 +537,22 @@
                 ${{ $grandParts['int'] }}<span class="cents">.{{ $grandParts['cents'] }}</span>
             @endif
         </div>
+        @if($sc['active'])
+            {{-- Rincian singkat supaya service charge terlihat langsung, tidak
+                 hanya terselip di tabel rincian bawah. --}}
+            <div class="cc-break">
+                <span>AWS {{ $usd($totalCost) }}</span>
+                <span>+ {{ __('servicecharge.line') }} {{ $usd($sc['charge']) }}</span>
+                <span>+ {{ __('apikeys.vat', ['pct' => round($taxRate * 100, 2)]) }} {{ $usd($tax) }}</span>
+            </div>
+        @endif
         <div class="cc-foot">
-            <span data-idr="{{ $grand }}">≈ Rp {{ number_format($grand * $idrRate, 0, ',', '.') }}</span>
-            <span>{{ __('apikeys.incl_tax', ['pct' => round($taxRate * 100, 2)]) }}</span>
+            <span data-idr="{{ $idrUsd }}" data-idr-fixed="{{ $idrFixed }}">≈ Rp {{ number_format($idrUsd * $idrRate + $idrFixed, 0, ',', '.') }}</span>
+            <span>
+                {{ $sc['active']
+                    ? __('servicecharge.incl', ['pct' => round($taxRate * 100, 2)])
+                    : __('apikeys.incl_tax', ['pct' => round($taxRate * 100, 2)]) }}
+            </span>
         </div>
     </div>
 </div>
@@ -619,7 +661,7 @@
 {{-- Tabel rincian ditaruh berdampingan supaya lebar halaman terpakai dan tidak
      ada kolom yang berhenti duluan. Satu kartu saja otomatis melebar penuh. --}}
 <div class="detail-grid">
-        @if(!empty($ops))
+        @if(!empty($ops) || $sc['active'])
             <div class="q-card">
                 <div class="q-card-head">
                     <div>
@@ -665,6 +707,14 @@
                                 <td class="text-end fw-semibold">{{ number_format(array_sum($ops)) }}</td>
                                 <td class="text-end fw-semibold">{{ $usd($totalCost) }}</td>
                             </tr>
+                            @if($sc['active'])
+                                <tr>
+                                    <td colspan="3" style="color:var(--muted);">
+                                        {{ __('servicecharge.line') }} ({{ \App\Models\ServiceCharge::basisLabel($sc) }})
+                                    </td>
+                                    <td class="text-end" style="color:var(--muted);">{{ $usd($sc['charge']) }}</td>
+                                </tr>
+                            @endif
                             <tr>
                                 <td colspan="3" style="color:var(--muted);">{{ __('apikeys.vat', ['pct' => round($taxRate * 100, 2)]) }}</td>
                                 <td class="text-end" style="color:var(--muted);">{{ $usd($tax) }}</td>
@@ -781,8 +831,16 @@
             tag.classList.toggle('custom', !official);
             reset.hidden = official;
 
+            // Kurs khusus ikut ke file Excel; kurs resmi tidak perlu dikirim.
+            const exp = document.querySelector('[data-export]');
+            if (exp) {
+                const url = new URL(exp.href);
+                official ? url.searchParams.delete('rate') : url.searchParams.set('rate', Math.round(value));
+                exp.href = url.toString();
+            }
+
             document.querySelectorAll('[data-idr]').forEach((el) => {
-                el.textContent = '≈ Rp ' + group(Number(el.dataset.idr) * value);
+                el.textContent = '≈ Rp ' + group(Number(el.dataset.idr) * value + Number(el.dataset.idrFixed || 0));
             });
 
             try {

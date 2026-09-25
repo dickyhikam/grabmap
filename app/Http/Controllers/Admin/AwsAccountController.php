@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AwsAccount;
+use App\Models\ServiceCharge;
 use App\Services\AwsLocationService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -49,6 +50,8 @@ class AwsAccountController extends Controller
             'notes'             => $validated['notes'] ?? null,
         ]);
 
+        ServiceCharge::saveFromRequest($request, $account->id);
+
         // Akun pertama otomatis jadi default; selebihnya hanya kalau diminta.
         if ($isFirst || $request->boolean('is_default')) {
             $account->makeDefault();
@@ -63,6 +66,8 @@ class AwsAccountController extends Controller
         return view('admin.aws-accounts.form', [
             'account'        => $awsAccount,
             'currentDefault' => $this->currentDefault(),
+            'scCurrent'      => ServiceCharge::ruleFor($awsAccount->id, null, now()->wib()->toDateString()),
+            'scHistory'      => ServiceCharge::history($awsAccount->id),
         ]);
     }
 
@@ -118,6 +123,8 @@ class AwsAccountController extends Controller
         }
 
         $awsAccount->update($data);
+
+        ServiceCharge::saveFromRequest($request, $awsAccount->id);
 
         if ($request->boolean('is_default')) {
             $awsAccount->makeDefault();
@@ -197,7 +204,7 @@ class AwsAccountController extends Controller
             'secret_access_key' => [$secretRequired ? 'required' : 'nullable', 'string', 'max:255'],
             'region'            => ['required', 'string', 'max:32', 'regex:/^[a-z0-9\-]+$/'],
             'notes'             => ['nullable', 'string', 'max:1000'],
-        ], [
+        ] + ServiceCharge::validationRules(false), ServiceCharge::validationMessages() + [
             'account_number.regex' => 'Account ID AWS terdiri dari 12 digit angka.',
             'region.regex'         => 'Format region tidak valid (contoh: ap-southeast-1).',
             'secret_access_key.required' => 'Secret access key wajib diisi saat menambah akun.',

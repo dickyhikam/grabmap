@@ -274,6 +274,14 @@
                     <span class="sw"></span>
                 </label>
 
+                @include('admin.partials.service-charge-fields', [
+                    'scCompany'     => true,
+                    'scCurrent'     => $scCurrent ?? null,
+                    'scAccountRule' => $scAccountRule ?? null,
+                    'scHasAccount'  => (bool) old('aws_account_id', $company->aws_account_id ?? null),
+                    'scHistory'     => $scHistory ?? collect(),
+                ])
+
                 <div class="btn-row end" style="margin-top:18px;">
                     <a href="{{ route('admin.companies.index') }}" class="btn-soft"><i class="bi bi-x-lg"></i> {{ __('ui.cancel') }}</a>
                     <button type="submit" class="btn-solid">

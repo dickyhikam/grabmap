@@ -7,8 +7,12 @@ use App\Models\ApiKeyUsageShare;
 use App\Models\UsageShareVisit;
 use App\Models\Company;
 use App\Models\ExchangeRate;
+use App\Models\ServiceCharge;
 use App\Models\Setting;
+use App\Services\AwsLocationService;
+use App\Services\UsageReportExcel;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class UsageReportController extends Controller
 {
@@ -34,13 +38,70 @@ class UsageReportController extends Controller
         // periode mana yang dibuka pembacanya.
         UsageShareVisit::record($share, $request, $startDate . ' → ' . $endDate, $request->query('key'));
 
+        $data = $this->reportData($request, $share, $startDate, $endDate, $days);
+
+        $response = response()->view('usage-report.show', $data);
+
+        return $response
+            ->header('X-Robots-Tag', 'noindex, nofollow')
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    /**
+     * Unduhan Excel dari laporan yang sama. Angkanya diambil lewat jalur yang
+     * persis sama dengan halaman, jadi isi file selalu cocok dengan layar.
+     */
+    public function export(Request $request, string $token, UsageReportExcel $excel)
+    {
+        $share = ApiKeyUsageShare::findActiveByToken($token);
+
+        if (!$share) {
+            abort(404);
+        }
+
+        $share->touchAccess();
+        $this->applyLocale($request);
+
+        [$startDate, $endDate, $days] = $this->resolveDateRange($request);
+
+        UsageShareVisit::record($share, $request, $startDate . ' → ' . $endDate . ' (xlsx)', $request->query('key'));
+
+        $data = $this->reportData($request, $share, $startDate, $endDate, $days);
+
+        // Kurs yang digeser pembaca di halaman ikut dibawa, tapi tetap dijepit
+        // ke rentang ±20% yang sama dengan penggeser di halaman.
+        $rate = (float) $request->query('rate', 0);
+        if ($rate > 0) {
+            $data['idrRate'] = min(max($rate, round($data['idrRate'] * 0.8)), round($data['idrRate'] * 1.2));
+            // Minimum service charge ditulis dalam Rupiah, jadi nilai dolarnya
+            // ikut kurs yang dipakai.
+            $data['charge'] = $this->charge($share, $data);
+        }
+
+        $name = $data['assignedCompany']?->name ?? $share->key_name ?? 'usage';
+        $filename = Str::slug($name . ' ' . ($data['activeKey'] ?? '') . ' ' . $startDate . ' ' . $endDate) . '.xlsx';
+
+        return response()->streamDownload(
+            fn () => $excel->write($data),
+            $filename,
+            [
+                'Content-Type'  => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'X-Robots-Tag'  => 'noindex, nofollow',
+                'Cache-Control' => 'private, no-store',
+            ],
+        );
+    }
+
+    /** Semua angka laporan — dipakai halaman dan unduhan Excel. */
+    private function reportData(Request $request, ApiKeyUsageShare $share, string $startDate, string $endDate, int $days): array
+    {
         $view = $share->isCompanyShare()
             ? $this->companyReport($request, $share, $startDate, $endDate)
             : $this->keyReport($share, $startDate, $endDate);
 
         $activeRate = ExchangeRate::current();
 
-        $response = response()->view($view['view'], array_merge($view['data'], [
+        $data = array_merge(['keyTabs' => collect(), 'activeKey' => null], $view['data'], [
             'share'      => $share,
             'startDate'  => $startDate,
             'endDate'    => $endDate,
@@ -48,11 +109,37 @@ class UsageReportController extends Controller
             'activeRate' => $activeRate,
             'idrRate'    => $activeRate ? (float) $activeRate->rate : (float) config('aws.usd_to_idr', 16500),
             'taxRate'    => (float) Setting::get('tax_rate', config('aws.tax_rate', 0.11)),
-        ]));
+        ]);
 
-        return $response
-            ->header('X-Robots-Tag', 'noindex, nofollow')
-            ->header('Cache-Control', 'private, no-store');
+        $data['charge'] = $this->charge($share, $data);
+
+        return $data;
+    }
+
+    /**
+     * Rincian biaya AWS + service charge + PPN. Link perusahaan memakai tarif
+     * perusahaan itu; link satu key memakai tarif perusahaan pemilik key-nya,
+     * atau tarif akun kalau key-nya tidak dimiliki perusahaan mana pun.
+     */
+    private function charge(ApiKeyUsageShare $share, array $data): array
+    {
+        if ($share->isCompanyShare()) {
+            $accountId = $data['assignedCompany']?->aws_account_id;
+            $companyId = $data['assignedCompany']?->id;
+        } else {
+            $accountId = $share->aws_account_id;
+            $companyId = ServiceCharge::companyIdForKey($accountId, $share->key_name);
+        }
+
+        return ServiceCharge::calculate(
+            $accountId,
+            $companyId,
+            AwsLocationService::estimateCost($data['metrics']['operations'] ?? []),
+            $data['startDate'],
+            $data['endDate'],
+            $data['idrRate'],
+            $data['taxRate'],
+        );
     }
 
     /** Bahasa halaman publik: ?lang= → pilihan sebelumnya → bawaan aplikasi. */

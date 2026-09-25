@@ -8,6 +8,7 @@ use App\Models\ApiKeyBudget;
 use App\Models\ApiKeyDisable;
 use App\Models\ApiKeyUsageShare;
 use App\Models\Company;
+use App\Models\ServiceCharge;
 use App\Models\ExchangeRate;
 use App\Models\Setting;
 use App\Services\AwsLocationService;
@@ -510,7 +511,15 @@ class ApiKeyController extends Controller
         $globalBudget = (float) Setting::get('budget_alert_usd', 170);
         $share = ApiKeyUsageShare::forKey($account?->id, $keyName);
 
+        $sc = ServiceCharge::calculate(
+            $account?->id,
+            ServiceCharge::companyIdForKey($account?->id, $keyName),
+            AwsLocationService::estimateCost($metrics['operations'] ?? []),
+            $startDate, $endDate, $idrRate, $taxRate,
+        );
+
         return view('admin.api-keys.usage', compact(
+            'sc',
             'keyName', 'keyInfo', 'keyError', 'metrics', 'assignedCompany',
             'startDate', 'endDate', 'days', 'filterOperation', 'operations',
             'fetchedAt', 'idrRate', 'taxRate', 'activeRate', 'account', 'budget',
@@ -543,8 +552,10 @@ class ApiKeyController extends Controller
         $activeRate = ExchangeRate::current();
         $idrRate    = $activeRate ? (float) $activeRate->rate : (float) config('aws.usd_to_idr', 16500);
         $taxRate    = (float) Setting::get('tax_rate', config('aws.tax_rate', 0.11));
-        $tax        = $subtotal * $taxRate;
-        $grand      = $subtotal + $tax;
+        // Service charge ditagihkan sebelum PPN; PPN dihitung dari keduanya.
+        $sc         = ServiceCharge::calculate($account?->id, ServiceCharge::companyIdForKey($account?->id, $keyName), $subtotal, $startDate, $endDate, $idrRate, $taxRate);
+        $tax        = $sc['tax'];
+        $grand      = $sc['grand'];
 
         $slugPart  = $company ? strtoupper($company->slug) : strtoupper($keyName);
         $invoiceNo = 'INV/' . \Carbon\Carbon::parse($endDate)->format('Ym') . '/' . $slugPart;
@@ -558,7 +569,7 @@ class ApiKeyController extends Controller
 
         return view('admin.companies.invoice', compact(
             'company', 'keyName', 'metrics', 'operations', 'fetchedAt',
-            'subtotal', 'tax', 'grand', 'idrRate', 'taxRate', 'activeRate',
+            'subtotal', 'sc', 'tax', 'grand', 'idrRate', 'taxRate', 'activeRate',
             'startDate', 'endDate', 'invoiceNo', 'issuedAt', 'backUrl'
         ));
     }

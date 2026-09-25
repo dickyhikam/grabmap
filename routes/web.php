@@ -368,6 +368,9 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
 Route::get('/usage-report/{token}', [UsageReportController::class, 'show'])
     ->middleware('throttle:30,1')
     ->name('usage-report.show');
+Route::get('/usage-report/{token}/export', [UsageReportController::class, 'export'])
+    ->middleware('throttle:10,1')
+    ->name('usage-report.export');
 
 // Shareable A→B route links (coordinate link + short links). Must stay above the catch-all.
 Route::get('/route', [RouteLinkController::class, 'show'])->name('route.show');
