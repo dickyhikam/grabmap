@@ -8,7 +8,7 @@ return [
     'min'            => 'Minimum per bulan',
     'effective'      => 'Berlaku mulai',
     'effective_hint' => 'Laporan sebelum tanggal ini tetap memakai tarif lama.',
-    'how'            => 'Yang ditagih adalah yang lebih besar antara persen dan minimum. Minimum dipotong sesuai jumlah hari kalau laporannya tidak sebulan penuh. PPN dihitung dari biaya AWS + service charge.',
+    'how'            => 'Yang ditagih adalah yang lebih besar antara persen dan minimum. Minimum dipotong sesuai jumlah hari kalau laporannya tidak sebulan penuh. PPN hanya dari biaya AWS; service charge ditambahkan setelah total AWS + PPN.',
     'zero_hint'      => 'Isi 0 di keduanya untuk tanpa service charge.',
     'mode_inherit'   => 'Ikut tarif akun AWS',
     'mode_custom'    => 'Tarif khusus perusahaan ini',
@@ -26,4 +26,5 @@ return [
     'incl'           => 'termasuk service charge & PPN :pct%',
     'line'           => 'Service charge',
     'basis_min'      => 'minimum :amount/bulan, prorata',
+    'basis_pct'      => ':pct dari biaya AWS',
 ];

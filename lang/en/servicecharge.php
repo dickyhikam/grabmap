@@ -8,7 +8,7 @@ return [
     'min'            => 'Monthly minimum',
     'effective'      => 'Effective from',
     'effective_hint' => 'Reports before this date keep the old rate.',
-    'how'            => 'The higher of the percentage and the minimum is charged. The minimum is prorated when a report covers less than a full month. VAT is charged on AWS cost + service charge.',
+    'how'            => 'The higher of the percentage and the minimum is charged. The minimum is prorated when a report covers less than a full month. VAT applies to the AWS cost only; the service charge is added after AWS + VAT.',
     'zero_hint'      => 'Enter 0 in both for no service charge.',
     'mode_inherit'   => 'Use the AWS account rate',
     'mode_custom'    => 'Custom rate for this company',
@@ -25,4 +25,5 @@ return [
     'incl'           => 'incl. service charge & :pct% VAT',
     'line'           => 'Service charge',
     'basis_min'      => 'minimum :amount/month, prorated',
+    'basis_pct'      => ':pct of AWS cost',
 ];

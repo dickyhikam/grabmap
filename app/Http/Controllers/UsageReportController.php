@@ -117,7 +117,7 @@ class UsageReportController extends Controller
     }
 
     /**
-     * Rincian biaya AWS + service charge + PPN. Link perusahaan memakai tarif
+     * Rincian biaya AWS + PPN + service charge. Link perusahaan memakai tarif
      * perusahaan itu; link satu key memakai tarif perusahaan pemilik key-nya,
      * atau tarif akun kalau key-nya tidak dimiliki perusahaan mana pun.
      */

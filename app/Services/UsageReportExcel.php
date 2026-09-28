@@ -87,13 +87,16 @@ class UsageReportExcel
             [__('apikeys.subtotal'), $cost, self::USD],
         ]);
 
+        $rows[] = [__('apikeys.vat', ['pct' => round($d['taxRate'] * 100, 2)]), $sc['tax'], self::USD];
+
+        // Service charge PT Alfa adalah jasa terpisah: setelah total AWS + PPN.
         if ($sc['active']) {
+            $rows[] = [__('apikeys.total_vat'), $sc['total_vat'], self::USD];
             $rows[] = [__('servicecharge.line') . ' (' . ServiceCharge::basisLabel($sc) . ')', $sc['charge'], self::USD];
         }
 
         $rows = array_merge($rows, [
-            [__('apikeys.vat', ['pct' => round($d['taxRate'] * 100, 2)]), $sc['tax'], self::USD],
-            [__('apikeys.total_vat'), $sc['grand'], self::USD],
+            [$sc['active'] ? __('apikeys.grand_total') : __('apikeys.total_vat'), $sc['grand'], self::USD],
             [__('apikeys.rate_title'), $d['idrRate'], self::IDR],
             [__('apikeys.xl_total_idr'), $sc['grand'] * $d['idrRate'], self::IDR],
         ]);
@@ -108,35 +111,40 @@ class UsageReportExcel
                     $sheet->getStyle("B{$r}")->getNumberFormat()->setFormatCode($format);
                 }
                 $sheet->getStyle("B{$r}")->getAlignment()->setHorizontal('right');
+
+                // Setiap angka dolar diberi padanan rupiahnya di sebelah kanan.
+                if ($format === self::USD) {
+                    $this->idr($sheet, "C{$r}", $value, $d['idrRate']);
+                }
             }
             $r++;
         }
 
         // Baris total dengan PPN disorot, sama seperti angka besar di halaman.
         $grandRow = $r - 3;
-        $sheet->getStyle("A{$grandRow}:B{$grandRow}")->getFont()->setBold(true)->getColor()->setARGB(self::GREEN);
+        $sheet->getStyle("A{$grandRow}:C{$grandRow}")->getFont()->setBold(true)->getColor()->setARGB(self::GREEN);
 
         // Pembagian per kategori (Maps / Places / Routes).
         $r++;
-        $this->header($sheet, $r, [__('apikeys.cat_title'), __('apikeys.requests'), __('apikeys.est_cost'), __('apikeys.share_portion')]);
+        $this->header($sheet, $r, [__('apikeys.cat_title'), __('apikeys.requests'), __('apikeys.est_cost'), __('apikeys.cost_idr'), __('apikeys.share_portion')]);
         foreach (self::CATEGORIES as [$label, $catOps]) {
             $r++;
             $counts = array_map(fn ($op) => $ops[$op] ?? 0, array_combine($catOps, $catOps));
             $catCost = AwsLocationService::estimateCost($counts);
 
-            $sheet->fromArray([__($label), array_sum($counts), $catCost, $cost > 0 ? $catCost / $cost : 0], null, "A{$r}", true);
-            $this->formats($sheet, $r, ['B' => self::INT, 'C' => self::USD, 'D' => '0.0%']);
+            $sheet->fromArray([__($label), array_sum($counts), $catCost, $catCost * $d['idrRate'], $cost > 0 ? $catCost / $cost : 0], null, "A{$r}", true);
+            $this->formats($sheet, $r, ['B' => self::INT, 'C' => self::USD, 'D' => self::IDR, 'E' => '0.0%']);
         }
 
         $r += 2;
-        // Disclaimer digabung A:D supaya teks panjangnya tidak ikut melebarkan kolom A.
+        // Disclaimer digabung A:E supaya teks panjangnya tidak ikut melebarkan kolom A.
         $sheet->setCellValue("A{$r}", __('apikeys.share_disclaimer'));
-        $sheet->mergeCells("A{$r}:D{$r}");
+        $sheet->mergeCells("A{$r}:E{$r}");
         $sheet->getStyle("A{$r}")->getAlignment()->setWrapText(true)->setVertical('top');
         $sheet->getStyle("A{$r}")->getFont()->setItalic(true)->setSize(9)->getColor()->setARGB('FF6B7280');
         $sheet->getRowDimension($r)->setRowHeight(48);
 
-        $this->autosize($sheet, 'D');
+        $this->autosize($sheet, 'E');
     }
 
     private function daily(Worksheet $sheet, array $d): void
@@ -161,46 +169,48 @@ class UsageReportExcel
     private function operations(Worksheet $sheet, array $d): void
     {
         $sheet->setTitle($this->title(__('apikeys.ops_title')));
-        $this->header($sheet, 1, [__('apikeys.op'), __('apikeys.requests'), __('apikeys.xl_price'), __('apikeys.est_cost')]);
+        $this->header($sheet, 1, [__('apikeys.op'), __('apikeys.requests'), __('apikeys.xl_price'), __('apikeys.est_cost'), __('apikeys.cost_idr')]);
 
         $r = 1;
         foreach ($d['metrics']['operations'] ?? [] as $op => $count) {
             $r++;
             $price = AwsLocationService::PRICING[$op] ?? 0;
-            $sheet->fromArray([$op, $count, $price, ($count / 1000) * $price], null, "A{$r}", true);
-            $this->formats($sheet, $r, ['B' => self::INT, 'C' => self::USD, 'D' => self::USD]);
+            $cost = ($count / 1000) * $price;
+            $sheet->fromArray([$op, $count, $price, $cost, $cost * $d['idrRate']], null, "A{$r}", true);
+            $this->formats($sheet, $r, ['B' => self::INT, 'C' => self::USD, 'D' => self::USD, 'E' => self::IDR]);
         }
 
-        $this->totalRow($sheet, $r + 1, 'A', ['B' => self::INT, 'D' => self::USD], 2, $r);
+        $this->totalRow($sheet, $r + 1, 'A', ['B' => self::INT, 'D' => self::USD, 'E' => self::IDR], 2, $r);
 
-        // Lanjutan tagihan di bawah total operasi: service charge, PPN, total.
+        // Lanjutan tagihan di bawah total operasi: PPN, service charge, total.
         $sc = $d['charge'];
-        $lines = [];
+        $lines = [[__('apikeys.vat', ['pct' => round($d['taxRate'] * 100, 2)]), $sc['tax'], false]];
         if ($sc['active']) {
+            $lines[] = [__('apikeys.total_vat'), $sc['total_vat'], false];
             $lines[] = [__('servicecharge.line') . ' (' . ServiceCharge::basisLabel($sc) . ')', $sc['charge'], false];
         }
-        $lines[] = [__('apikeys.vat', ['pct' => round($d['taxRate'] * 100, 2)]), $sc['tax'], false];
-        $lines[] = [__('apikeys.total_vat'), $sc['grand'], true];
+        $lines[] = [$sc['active'] ? __('apikeys.grand_total') : __('apikeys.total_vat'), $sc['grand'], true];
 
         $row = $r + 2;
         foreach ($lines as [$label, $value, $bold]) {
             $sheet->setCellValue("A{$row}", $label);
             $sheet->setCellValue("D{$row}", $value);
             $sheet->getStyle("D{$row}")->getNumberFormat()->setFormatCode(self::USD);
+            $this->idr($sheet, "E{$row}", $value, $d['idrRate']);
             if ($bold) {
-                $sheet->getStyle("A{$row}:D{$row}")->getFont()->setBold(true)->getColor()->setARGB(self::GREEN);
+                $sheet->getStyle("A{$row}:E{$row}")->getFont()->setBold(true)->getColor()->setARGB(self::GREEN);
             }
             $row++;
         }
 
-        $this->autosize($sheet, 'D');
+        $this->autosize($sheet, 'E');
         $sheet->freezePane('A2');
     }
 
     private function perKey(Worksheet $sheet, array $d): void
     {
         $sheet->setTitle($this->title(__('apikeys.share_per_key')));
-        $this->header($sheet, 1, [__('apikeys.share_key_col'), __('apikeys.xl_label'), __('apikeys.requests'), __('apikeys.est_cost'), __('apikeys.share_portion'), __('apikeys.xl_note')]);
+        $this->header($sheet, 1, [__('apikeys.share_key_col'), __('apikeys.xl_label'), __('apikeys.requests'), __('apikeys.est_cost'), __('apikeys.cost_idr'), __('apikeys.share_portion'), __('apikeys.xl_note')]);
 
         $cost = AwsLocationService::estimateCost($d['metrics']['operations'] ?? []);
 
@@ -212,14 +222,15 @@ class UsageReportExcel
                 $row['label'] ?: '',
                 $row['total'],
                 $row['cost'],
+                $row['cost'] * $d['idrRate'],
                 $cost > 0 ? $row['cost'] / $cost : 0,
                 $row['has_data'] ? '' : __('apikeys.share_key_no_data'),
             ], null, "A{$r}", true);
-            $this->formats($sheet, $r, ['C' => self::INT, 'D' => self::USD, 'E' => '0.0%']);
+            $this->formats($sheet, $r, ['C' => self::INT, 'D' => self::USD, 'E' => self::IDR, 'F' => '0.0%']);
         }
 
-        $this->totalRow($sheet, $r + 1, 'A', ['C' => self::INT, 'D' => self::USD], 2, $r);
-        $this->autosize($sheet, 'F');
+        $this->totalRow($sheet, $r + 1, 'A', ['C' => self::INT, 'D' => self::USD, 'E' => self::IDR], 2, $r);
+        $this->autosize($sheet, 'G');
         $sheet->freezePane('A2');
     }
 
@@ -247,6 +258,17 @@ class UsageReportExcel
         $style = $sheet->getStyle("{$labelCol}{$row}:{$last}{$row}");
         $style->getFont()->setBold(true);
         $style->getBorders()->getTop()->setBorderStyle('thin');
+    }
+
+    /**
+     * Padanan rupiah satu angka dolar. Cukup dikali kurs: export menghitung
+     * ulang service charge dengan kurs yang sama, jadi minimum Rp tetap utuh.
+     */
+    private function idr(Worksheet $sheet, string $cell, float $usd, float $rate): void
+    {
+        $sheet->setCellValue($cell, $usd * $rate);
+        $sheet->getStyle($cell)->getNumberFormat()->setFormatCode(self::IDR);
+        $sheet->getStyle($cell)->getAlignment()->setHorizontal('right');
     }
 
     private function formats(Worksheet $sheet, int $row, array $formats): void

@@ -140,10 +140,12 @@
         {{-- Totals USD --}}
         <div class="totals">
             <div class="row sub"><span class="muted">Subtotal</span><span>${{ number_format($subtotal, 2) }}</span></div>
+            <div class="row"><span class="muted">VAT {{ round($taxRate * 100, 2) }}%</span><span>${{ number_format($tax, 2) }}</span></div>
+            {{-- The service charge is PT Alfa's own fee, added after the AWS total + VAT. --}}
             @if($sc['active'])
+                <div class="row sub"><span class="muted">Total + VAT</span><strong>${{ number_format($totalVat, 2) }}</strong></div>
                 <div class="row"><span class="muted">Service charge ({{ \App\Models\ServiceCharge::basisLabel($sc, 'en') }})</span><span>${{ number_format($sc['charge'], 2) }}</span></div>
             @endif
-            <div class="row"><span class="muted">VAT {{ round($taxRate * 100, 2) }}%</span><span>${{ number_format($tax, 2) }}</span></div>
             <div class="row grand"><span>Total (USD)</span><span>${{ number_format($grand, 2) }}</span></div>
         </div>
 
@@ -164,10 +166,11 @@
         {{-- IDR conversion --}}
         <div class="totals" style="margin-top:14px;">
             <div class="row"><span class="muted">Subtotal</span><span>Rp {{ number_format($subtotal * $idrRate, 0, ',', '.') }}</span></div>
+            <div class="row"><span class="muted">VAT {{ round($taxRate * 100, 2) }}%</span><span>Rp {{ number_format($tax * $idrRate, 0, ',', '.') }}</span></div>
             @if($sc['active'])
+                <div class="row"><span class="muted">Total + VAT</span><span>Rp {{ number_format($totalVat * $idrRate, 0, ',', '.') }}</span></div>
                 <div class="row"><span class="muted">Service charge</span><span>Rp {{ number_format($sc['charge'] * $idrRate, 0, ',', '.') }}</span></div>
             @endif
-            <div class="row"><span class="muted">VAT {{ round($taxRate * 100, 2) }}%</span><span>Rp {{ number_format($tax * $idrRate, 0, ',', '.') }}</span></div>
         </div>
         <div class="grand-idr">
             <span class="lbl">Total Amount Due</span>
@@ -176,7 +179,7 @@
 
         <div class="note">
             <strong>Note:</strong> Charges are calculated from AWS Location Service usage during the period above
-            (number of requests × official AWS pricing{{ $sc['active'] ? ' + service charge' : '' }} + VAT {{ round($taxRate * 100, 2) }}%), then converted to Rupiah using the exchange rate shown.
+            (number of requests × official AWS pricing + VAT {{ round($taxRate * 100, 2) }}%{{ $sc['active'] ? ', plus the service charge' : '' }}), then converted to Rupiah using the exchange rate shown.
             @if($sc['basis'] === 'minimum')
                 The service charge is the monthly minimum, prorated to the number of days in the period.
             @endif

@@ -106,6 +106,8 @@ return [
     'subtotal'       => 'Subtotal',
     'vat'            => 'PPN :pct%',
     'total_vat'      => 'Total + PPN',
+    'grand_total'    => 'Total tagihan',
+    'cost_idr'       => 'Rupiah',
     'cat_title'      => 'Biaya per kategori',
     'key_info'       => 'Info key',
     'key_info_sub'   => 'Dibaca dari AWS',

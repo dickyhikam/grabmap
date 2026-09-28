@@ -552,9 +552,10 @@ class ApiKeyController extends Controller
         $activeRate = ExchangeRate::current();
         $idrRate    = $activeRate ? (float) $activeRate->rate : (float) config('aws.usd_to_idr', 16500);
         $taxRate    = (float) Setting::get('tax_rate', config('aws.tax_rate', 0.11));
-        // Service charge ditagihkan sebelum PPN; PPN dihitung dari keduanya.
+        // PPN hanya atas biaya AWS; service charge PT Alfa ditambahkan setelahnya.
         $sc         = ServiceCharge::calculate($account?->id, ServiceCharge::companyIdForKey($account?->id, $keyName), $subtotal, $startDate, $endDate, $idrRate, $taxRate);
         $tax        = $sc['tax'];
+        $totalVat   = $sc['total_vat'];
         $grand      = $sc['grand'];
 
         $slugPart  = $company ? strtoupper($company->slug) : strtoupper($keyName);
@@ -569,7 +570,7 @@ class ApiKeyController extends Controller
 
         return view('admin.companies.invoice', compact(
             'company', 'keyName', 'metrics', 'operations', 'fetchedAt',
-            'subtotal', 'sc', 'tax', 'grand', 'idrRate', 'taxRate', 'activeRate',
+            'subtotal', 'sc', 'tax', 'totalVat', 'grand', 'idrRate', 'taxRate', 'activeRate',
             'startDate', 'endDate', 'invoiceNo', 'issuedAt', 'backUrl'
         ));
     }

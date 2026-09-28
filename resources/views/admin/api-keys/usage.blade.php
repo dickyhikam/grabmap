@@ -178,6 +178,7 @@
     $totalReq  = $metrics['total'] ?? 0;
     $totalCost = AwsLocationService::estimateCost($ops);
     $tax       = $sc['tax'];
+    $totalVat  = $sc['total_vat'];
     $grand     = $sc['grand'];
     $opMax     = $ops ? max(array_values($ops)) : 1;
 
@@ -408,7 +409,17 @@
                                 <td></td>
                                 <td class="text-end fw-semibold">${{ number_format($totalCost, 2) }}</td>
                             </tr>
+                            <tr>
+                                <td colspan="4" style="color:var(--muted);">{{ __('apikeys.vat', ['pct' => round($taxRate * 100, 2)]) }}</td>
+                                <td class="text-end" style="color:var(--muted);">${{ number_format($tax, 2) }}</td>
+                            </tr>
+                            {{-- Service charge PT Alfa adalah jasa terpisah: ditambahkan
+                                 setelah total AWS + PPN, dan tidak kena PPN itu. --}}
                             @if($sc['active'])
+                                <tr>
+                                    <td colspan="4" style="color:var(--muted);">{{ __('apikeys.total_vat') }}</td>
+                                    <td class="text-end fw-semibold">${{ number_format($totalVat, 2) }}</td>
+                                </tr>
                                 <tr>
                                     <td colspan="4" style="color:var(--muted);">
                                         {{ __('servicecharge.line') }} ({{ \App\Models\ServiceCharge::basisLabel($sc) }})
@@ -417,11 +428,9 @@
                                 </tr>
                             @endif
                             <tr>
-                                <td colspan="4" style="color:var(--muted);">{{ __('apikeys.vat', ['pct' => round($taxRate * 100, 2)]) }}</td>
-                                <td class="text-end" style="color:var(--muted);">${{ number_format($tax, 2) }}</td>
-                            </tr>
-                            <tr>
-                                <td colspan="4" class="fw-bold">{{ __('apikeys.total_vat') }}</td>
+                                <td colspan="4" class="fw-bold">
+                                    {{ $sc['active'] ? __('apikeys.grand_total') : __('apikeys.total_vat') }}
+                                </td>
                                 <td class="text-end">
                                     <div class="q-num" style="font-size:1.05rem;color:var(--green-text);">
                                         ${{ $grandParts['int'] }}<span class="cents">.{{ $grandParts['cents'] }}</span>

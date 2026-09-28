@@ -10,7 +10,8 @@ use Illuminate\Support\Collection;
 /**
  * Service charge di atas biaya AWS: persen dari biaya, dengan tagihan minimum
  * per bulan kalender dalam Rupiah. Yang ditagihkan adalah yang lebih besar di
- * antara keduanya. PPN dihitung dari (biaya AWS + service charge).
+ * antara keduanya. PPN hanya dikenakan pada biaya AWS; service charge adalah
+ * jasa PT Alfa sendiri dan ditambahkan setelah total AWS + PPN.
  *
  * Tarif bawaan menempel di akun AWS; perusahaan boleh punya tarif sendiri.
  */
@@ -209,7 +210,7 @@ class ServiceCharge extends Model
         $charge = max($byPercent, $minUsd);
         $basis = $charge <= 0 ? null : ($minUsd > $byPercent ? 'minimum' : 'percent');
 
-        $tax = ($costUsd + $charge) * $taxRate;
+        $tax = $costUsd * $taxRate;
 
         return [
             'cost'            => $costUsd,
@@ -220,7 +221,8 @@ class ServiceCharge extends Model
             'basis'           => $basis,
             'active'          => $charge > 0,
             'tax'             => $tax,
-            'grand'           => $costUsd + $charge + $tax,
+            'total_vat'       => $costUsd + $tax,
+            'grand'           => $costUsd + $tax + $charge,
         ];
     }
 
@@ -257,6 +259,10 @@ class ServiceCharge extends Model
             return __('servicecharge.basis_min', ['amount' => 'Rp ' . number_format($b['monthly_min_idr'], 0, ',', '.')], $locale);
         }
 
-        return rtrim(rtrim(number_format($b['percent'], 3, ',', '.'), '0'), ',') . '%';
+        // Dasarnya ditulis eksplisit: barisnya ada di bawah "Total + PPN", jadi
+        // "19%" saja terbaca seperti 19% dari total itu.
+        return __('servicecharge.basis_pct', [
+            'pct' => rtrim(rtrim(number_format($b['percent'], 3, ',', '.'), '0'), ',') . '%',
+        ], $locale);
     }
 }

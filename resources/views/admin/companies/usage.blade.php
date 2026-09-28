@@ -66,6 +66,7 @@
         $ops = $metrics['operations'] ?? [];
         $opMax = !empty($ops) ? (max(array_values($ops)) ?: 1) : 1;
         $tax = $sc['tax'];
+        $totalVat = $sc['total_vat'];
         $grand = $sc['grand'];
     @endphp
 
@@ -81,7 +82,7 @@
             <div class="card stat-card"><div class="card-body d-flex align-items-center gap-3">
                 <div class="stat-icon" style="background: #fff3e0; color: #f59e0b;"><i class="bi bi-wallet2"></i></div>
                 <div>
-                    <div class="stat-label">Estimasi Biaya + PPN</div>
+                    <div class="stat-label">{{ $sc['active'] ? 'Total tagihan' : 'Estimasi Biaya + PPN' }}</div>
                     <div class="stat-value" style="color:var(--grab-green);">${{ number_format($grand, 2) }}</div>
                     <small class="text-muted">≈ Rp {{ number_format($grand * $idrRate, 0, ',', '.') }}</small>
                 </div>
@@ -128,18 +129,24 @@
                             <td class="text-end fw-semibold">{{ number_format(array_sum($ops)) }}</td><td></td>
                             <td class="text-end fw-semibold">${{ number_format($totalCost, 2) }}</td>
                         </tr>
+                        <tr>
+                            <td class="text-muted">PPN {{ round($taxRate * 100, 2) }}%</td><td></td><td></td><td></td>
+                            <td class="text-end text-muted">${{ number_format($tax, 2) }}</td>
+                        </tr>
+                        {{-- Service charge PT Alfa adalah jasa terpisah: ditambahkan
+                             setelah total AWS + PPN, dan tidak kena PPN itu. --}}
                         @if($sc['active'])
+                            <tr>
+                                <td class="text-muted">Total + PPN</td><td></td><td></td><td></td>
+                                <td class="text-end fw-semibold">${{ number_format($totalVat, 2) }}</td>
+                            </tr>
                             <tr>
                                 <td class="text-muted">Service charge ({{ \App\Models\ServiceCharge::basisLabel($sc) }})</td><td></td><td></td><td></td>
                                 <td class="text-end text-muted">${{ number_format($sc['charge'], 2) }}</td>
                             </tr>
                         @endif
-                        <tr>
-                            <td class="text-muted">PPN {{ round($taxRate * 100, 2) }}%</td><td></td><td></td><td></td>
-                            <td class="text-end text-muted">${{ number_format($tax, 2) }}</td>
-                        </tr>
                         <tr style="border-top:1px solid #e2e8f0;">
-                            <td class="fw-bold">Total + PPN</td><td></td><td></td><td></td>
+                            <td class="fw-bold">{{ $sc['active'] ? 'Total tagihan' : 'Total + PPN' }}</td><td></td><td></td><td></td>
                             <td class="text-end fw-bold" style="color: var(--grab-green); font-size:1rem;">
                                 ${{ number_format($grand, 2) }}
                                 <div class="fw-normal text-muted" style="font-size:0.72rem;">≈ Rp {{ number_format($grand * $idrRate, 0, ',', '.') }}</div>
@@ -149,7 +156,7 @@
                 </table>
             </div>
             <p class="text-muted mb-0 mt-2" style="font-size:0.72rem;">
-                <i class="bi bi-info-circle me-1"></i>Angka pemakaian = data CloudWatch AWS. Biaya = pemakaian × harga resmi AWS{{ $sc['active'] ? ' + service charge' : '' }}, lalu ditambah PPN {{ round($taxRate * 100, 2) }}%. Bisa meleset ~5% dari tagihan final (CloudWatch menghitung sedikit beda dari sistem penagihan AWS).
+                <i class="bi bi-info-circle me-1"></i>Angka pemakaian = data CloudWatch AWS. Biaya = pemakaian × harga resmi AWS, lalu ditambah PPN {{ round($taxRate * 100, 2) }}%{{ $sc['active'] ? ' dan service charge' : '' }}. Bisa meleset ~5% dari tagihan final (CloudWatch menghitung sedikit beda dari sistem penagihan AWS).
             </p>
             <div class="d-flex align-items-center flex-wrap gap-2 mt-2 p-2 rounded-3" style="background:#f8f9fa; font-size:0.78rem;">
                 <i class="bi bi-cash-coin text-muted"></i>

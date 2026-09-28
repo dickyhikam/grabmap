@@ -106,6 +106,8 @@ return [
     'subtotal'       => 'Subtotal',
     'vat'            => 'VAT :pct%',
     'total_vat'      => 'Total + VAT',
+    'grand_total'    => 'Total due',
+    'cost_idr'       => 'Rupiah',
     'cat_title'      => 'Cost by category',
     'key_info'       => 'Key info',
     'key_info_sub'   => 'Read from AWS',
