@@ -89,17 +89,18 @@ class UsageReportExcel
 
         $rows[] = [__('apikeys.vat', ['pct' => round($d['taxRate'] * 100, 2)]), $sc['tax'], self::USD];
 
-        // Service charge PT Alfa adalah jasa terpisah: setelah total AWS + PPN.
+        // Service charge PT Alfa adalah jasa di luar AWS: dihitung dan ditagih
+        // dalam Rupiah dari total AWS + PPN, jadi tidak punya nilai dolar.
+        $rows = array_merge($rows, [
+            [__('apikeys.total_vat'), $sc['total_vat'], self::USD],
+            [__('apikeys.rate_title'), $d['idrRate'], self::IDR],
+        ]);
+
         if ($sc['active']) {
-            $rows[] = [__('apikeys.total_vat'), $sc['total_vat'], self::USD];
-            $rows[] = [__('servicecharge.line') . ' (' . ServiceCharge::basisLabel($sc) . ')', $sc['charge'], self::USD];
+            $rows[] = [__('servicecharge.line') . ' (' . ServiceCharge::basisLabel($sc) . ')', $sc['charge_idr'], self::IDR];
         }
 
-        $rows = array_merge($rows, [
-            [$sc['active'] ? __('apikeys.grand_total') : __('apikeys.total_vat'), $sc['grand'], self::USD],
-            [__('apikeys.rate_title'), $d['idrRate'], self::IDR],
-            [__('apikeys.xl_total_idr'), $sc['grand'] * $d['idrRate'], self::IDR],
-        ]);
+        $rows[] = [__('apikeys.xl_total_idr'), $sc['grand_idr'], self::IDR];
 
         $r = 3;
         foreach ($rows as [$label, $value, $format]) {
@@ -120,8 +121,8 @@ class UsageReportExcel
             $r++;
         }
 
-        // Baris total dengan PPN disorot, sama seperti angka besar di halaman.
-        $grandRow = $r - 3;
+        // Baris total rupiah (baris terakhir) disorot, sama seperti angka besar di halaman.
+        $grandRow = $r - 1;
         $sheet->getStyle("A{$grandRow}:C{$grandRow}")->getFont()->setBold(true)->getColor()->setARGB(self::GREEN);
 
         // Pembagian per kategori (Maps / Places / Routes).
@@ -184,19 +185,26 @@ class UsageReportExcel
 
         // Lanjutan tagihan di bawah total operasi: PPN, service charge, total.
         $sc = $d['charge'];
-        $lines = [[__('apikeys.vat', ['pct' => round($d['taxRate'] * 100, 2)]), $sc['tax'], false]];
+        // Service charge hanya dalam Rupiah (kolom E), kolom dolarnya kosong.
+        $lines = [
+            [__('apikeys.vat', ['pct' => round($d['taxRate'] * 100, 2)]), $sc['tax'], $sc['tax'] * $d['idrRate'], false],
+            [__('apikeys.total_vat'), $sc['total_vat'], $sc['total_vat_idr'], !$sc['active']],
+        ];
         if ($sc['active']) {
-            $lines[] = [__('apikeys.total_vat'), $sc['total_vat'], false];
-            $lines[] = [__('servicecharge.line') . ' (' . ServiceCharge::basisLabel($sc) . ')', $sc['charge'], false];
+            $lines[] = [__('servicecharge.line') . ' (' . ServiceCharge::basisLabel($sc) . ')', null, $sc['charge_idr'], false];
+            $lines[] = [__('apikeys.grand_total'), null, $sc['grand_idr'], true];
         }
-        $lines[] = [$sc['active'] ? __('apikeys.grand_total') : __('apikeys.total_vat'), $sc['grand'], true];
 
         $row = $r + 2;
-        foreach ($lines as [$label, $value, $bold]) {
+        foreach ($lines as [$label, $usd, $idr, $bold]) {
             $sheet->setCellValue("A{$row}", $label);
-            $sheet->setCellValue("D{$row}", $value);
-            $sheet->getStyle("D{$row}")->getNumberFormat()->setFormatCode(self::USD);
-            $this->idr($sheet, "E{$row}", $value, $d['idrRate']);
+            if ($usd !== null) {
+                $sheet->setCellValue("D{$row}", $usd);
+                $sheet->getStyle("D{$row}")->getNumberFormat()->setFormatCode(self::USD);
+            }
+            $sheet->setCellValue("E{$row}", $idr);
+            $sheet->getStyle("E{$row}")->getNumberFormat()->setFormatCode(self::IDR);
+            $sheet->getStyle("E{$row}")->getAlignment()->setHorizontal('right');
             if ($bold) {
                 $sheet->getStyle("A{$row}:E{$row}")->getFont()->setBold(true)->getColor()->setARGB(self::GREEN);
             }

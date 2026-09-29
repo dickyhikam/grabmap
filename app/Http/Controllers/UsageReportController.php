@@ -73,8 +73,8 @@ class UsageReportController extends Controller
         $rate = (float) $request->query('rate', 0);
         if ($rate > 0) {
             $data['idrRate'] = min(max($rate, round($data['idrRate'] * 0.8)), round($data['idrRate'] * 1.2));
-            // Minimum service charge ditulis dalam Rupiah, jadi nilai dolarnya
-            // ikut kurs yang dipakai.
+            // Service charge dihitung dalam Rupiah dari total AWS + PPN yang
+            // dirupiahkan, jadi ikut kurs yang dipakai.
             $data['charge'] = $this->charge($share, $data);
         }
 

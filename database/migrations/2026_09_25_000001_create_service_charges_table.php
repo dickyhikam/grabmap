@@ -21,7 +21,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('aws_account_id')->nullable()->constrained('aws_accounts')->cascadeOnDelete();
             $table->foreignId('company_id')->nullable()->constrained('companies')->cascadeOnDelete();
-            // Persen dari biaya AWS (sebelum PPN).
+            // Persen dari total AWS + PPN.
             $table->decimal('percent', 6, 3)->nullable();
             // Tagihan minimum per bulan kalender, dalam Rupiah.
             $table->decimal('monthly_min_idr', 15, 2)->nullable();

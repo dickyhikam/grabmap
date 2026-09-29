@@ -67,7 +67,7 @@
         $opMax = !empty($ops) ? (max(array_values($ops)) ?: 1) : 1;
         $tax = $sc['tax'];
         $totalVat = $sc['total_vat'];
-        $grand = $sc['grand'];
+        $rpFmt = fn ($v) => 'Rp ' . number_format($v, 0, ',', '.');
     @endphp
 
     {{-- Summary Cards --}}
@@ -83,8 +83,14 @@
                 <div class="stat-icon" style="background: #fff3e0; color: #f59e0b;"><i class="bi bi-wallet2"></i></div>
                 <div>
                     <div class="stat-label">{{ $sc['active'] ? 'Total tagihan' : 'Estimasi Biaya + PPN' }}</div>
-                    <div class="stat-value" style="color:var(--grab-green);">${{ number_format($grand, 2) }}</div>
-                    <small class="text-muted">≈ Rp {{ number_format($grand * $idrRate, 0, ',', '.') }}</small>
+                    {{-- Service charge ditagih dalam Rupiah, jadi totalnya juga Rupiah. --}}
+                    @if($sc['active'])
+                        <div class="stat-value" style="color:var(--grab-green);">{{ $rpFmt($sc['grand_idr']) }}</div>
+                        <small class="text-muted">AWS + PPN ${{ number_format($totalVat, 2) }}</small>
+                    @else
+                        <div class="stat-value" style="color:var(--grab-green);">${{ number_format($totalVat, 2) }}</div>
+                        <small class="text-muted">≈ {{ $rpFmt($sc['total_vat_idr']) }}</small>
+                    @endif
                 </div>
             </div></div>
         </div>
@@ -133,25 +139,25 @@
                             <td class="text-muted">PPN {{ round($taxRate * 100, 2) }}%</td><td></td><td></td><td></td>
                             <td class="text-end text-muted">${{ number_format($tax, 2) }}</td>
                         </tr>
-                        {{-- Service charge PT Alfa adalah jasa terpisah: ditambahkan
-                             setelah total AWS + PPN, dan tidak kena PPN itu. --}}
-                        @if($sc['active'])
-                            <tr>
-                                <td class="text-muted">Total + PPN</td><td></td><td></td><td></td>
-                                <td class="text-end fw-semibold">${{ number_format($totalVat, 2) }}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-muted">Service charge ({{ \App\Models\ServiceCharge::basisLabel($sc) }})</td><td></td><td></td><td></td>
-                                <td class="text-end text-muted">${{ number_format($sc['charge'], 2) }}</td>
-                            </tr>
-                        @endif
+                        {{-- Service charge PT Alfa adalah jasa di luar AWS: dihitung dan
+                             ditagih dalam Rupiah dari total AWS + PPN, tanpa nilai dolar. --}}
                         <tr style="border-top:1px solid #e2e8f0;">
-                            <td class="fw-bold">{{ $sc['active'] ? 'Total tagihan' : 'Total + PPN' }}</td><td></td><td></td><td></td>
-                            <td class="text-end fw-bold" style="color: var(--grab-green); font-size:1rem;">
-                                ${{ number_format($grand, 2) }}
-                                <div class="fw-normal text-muted" style="font-size:0.72rem;">≈ Rp {{ number_format($grand * $idrRate, 0, ',', '.') }}</div>
+                            <td class="fw-bold">Total + PPN</td><td></td><td></td><td></td>
+                            <td class="text-end fw-bold" @if(!$sc['active']) style="color: var(--grab-green); font-size:1rem;" @endif>
+                                ${{ number_format($totalVat, 2) }}
+                                <div class="fw-normal text-muted" style="font-size:0.72rem;">≈ {{ $rpFmt($sc['total_vat_idr']) }}</div>
                             </td>
                         </tr>
+                        @if($sc['active'])
+                            <tr>
+                                <td class="text-muted">Service charge ({{ \App\Models\ServiceCharge::basisLabel($sc) }})</td><td></td><td></td><td></td>
+                                <td class="text-end text-muted">{{ $rpFmt($sc['charge_idr']) }}</td>
+                            </tr>
+                            <tr style="border-top:1px solid #e2e8f0;">
+                                <td class="fw-bold">Total tagihan</td><td></td><td></td><td></td>
+                                <td class="text-end fw-bold" style="color: var(--grab-green); font-size:1rem;">{{ $rpFmt($sc['grand_idr']) }}</td>
+                            </tr>
+                        @endif
                     </tfoot>
                 </table>
             </div>

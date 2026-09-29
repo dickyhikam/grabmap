@@ -556,7 +556,7 @@ class ApiKeyController extends Controller
         $sc         = ServiceCharge::calculate($account?->id, ServiceCharge::companyIdForKey($account?->id, $keyName), $subtotal, $startDate, $endDate, $idrRate, $taxRate);
         $tax        = $sc['tax'];
         $totalVat   = $sc['total_vat'];
-        $grand      = $sc['grand'];
+        $grand      = $sc['grand_idr'];
 
         $slugPart  = $company ? strtoupper($company->slug) : strtoupper($keyName);
         $invoiceNo = 'INV/' . \Carbon\Carbon::parse($endDate)->format('Ym') . '/' . $slugPart;

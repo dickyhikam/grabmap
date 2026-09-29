@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
 
 /**
- * Service charge di atas biaya AWS: persen dari biaya, dengan tagihan minimum
- * per bulan kalender dalam Rupiah. Yang ditagihkan adalah yang lebih besar di
- * antara keduanya. PPN hanya dikenakan pada biaya AWS; service charge adalah
- * jasa PT Alfa sendiri dan ditambahkan setelah total AWS + PPN.
+ * Service charge di atas biaya AWS: persen dari total AWS + PPN, dengan tagihan
+ * minimum per bulan kalender dalam Rupiah. Yang ditagihkan adalah yang lebih
+ * besar di antara keduanya. PPN hanya dikenakan pada biaya AWS; service charge
+ * adalah jasa PT Alfa sendiri dan ditambahkan setelah total AWS + PPN.
  *
  * Tarif bawaan menempel di akun AWS; perusahaan boleh punya tarif sendiri.
  */
@@ -193,36 +193,39 @@ class ServiceCharge extends Model
     /**
      * Rincian tagihan untuk satu rentang laporan.
      *
-     * Persen dihitung dari biaya AWS seluruh rentang. Minimum bulanan dipotong
-     * sesuai jumlah hari rentang di tiap bulan kalender (10 hari di bulan 30
-     * hari = 10/30 minimum). Tarif yang dipakai = tarif yang berlaku di tanggal
-     * akhir rentang. Semua angka hasil dalam USD, kecuali yang berakhiran _idr.
+     * Biaya AWS dan PPN-nya dalam USD. Service charge adalah jasa PT Alfa di luar
+     * AWS, jadi dihitung langsung dalam Rupiah: persen dari total AWS + PPN yang
+     * sudah dirupiahkan, atau minimum bulanan, mana yang lebih besar. Minimum
+     * dipotong sesuai jumlah hari rentang di tiap bulan kalender (10 hari di
+     * bulan 30 hari = 10/30 minimum). Tarif yang dipakai = tarif yang berlaku
+     * di tanggal akhir rentang. Kunci berakhiran _idr dalam Rupiah, sisanya USD.
      */
     public static function breakdown(?self $rule, float $costUsd, string $startDate, string $endDate, float $idrRate, float $taxRate): array
     {
         $percent = $rule ? (float) $rule->percent : 0.0;
         $minMonthly = $rule ? (float) $rule->monthly_min_idr : 0.0;
 
-        $minIdr = $minMonthly > 0 ? $minMonthly * self::monthFraction($startDate, $endDate) : 0.0;
-        $minUsd = $idrRate > 0 ? $minIdr / $idrRate : 0.0;
-        $byPercent = $costUsd * $percent / 100;
-
-        $charge = max($byPercent, $minUsd);
-        $basis = $charge <= 0 ? null : ($minUsd > $byPercent ? 'minimum' : 'percent');
-
         $tax = $costUsd * $taxRate;
+        $totalVatIdr = ($costUsd + $tax) * $idrRate;
+
+        $minIdr = $minMonthly > 0 ? $minMonthly * self::monthFraction($startDate, $endDate) : 0.0;
+        $byPercentIdr = $totalVatIdr * $percent / 100;
+
+        $chargeIdr = max($byPercentIdr, $minIdr);
+        $basis = $chargeIdr <= 0 ? null : ($minIdr > $byPercentIdr ? 'minimum' : 'percent');
 
         return [
             'cost'            => $costUsd,
+            'tax'             => $tax,
+            'total_vat'       => $costUsd + $tax,
+            'total_vat_idr'   => $totalVatIdr,
             'percent'         => $percent,
             'monthly_min_idr' => $minMonthly,
             'min_idr'         => $minIdr,
-            'charge'          => $charge,
+            'charge_idr'      => $chargeIdr,
             'basis'           => $basis,
-            'active'          => $charge > 0,
-            'tax'             => $tax,
-            'total_vat'       => $costUsd + $tax,
-            'grand'           => $costUsd + $tax + $charge,
+            'active'          => $chargeIdr > 0,
+            'grand_idr'       => $totalVatIdr + $chargeIdr,
         ];
     }
 
@@ -259,8 +262,6 @@ class ServiceCharge extends Model
             return __('servicecharge.basis_min', ['amount' => 'Rp ' . number_format($b['monthly_min_idr'], 0, ',', '.')], $locale);
         }
 
-        // Dasarnya ditulis eksplisit: barisnya ada di bawah "Total + PPN", jadi
-        // "19%" saja terbaca seperti 19% dari total itu.
         return __('servicecharge.basis_pct', [
             'pct' => rtrim(rtrim(number_format($b['percent'], 3, ',', '.'), '0'), ',') . '%',
         ], $locale);

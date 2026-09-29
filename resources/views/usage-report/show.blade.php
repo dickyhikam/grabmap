@@ -104,6 +104,14 @@
     }
     .cc-break .num { text-align: right; font-weight: 600; }
     .cc-break .idr { color: rgba(255, 255, 255, 0.72); font-weight: 500; }
+    /* Kurs ditulis di samping total: semua angka rupiah bergantung padanya. */
+    .cc-rate {
+        display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;
+        padding: 3px 10px; border-radius: 999px;
+        background: rgba(255, 255, 255, 0.16); color: #fff;
+        font-size: 0.68rem; font-weight: 700; white-space: nowrap;
+    }
+    .cc-rate.custom, .cc-rate.off { background: #fde68a; color: #7c2d12; }
 
     /* ---------- Cetak / simpan PDF ---------- */
     @media print {
@@ -165,6 +173,16 @@
         border-radius: 999px; padding: 4px 11px;
     }
     .rate-tag.custom { background: var(--warn-soft); color: var(--warn-fg); }
+    .rate-meta { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+    .rate-card.off { box-shadow: inset 0 0 0 2px var(--warn-fg), var(--shadow-card); }
+    .rate-warn {
+        display: flex; gap: 8px; align-items: flex-start; margin-top: 10px;
+        padding: 9px 12px; border-radius: 12px;
+        background: var(--warn-soft); color: var(--warn-fg);
+        font-size: 0.74rem; font-weight: 600; line-height: 1.4;
+    }
+    .th-rate { display: block; font-size: 0.62rem; font-weight: 600; color: var(--muted); text-transform: none; letter-spacing: 0; }
+    .th-rate.custom { color: var(--warn-fg); }
 
     .rate-reset {
         align-self: center; margin-left: auto;
@@ -329,29 +347,26 @@
     $totalCost = AwsLocationService::estimateCost($ops);
 
     // Service charge + PPN dihitung di controller (App\Models\ServiceCharge).
+    // Service charge jasa PT Alfa di luar AWS, jadi hanya dalam Rupiah: persen
+    // dari total AWS + PPN yang dirupiahkan, atau minimum bulanan Rp.
     $sc        = $charge;
     $tax       = $sc['tax'];
     $totalVat  = $sc['total_vat'];
-    $grand     = $sc['grand'];
-
-    // Minimum service charge tertulis dalam Rupiah, jadi saat kurs digeser
-    // bagian itu tetap; hanya bagian dolarnya yang ikut kurs.
-    $idrFixed  = $sc['basis'] === 'minimum' ? $sc['min_idr'] : 0;
-    $idrUsd    = $sc['basis'] === 'minimum' ? $totalVat : $grand;
     $opMax     = $ops ? max(array_values($ops)) : 1;
 
-    // Kolom rupiah untuk baris service charge mengikuti aturan yang sama.
-    $scIdrUsd    = $sc['basis'] === 'minimum' ? 0 : $sc['charge'];
-    $scIdrFixed  = $sc['basis'] === 'minimum' ? $sc['min_idr'] : 0;
-
-    // Aturan service charge dikirim utuh ke skrip kurs: yang ditagih adalah
-    // max(persen x AWS, minimum Rp), dan pemenangnya bisa berubah saat kurs digeser.
-    $scPctUsd = $totalCost * $sc['percent'] / 100;
+    // Label dasar hitungan dikirim keduanya kalau persen dan minimum sama-sama
+    // ada, karena pemenangnya bisa berubah saat kurs digeser.
     $scMinIdr = $sc['min_idr'];
     $scLabels = $sc['percent'] > 0 && $scMinIdr > 0
         ? ['percent' => \App\Models\ServiceCharge::basisLabel(['basis' => 'percent'] + $sc),
            'minimum' => \App\Models\ServiceCharge::basisLabel(['basis' => 'minimum'] + $sc)]
         : null;
+
+    // Kurs yang dipakai beserta tanggalnya. Kalau tanggal kurs bukan di bulan
+    // akhir periode laporan, angka rupiah bisa berbeda dengan tagihan final.
+    $rateDate = $activeRate?->rate_date;
+    $rateOffPeriod = $rateDate && $rateDate->format('Y-m') !== $rangeEnd->format('Y-m');
+    $rateText = 'Rp ' . number_format($idrRate, 0, ',', '.');
 
     $money = function ($v) {
         $p = explode('.', number_format($v, 2, '.', ','));
@@ -363,10 +378,11 @@
     $usd = fn ($v) => '$' . number_format($v, $v > 0 && $v < 0.01 ? 4 : 2);
 
     // Nilai awal dengan kurs resmi; skrip kurs di bawah menimpanya dengan kurs pembaca.
-    $rp = fn ($usdPart, $fixed = 0) => 'Rp ' . number_format($usdPart * $idrRate + $fixed, 0, ',', '.');
-    $tiny = $grand > 0 && $grand < 0.01;
-    $grandTiny = explode('.', number_format($grand, 4, '.', ''));
-    $grandParts = $money($grand);
+    $rp = fn ($usdPart) => 'Rp ' . number_format($usdPart * $idrRate, 0, ',', '.');
+    $rpIdr = fn ($v) => 'Rp ' . number_format($v, 0, ',', '.');
+    $tiny = $totalVat > 0 && $totalVat < 0.01;
+    $grandTiny = explode('.', number_format($totalVat, 4, '.', ''));
+    $grandParts = $money($totalVat);
 
     $categories = [
         'maps'   => ['label' => __('dash.cat_maps'),   'icon' => 'bi-map',             'color' => '#00B14F', 'ops' => ['GetMapTile', 'GetTile', 'GetMapStyleDescriptor', 'GetMapGlyphs', 'GetMapSprites']],
@@ -480,14 +496,26 @@
                 <i class="bi bi-wallet2"></i>
                 <span class="cc-lbl">{{ __('apikeys.est_cost') }}</span>
             </div>
-            <div class="cc-val" data-usd-role="grand">
-                @if($tiny)
-                    ${{ $grandTiny[0] }}<span class="cents">.{{ $grandTiny[1] }}</span>
-                @else
-                    ${{ $grandParts['int'] }}<span class="cents">.{{ $grandParts['cents'] }}</span>
-                @endif
+            {{-- Dengan service charge, total tagihannya dalam Rupiah (service charge
+                 tidak punya nilai dolar); dolarnya tinggal AWS + PPN. --}}
+            @if($sc['active'])
+                <div class="cc-val" data-idr data-idr-role="grand" data-idr-prefix="Rp ">{{ $rpIdr($sc['grand_idr']) }}</div>
+                <div class="cc-idr">AWS + {{ __('apikeys.vat', ['pct' => round($taxRate * 100, 2)]) }} {{ $usd($totalVat) }}</div>
+            @else
+                <div class="cc-val">
+                    @if($tiny)
+                        ${{ $grandTiny[0] }}<span class="cents">.{{ $grandTiny[1] }}</span>
+                    @else
+                        ${{ $grandParts['int'] }}<span class="cents">.{{ $grandParts['cents'] }}</span>
+                    @endif
+                </div>
+                <div class="cc-idr" data-idr="{{ $totalVat }}">≈ {{ $rp($totalVat) }}</div>
+            @endif
+            <div class="cc-rate {{ $rateOffPeriod ? 'off' : '' }}" data-rate-echo data-off="{{ $rateOffPeriod ? 1 : 0 }}"
+                 data-tpl="{{ __('apikeys.rate_chip', ['rate' => ':rate']) }}">
+                <i class="bi bi-currency-exchange"></i>
+                <span data-rate-echo-text>{{ __('apikeys.rate_chip', ['rate' => $rateText]) }}</span>
             </div>
-            <div class="cc-idr" data-idr="{{ $idrUsd }}" data-idr-fixed="{{ $idrFixed }}" data-idr-role="grand">≈ Rp {{ number_format($idrUsd * $idrRate + $idrFixed, 0, ',', '.') }}</div>
             <div class="cc-note">
                 {{ $sc['active']
                     ? __('servicecharge.incl', ['pct' => round($taxRate * 100, 2)])
@@ -508,8 +536,8 @@
 
             @if($sc['active'])
                 <span>+ {{ __('servicecharge.line') }}</span>
-                <span class="num" data-usd-role="sc">{{ $usd($sc['charge']) }}</span>
-                <span class="num idr" data-idr="{{ $scIdrUsd }}" data-idr-fixed="{{ $scIdrFixed }}" data-idr-role="sc" data-idr-prefix="Rp ">{{ $rp($scIdrUsd, $scIdrFixed) }}</span>
+                <span class="num">—</span>
+                <span class="num idr" data-idr data-idr-role="sc" data-idr-prefix="Rp ">{{ $rpIdr($sc['charge_idr']) }}</span>
             @endif
         </div>
     </div>
@@ -518,12 +546,12 @@
 {{-- Kurs bawaan diambil dari menu Kurs & Pajak. Pembaca boleh menggesernya
      untuk hitungan kasar sendiri; angka rupiah di halaman ini ikut berubah,
      sementara angka dolarnya tidak tersentuh. --}}
-<div class="q-card rate-card" data-rate-card
+<div class="q-card rate-card {{ $rateOffPeriod ? 'off' : '' }}" data-rate-card
      data-default="{{ $idrRate }}"
      data-min="{{ (int) round($idrRate * 0.8) }}"
      data-max="{{ (int) round($idrRate * 1.2) }}"
      data-total-vat="{{ $totalVat }}"
-     data-sc-pct-usd="{{ $scPctUsd }}"
+     data-sc-pct="{{ $sc['percent'] }}"
      data-sc-min-idr="{{ $scMinIdr }}">
     <div class="rate-head">
         <div>
@@ -533,6 +561,12 @@
                 <input type="text" inputmode="decimal" data-rate-num value="{{ number_format($idrRate, 0, ',', '.') }}">
                 <span class="sfx">/ USD</span>
             </div>
+            @if($rateDate)
+                <div class="rate-meta">
+                    {{ __('apikeys.rate_date', ['date' => $rateDate->translatedFormat('d M Y')]) }}
+                    @if($activeRate->source) · {{ $activeRate->source }} @endif
+                </div>
+            @endif
         </div>
 
         <button type="button" class="rate-reset" data-rate-reset hidden>
@@ -543,6 +577,16 @@
               data-official="{{ __('apikeys.rate_official') }}"
               data-custom="{{ __('apikeys.rate_custom') }}">{{ __('apikeys.rate_official') }}</span>
     </div>
+
+    @if($rateOffPeriod)
+        <div class="rate-warn">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span>{{ __('apikeys.rate_off_period', [
+                'date'   => $rateDate->translatedFormat('d M Y'),
+                'period' => $rangeEnd->translatedFormat('F Y'),
+            ]) }}</span>
+        </div>
+    @endif
 
     <div class="rate-track">
         <input type="range" data-rate-range
@@ -641,7 +685,12 @@
                                 <th>{{ __('apikeys.usage') }}</th>
                                 <th class="text-end">{{ __('apikeys.requests') }}</th>
                                 <th class="text-end">{{ __('apikeys.est_cost') }}</th>
-                                <th class="text-end">{{ __('apikeys.cost_idr') }}</th>
+                                <th class="text-end">
+                                    {{ __('apikeys.cost_idr') }}
+                                    <span class="th-rate" data-rate-echo data-tpl="@ :rate / USD">
+                                        <span data-rate-echo-text>@ {{ $rateText }} / USD</span>
+                                    </span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -679,15 +728,25 @@
                                 <td class="text-end idr-cell" style="color:var(--muted);"
                                     data-idr="{{ $tax }}" data-idr-prefix="Rp ">{{ $rp($tax) }}</td>
                             </tr>
-                            {{-- Service charge PT Alfa adalah jasa terpisah: ditambahkan
-                                 setelah total AWS + PPN, dan tidak kena PPN itu. --}}
+                            {{-- Service charge PT Alfa adalah jasa di luar AWS: dihitung dan
+                                 ditagih dalam Rupiah dari total AWS + PPN, tanpa nilai dolar. --}}
+                            <tr>
+                                <td colspan="3" class="{{ $sc['active'] ? 'fw-semibold' : 'fw-bold' }}">{{ __('apikeys.total_vat') }}</td>
+                                <td class="text-end">
+                                    <div class="q-num" @if($sc['active']) style="font-size:0.95rem;" @else style="font-size:1.05rem;color:var(--green-text);" @endif>
+                                        @if($tiny)
+                                            ${{ $grandTiny[0] }}<span class="cents">.{{ $grandTiny[1] }}</span>
+                                        @else
+                                            ${{ $grandParts['int'] }}<span class="cents">.{{ $grandParts['cents'] }}</span>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="text-end idr-cell">
+                                    <div class="q-num" @if($sc['active']) style="font-size:0.95rem;" @else style="font-size:1.05rem;color:var(--green-text);" @endif
+                                         data-idr="{{ $totalVat }}" data-idr-prefix="Rp ">{{ $rp($totalVat) }}</div>
+                                </td>
+                            </tr>
                             @if($sc['active'])
-                                <tr>
-                                    <td colspan="3" style="color:var(--muted);">{{ __('apikeys.total_vat') }}</td>
-                                    <td class="text-end fw-semibold">{{ $usd($totalVat) }}</td>
-                                    <td class="text-end fw-semibold idr-cell"
-                                        data-idr="{{ $totalVat }}" data-idr-prefix="Rp ">{{ $rp($totalVat) }}</td>
-                                </tr>
                                 <tr>
                                     <td colspan="3" style="color:var(--muted);">
                                         {{ __('servicecharge.line') }}
@@ -699,29 +758,19 @@
                                             ({{ \App\Models\ServiceCharge::basisLabel($sc) }})
                                         @endif
                                     </td>
-                                    <td class="text-end" style="color:var(--muted);" data-usd-role="sc">{{ $usd($sc['charge']) }}</td>
+                                    <td class="text-end" style="color:var(--muted);">—</td>
                                     <td class="text-end idr-cell" style="color:var(--muted);"
-                                        data-idr="{{ $scIdrUsd }}" data-idr-fixed="{{ $scIdrFixed }}" data-idr-role="sc" data-idr-prefix="Rp ">{{ $rp($scIdrUsd, $scIdrFixed) }}</td>
+                                        data-idr data-idr-role="sc" data-idr-prefix="Rp ">{{ $rpIdr($sc['charge_idr']) }}</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="fw-bold">{{ __('apikeys.grand_total') }}</td>
+                                    <td class="text-end" style="color:var(--muted);">—</td>
+                                    <td class="text-end idr-cell">
+                                        <div class="q-num" style="font-size:1.05rem;color:var(--green-text);"
+                                             data-idr data-idr-role="grand" data-idr-prefix="Rp ">{{ $rpIdr($sc['grand_idr']) }}</div>
+                                    </td>
                                 </tr>
                             @endif
-                            <tr>
-                                <td colspan="3" class="fw-bold">
-                                    {{ $sc['active'] ? __('apikeys.grand_total') : __('apikeys.total_vat') }}
-                                </td>
-                                <td class="text-end">
-                                    <div class="q-num" style="font-size:1.05rem;color:var(--green-text);" data-usd-role="grand">
-                                        @if($tiny)
-                                            ${{ $grandTiny[0] }}<span class="cents">.{{ $grandTiny[1] }}</span>
-                                        @else
-                                            ${{ $grandParts['int'] }}<span class="cents">.{{ $grandParts['cents'] }}</span>
-                                        @endif
-                                    </div>
-                                </td>
-                                <td class="text-end idr-cell">
-                                    <div class="q-num" style="font-size:1.05rem;color:var(--green-text);"
-                                         data-idr="{{ $idrUsd }}" data-idr-fixed="{{ $idrFixed }}" data-idr-role="grand" data-idr-prefix="Rp ">{{ $rp($idrUsd, $idrFixed) }}</div>
-                                </td>
-                            </tr>
                         </tfoot>
                     </table>
                 </div>
@@ -807,22 +856,16 @@
         const MAX = Number(card.dataset.max);
         const STORE = 'gm-report-rate';
 
-        // Service charge = max(persen x AWS, minimum Rp). Mana yang menang
-        // bergantung pada kurs, jadi dihitung ulang di sini seperti di export.
+        // Service charge = max(persen x (AWS + PPN) dalam Rupiah, minimum Rp).
+        // Mana yang menang bergantung pada kurs, jadi dihitung ulang di sini
+        // seperti di export.
         const TOTAL_VAT  = Number(card.dataset.totalVat || 0);
-        const SC_PCT_USD = Number(card.dataset.scPctUsd || 0);
+        const SC_PCT     = Number(card.dataset.scPct || 0) / 100;
         const SC_MIN_IDR = Number(card.dataset.scMinIdr || 0);
 
         const clamp = (v) => Math.min(Math.max(v, MIN), MAX);
         const group = (v) => Math.round(v).toLocaleString('id-ID');
         const pct = (v) => ((v - MIN) / (MAX - MIN)) * 100;
-        const usd = (v) => '$' + (v > 0 && v < 0.01
-            ? v.toFixed(4)
-            : v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-        const usdSplit = (v) => {
-            const s = usd(v), i = s.lastIndexOf('.');
-            return s.slice(0, i) + '<span class="cents">' + s.slice(i) + '</span>';
-        };
 
         // Penanda kurs resmi dipasang sekali; posisinya tidak ikut bergeser.
         mark.style.left = pct(DEFAULT) + '%';
@@ -849,28 +892,28 @@
                 exp.href = url.toString();
             }
 
-            const minWins = SC_MIN_IDR > SC_PCT_USD * value;
-            const scRp = minWins ? SC_MIN_IDR : SC_PCT_USD * value;
+            const totalVatRp = TOTAL_VAT * value;
+            const minWins = SC_MIN_IDR > totalVatRp * SC_PCT;
+            const scRp = minWins ? SC_MIN_IDR : totalVatRp * SC_PCT;
 
             document.querySelectorAll('[data-idr]').forEach((el) => {
                 const role = el.dataset.idrRole;
                 const rp = role === 'sc' ? scRp
-                    : role === 'grand' ? TOTAL_VAT * value + scRp
-                    : Number(el.dataset.idr) * value + Number(el.dataset.idrFixed || 0);
+                    : role === 'grand' ? totalVatRp + scRp
+                    : Number(el.dataset.idr) * value;
                 el.textContent = (el.dataset.idrPrefix ?? '≈ Rp ') + group(rp);
             });
 
-            // Minimum tertulis dalam Rupiah, jadi hanya kalau ada minimum nilai
-            // dolar service charge (dan totalnya) ikut kurs, begitu juga labelnya.
-            if (SC_MIN_IDR > 0) {
-                const scUsd = minWins ? SC_MIN_IDR / value : SC_PCT_USD;
-                document.querySelectorAll('[data-usd-role]').forEach((el) => {
-                    el.innerHTML = el.dataset.usdRole === 'sc' ? usd(scUsd) : usdSplit(TOTAL_VAT + scUsd);
-                });
-                document.querySelectorAll('[data-sc-basis]').forEach((el) => {
-                    el.hidden = el.dataset.scBasis !== (minWins ? 'minimum' : 'percent');
-                });
-            }
+            // Kurs yang sedang dipakai ditulis ulang di setiap penanda kurs;
+            // kurs manual ditandai warna peringatan.
+            document.querySelectorAll('[data-rate-echo]').forEach((el) => {
+                el.querySelector('[data-rate-echo-text]').textContent = el.dataset.tpl.replace(':rate', 'Rp ' + group(value));
+                el.classList.toggle('custom', !official);
+            });
+
+            document.querySelectorAll('[data-sc-basis]').forEach((el) => {
+                el.hidden = el.dataset.scBasis !== (minWins ? 'minimum' : 'percent');
+            });
 
             try {
                 official ? localStorage.removeItem(STORE) : localStorage.setItem(STORE, value);

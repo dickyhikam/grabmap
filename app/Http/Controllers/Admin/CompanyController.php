@@ -496,7 +496,7 @@ class CompanyController extends Controller
         $sc         = ServiceCharge::calculate($company->aws_account_id, $company->id, $subtotal, $startDate, $endDate, $idrRate, $taxRate);
         $tax        = $sc['tax'];
         $totalVat   = $sc['total_vat'];
-        $grand      = $sc['grand'];
+        $grand      = $sc['grand_idr'];
 
         // Nomor invoice deterministik dari periode + slug company.
         $invoiceNo = 'INV/' . \Carbon\Carbon::parse($endDate)->format('Ym') . '/' . strtoupper($company->slug);

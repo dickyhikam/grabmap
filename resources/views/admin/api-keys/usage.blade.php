@@ -179,14 +179,14 @@
     $totalCost = AwsLocationService::estimateCost($ops);
     $tax       = $sc['tax'];
     $totalVat  = $sc['total_vat'];
-    $grand     = $sc['grand'];
     $opMax     = $ops ? max(array_values($ops)) : 1;
 
     $money = function ($v) {
         $p = explode('.', number_format($v, 2, '.', ','));
         return ['int' => $p[0], 'cents' => $p[1]];
     };
-    $grandParts = $money($grand);
+    $grandParts = $money($totalVat);
+    $rpFmt = fn ($v) => 'Rp ' . number_format($v, 0, ',', '.');
 
     $categories = [
         'maps'   => ['label' => __('dash.cat_maps'),   'icon' => 'bi-map',             'color' => '#00B14F', 'ops' => ['GetMapTile', 'GetTile', 'GetMapStyleDescriptor', 'GetMapGlyphs', 'GetMapSprites']],
@@ -290,14 +290,23 @@
     <div class="q-card stat-tile">
         <div class="ic tone-amber"><i class="bi bi-wallet2"></i></div>
         <div>
-            <div class="q-num val">${{ $grandParts['int'] }}<span class="cents">.{{ $grandParts['cents'] }}</span></div>
-            <div class="lbl">{{ __('apikeys.est_cost') }}</div>
-            <div class="sub">
-                {{ $sc['active']
-                    ? __('servicecharge.incl', ['pct' => round($taxRate * 100, 2)])
-                    : __('apikeys.incl_tax', ['pct' => round($taxRate * 100, 2)]) }} ·
-                ≈ Rp {{ number_format($grand * $idrRate, 0, ',', '.') }}
-            </div>
+            {{-- Service charge ditagih dalam Rupiah, jadi begitu ada service charge
+                 total tagihannya ditulis dalam Rupiah; dolarnya hanya AWS + PPN. --}}
+            @if($sc['active'])
+                <div class="q-num val">{{ $rpFmt($sc['grand_idr']) }}</div>
+                <div class="lbl">{{ __('apikeys.est_cost') }}</div>
+                <div class="sub">
+                    {{ __('servicecharge.incl', ['pct' => round($taxRate * 100, 2)]) }} ·
+                    AWS ${{ number_format($totalVat, 2) }}
+                </div>
+            @else
+                <div class="q-num val">${{ $grandParts['int'] }}<span class="cents">.{{ $grandParts['cents'] }}</span></div>
+                <div class="lbl">{{ __('apikeys.est_cost') }}</div>
+                <div class="sub">
+                    {{ __('apikeys.incl_tax', ['pct' => round($taxRate * 100, 2)]) }} ·
+                    ≈ {{ $rpFmt($sc['total_vat_idr']) }}
+                </div>
+            @endif
         </div>
     </div>
 
@@ -413,33 +422,33 @@
                                 <td colspan="4" style="color:var(--muted);">{{ __('apikeys.vat', ['pct' => round($taxRate * 100, 2)]) }}</td>
                                 <td class="text-end" style="color:var(--muted);">${{ number_format($tax, 2) }}</td>
                             </tr>
-                            {{-- Service charge PT Alfa adalah jasa terpisah: ditambahkan
-                                 setelah total AWS + PPN, dan tidak kena PPN itu. --}}
+                            {{-- Service charge PT Alfa adalah jasa di luar AWS: dihitung dan
+                                 ditagih dalam Rupiah dari total AWS + PPN, tanpa nilai dolar. --}}
+                            <tr>
+                                <td colspan="4" class="{{ $sc['active'] ? 'fw-semibold' : 'fw-bold' }}">{{ __('apikeys.total_vat') }}</td>
+                                <td class="text-end">
+                                    <div class="q-num" style="font-size:{{ $sc['active'] ? '0.95rem' : '1.05rem' }};color:{{ $sc['active'] ? 'inherit' : 'var(--green-text)' }};">
+                                        ${{ $grandParts['int'] }}<span class="cents">.{{ $grandParts['cents'] }}</span>
+                                    </div>
+                                    <div style="font-size:0.7rem;color:var(--muted);">
+                                        ≈ {{ $rpFmt($sc['total_vat_idr']) }}
+                                    </div>
+                                </td>
+                            </tr>
                             @if($sc['active'])
-                                <tr>
-                                    <td colspan="4" style="color:var(--muted);">{{ __('apikeys.total_vat') }}</td>
-                                    <td class="text-end fw-semibold">${{ number_format($totalVat, 2) }}</td>
-                                </tr>
                                 <tr>
                                     <td colspan="4" style="color:var(--muted);">
                                         {{ __('servicecharge.line') }} ({{ \App\Models\ServiceCharge::basisLabel($sc) }})
                                     </td>
-                                    <td class="text-end" style="color:var(--muted);">${{ number_format($sc['charge'], 2) }}</td>
+                                    <td class="text-end" style="color:var(--muted);">{{ $rpFmt($sc['charge_idr']) }}</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="fw-bold">{{ __('apikeys.grand_total') }}</td>
+                                    <td class="text-end">
+                                        <div class="q-num" style="font-size:1.05rem;color:var(--green-text);">{{ $rpFmt($sc['grand_idr']) }}</div>
+                                    </td>
                                 </tr>
                             @endif
-                            <tr>
-                                <td colspan="4" class="fw-bold">
-                                    {{ $sc['active'] ? __('apikeys.grand_total') : __('apikeys.total_vat') }}
-                                </td>
-                                <td class="text-end">
-                                    <div class="q-num" style="font-size:1.05rem;color:var(--green-text);">
-                                        ${{ $grandParts['int'] }}<span class="cents">.{{ $grandParts['cents'] }}</span>
-                                    </div>
-                                    <div style="font-size:0.7rem;color:var(--muted);">
-                                        ≈ Rp {{ number_format($grand * $idrRate, 0, ',', '.') }}
-                                    </div>
-                                </td>
-                            </tr>
                         </tfoot>
                     </table>
                 </div>
