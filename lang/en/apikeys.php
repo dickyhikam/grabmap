@@ -208,4 +208,17 @@ return [
     'disable_title'  => 'Deactivate API key',
     'disable_sub'    => 'Requests with this key stop right away.',
     'disable_note'   => 'AWS has no on/off switch for API keys, so this sets the expiry to a few seconds from now — requests stop almost immediately. The original expiry is remembered and restored when you activate it again.',
+    // Reveal key value
+    'value_btn'     => 'View key',
+    'value_title'   => 'API key value',
+    'value_sub'     => 'The value clients use to call AWS.',
+    'value_label'   => 'Key',
+    'value_show'    => 'Show',
+    'value_hide'    => 'Hide',
+    'value_copy'    => 'Copy',
+    'value_copied'  => 'Key value copied.',
+    'value_loading' => 'Fetching key value...',
+    'value_failed'  => 'Could not fetch the key value.',
+    'value_empty'   => 'AWS returned no value for this key.',
+    'value_note'    => 'This value is a credential: never paste it into chat or a public ticket. If it leaks, the only thing limiting the damage is the referer and action list this key allows.',
 ];

@@ -14,6 +14,7 @@ use App\Models\Setting;
 use App\Services\AwsLocationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class ApiKeyController extends Controller
@@ -360,6 +361,42 @@ class ApiKeyController extends Controller
         Cache::forget($service->cacheKey("aws_key_info:{$keyName}"));
 
         return back()->with('success', __('apikeys.enabled', ['name' => $keyName]));
+    }
+
+    /**
+     * Nilai API key, untuk dilihat/dicopy dari panel (JSON).
+     *
+     * AWS mengembalikan nilainya kapan saja lewat DescribeKey — ini bukan rahasia
+     * sekali-tampil — jadi tidak perlu ada salinannya di sisi kita. Diambil saat
+     * diminta supaya tidak pernah basi, dan setiap pengungkapan dicatat ke log
+     * karena yang keluar di sini adalah kredensial, bukan metadata.
+     */
+    public function value(Request $request, string $keyName)
+    {
+        $account = $this->resolveAccount($request);
+
+        if (!AwsLocationService::hasCredentials($account)) {
+            return response()->json(['error' => 'AWS credentials belum dikonfigurasi.'], 422);
+        }
+
+        $result = AwsLocationService::forAccount($account)->describeKey($keyName);
+
+        if ($result['error'] || empty($result['key']['key'])) {
+            return response()->json([
+                'error' => $result['error'] ?: __('apikeys.value_empty'),
+            ], 422);
+        }
+
+        Log::info('API key value revealed', [
+            'key_name'       => $keyName,
+            'aws_account_id' => $account?->id,
+            'user'           => $request->user()?->name,
+        ]);
+
+        return response()->json([
+            'key_name' => $result['key']['key_name'],
+            'key'      => $result['key']['key'],
+        ]);
     }
 
     public function edit(Request $request, string $keyName)

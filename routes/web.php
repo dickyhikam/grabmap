@@ -215,6 +215,8 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
         }
 
         Route::middleware('permission:api_keys.update')->group(function () {
+            // Nilai key sendiri — kredensial, jadi dikunci di izin yang sama dengan ubah.
+            Route::get('/{keyName}/value', [ApiKeyController::class, 'value'])->name('admin.api-keys.value');
             Route::get('/{keyName}/edit', [ApiKeyController::class, 'edit'])->name('admin.api-keys.edit');
             Route::put('/{keyName}', [ApiKeyController::class, 'update'])->name('admin.api-keys.update');
             // AWS tidak punya sakelar aktif/nonaktif — lihat komentar di controller.

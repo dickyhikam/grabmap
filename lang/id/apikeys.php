@@ -208,4 +208,17 @@ return [
     'disable_title'  => 'Nonaktifkan API key',
     'disable_sub'    => 'Permintaan dengan key ini langsung berhenti.',
     'disable_note'   => 'AWS tidak punya sakelar aktif/nonaktif untuk API key, jadi masa berlakunya dimajukan ke beberapa detik dari sekarang — permintaan berhenti hampir seketika. Masa berlaku aslinya diingat dan dikembalikan saat key diaktifkan lagi.',
+    // Lihat nilai key
+    'value_btn'     => 'Lihat key',
+    'value_title'   => 'Nilai API key',
+    'value_sub'     => 'Nilai yang dipakai klien untuk memanggil AWS.',
+    'value_label'   => 'Key',
+    'value_show'    => 'Tampilkan',
+    'value_hide'    => 'Sembunyikan',
+    'value_copy'    => 'Copy',
+    'value_copied'  => 'Nilai key sudah dicopy.',
+    'value_loading' => 'Mengambil nilai key...',
+    'value_failed'  => 'Gagal mengambil nilai key.',
+    'value_empty'   => 'AWS tidak mengembalikan nilai untuk key ini.',
+    'value_note'    => 'Nilai ini kredensial: jangan ditempel di chat atau tiket publik. Kalau sampai tersebar, yang membatasi dampaknya hanya daftar referer dan aksi yang diizinkan key ini.',
 ];

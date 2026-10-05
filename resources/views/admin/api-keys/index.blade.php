@@ -143,6 +143,29 @@
     .note.warn { background: var(--warn-soft); color: var(--warn-fg); }
 
     .form-label-sm { display: block; font-size: 0.72rem; font-weight: 700; color: var(--muted); margin-bottom: 7px; }
+
+    /* Kotak nilai key — diburamkan dulu supaya tidak ikut terbaca orang lain
+       saat layar dibagikan; tombol mata yang membukanya. */
+    .key-val {
+        display: flex; align-items: center; gap: 10px;
+        background: var(--surface); border: 1px solid var(--line);
+        border-radius: 14px; padding: 11px 13px;
+    }
+    .key-val code {
+        flex: 1; min-width: 0;
+        font-family: ui-monospace, monospace; font-size: 0.76rem; line-height: 1.5;
+        color: var(--ink); word-break: break-all; user-select: all;
+        transition: filter 0.18s;
+    }
+    .key-val code.masked { filter: blur(5px); user-select: none; }
+    .val-eye {
+        flex: 0 0 auto; width: 32px; height: 32px;
+        border: none; border-radius: 10px; cursor: pointer;
+        background: var(--card); color: var(--muted);
+        display: inline-flex; align-items: center; justify-content: center;
+        transition: background 0.15s, color 0.15s;
+    }
+    .val-eye:hover { background: var(--green); color: #fff; }
     .btn-row > .btn-soft, .btn-row > .btn-solid { flex: 1; padding-left: 12px; padding-right: 12px; }
 @endpush
 
@@ -306,6 +329,12 @@
                     </a>
 
                     @can('api_keys.update')
+                        <button type="button" class="key-btn" data-reveal data-key="{{ $key['key_name'] }}">
+                            <i class="bi bi-eye"></i> {{ __('apikeys.value_btn') }}
+                        </button>
+                    @endcan
+
+                    @can('api_keys.update')
                         <a href="{{ route('admin.api-keys.edit', ['keyName' => $key['key_name'], 'account' => $account?->getRouteKey()]) }}" class="key-btn">
                             <i class="bi bi-pencil"></i> {{ __('apikeys.edit') }}
                         </a>
@@ -344,6 +373,42 @@
             </div>
         @endforeach
     </div>
+
+    {{-- ===================== Modal: nilai key ===================== --}}
+    @can('api_keys.update')
+        <div class="gm-modal" id="valueModal" role="dialog" aria-modal="true">
+            <div class="gm-modal-card">
+                <div class="gm-modal-head">
+                    <div class="gm-modal-icon tone-green"><i class="bi bi-eye-fill"></i></div>
+                    <div class="gm-modal-title">{{ __('apikeys.value_title') }}</div>
+                    <div class="gm-modal-sub">{{ __('apikeys.value_sub') }}</div>
+                </div>
+                <div class="gm-modal-body">
+                    <div class="who"><i class="bi bi-key-fill" style="color:var(--green-text);"></i><span id="valName">&mdash;</span></div>
+
+                    <label class="form-label-sm">{{ __('apikeys.value_label') }}</label>
+                    <div class="key-val">
+                        <code id="valText" class="masked">{{ __('apikeys.value_loading') }}</code>
+                        <button type="button" class="val-eye" id="valToggle" hidden
+                                aria-pressed="false" title="{{ __('apikeys.value_show') }}">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+
+                    <div class="note warn">
+                        <i class="bi bi-shield-exclamation"></i><span>{{ __('apikeys.value_note') }}</span>
+                    </div>
+
+                    <div class="btn-row">
+                        <button type="button" class="btn-soft" data-close>{{ __('ui.close') }}</button>
+                        <button type="button" class="btn-solid" id="valCopy" disabled>
+                            <i class="bi bi-clipboard"></i> {{ __('apikeys.value_copy') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endcan
 
     @can('api_keys.update')
         <div class="gm-modal" id="disableModal" role="dialog" aria-modal="true">
@@ -507,6 +572,105 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') modal.classList.remove('open');
+        });
+    })();
+
+    // ---------- Lihat nilai API key ----------
+    (function () {
+        const modal = document.getElementById('valueModal');
+        if (!modal) return;
+
+        const BASE    = @json(url('/admin/api-keys'));
+        const QUERY   = @json($account ? '?account=' . $account->getRouteKey() : '');
+        const LOADING = @json(__('apikeys.value_loading'));
+        const FAILED  = @json(__('apikeys.value_failed'));
+        const COPIED  = @json(__('apikeys.value_copied'));
+        const SHOW    = @json(__('apikeys.value_show'));
+        const HIDE    = @json(__('apikeys.value_hide'));
+
+        const box    = document.getElementById('valText');
+        const toggle = document.getElementById('valToggle');
+        const copy   = document.getElementById('valCopy');
+
+        let value  = '';
+        // Nomor permintaan terakhir: balasan key yang sudah tidak dilihat diabaikan,
+        // supaya nilai key A tidak pernah mendarat di modal yang sedang menampilkan key B.
+        let ticket = 0;
+
+        function reset() {
+            value = '';
+            box.textContent = LOADING;
+            box.classList.add('masked');
+            toggle.hidden = true;
+            toggle.setAttribute('aria-pressed', 'false');
+            toggle.title = SHOW;
+            toggle.querySelector('i').className = 'bi bi-eye';
+            copy.disabled = true;
+        }
+
+        function close() {
+            modal.classList.remove('open');
+            // Nilainya tidak ditinggal di DOM setelah modal ditutup.
+            reset();
+        }
+
+        document.addEventListener('click', async (e) => {
+            if (modal.classList.contains('open')
+                && (e.target === modal || e.target.closest('#valueModal [data-close]'))) {
+                close();
+                return;
+            }
+
+            const btn = e.target.closest('[data-reveal]');
+            if (!btn) return;
+
+            const name = btn.dataset.key;
+            reset();
+            document.getElementById('valName').textContent = name;
+            box.classList.remove('masked');
+            modal.classList.add('open');
+
+            const mine = ++ticket;
+
+            try {
+                const res = await fetch(BASE + '/' + encodeURIComponent(name) + '/value' + QUERY, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const data = await res.json().catch(() => ({}));
+
+                if (mine !== ticket) return;
+
+                if (!res.ok || !data.key) {
+                    box.textContent = data.error || FAILED;
+                    return;
+                }
+
+                value = data.key;
+                box.textContent = value;
+                box.classList.add('masked');
+                toggle.hidden = false;
+                copy.disabled = false;
+            } catch (err) {
+                if (mine === ticket) box.textContent = FAILED;
+            }
+        });
+
+        toggle.addEventListener('click', () => {
+            const masked = box.classList.toggle('masked');
+            toggle.setAttribute('aria-pressed', masked ? 'false' : 'true');
+            toggle.title = masked ? SHOW : HIDE;
+            toggle.querySelector('i').className = masked ? 'bi bi-eye' : 'bi bi-eye-slash';
+        });
+
+        copy.addEventListener('click', () => {
+            if (!value) return;
+            window.gmCopy(value)
+                .then(() => window.gmToast(COPIED, 'ok'))
+                .catch(() => window.gmToast(FAILED, 'bad'));
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.classList.contains('open')) close();
         });
     })();
 
