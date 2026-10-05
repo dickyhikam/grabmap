@@ -135,6 +135,24 @@
         flex: 1; min-width: 0; border: none; background: none; outline: none;
         font-family: ui-monospace, monospace; font-size: 0.74rem; color: var(--ink);
     }
+
+    /* Ringkasan key yang sedang dipilih di formulir tambah */
+    .key-detail {
+        margin-top: 10px; border: 1px solid var(--line); border-radius: 14px;
+        background: var(--surface); padding: 12px 14px;
+    }
+    .key-detail .row1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .key-detail .pill {
+        font-size: 0.66rem; font-weight: 700; border-radius: 999px; padding: 3px 9px;
+        background: var(--green-soft); color: var(--green-text);
+    }
+    .key-detail .pill.bad { background: var(--danger-soft); color: var(--danger-fg); }
+    .key-detail .pill.plain { background: var(--card); color: var(--muted); }
+    .key-detail .desc { font-size: 0.72rem; color: var(--muted); margin-bottom: 8px; }
+    .key-detail .grp { display: flex; gap: 6px; align-items: baseline; font-size: 0.72rem; margin-top: 4px; }
+    .key-detail .grp b { flex: 0 0 54px; font-weight: 700; color: var(--muted); font-size: 0.68rem; }
+    .key-detail .grp span { color: var(--ink); }
+
     .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
     .btn-row.end { justify-content: flex-end; }
 @endpush
@@ -227,19 +245,49 @@
                     @error('logo')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
                 </div>
 
-                <div class="form-field">
-                    <label class="form-label-sm">{{ __('companies.account') }}</label>
-                    <select name="aws_account_id" class="form-input">
-                        <option value="">—</option>
-                        @foreach($awsAccounts as $account)
-                            <option value="{{ $account->id }}"
-                                @selected((string) old('aws_account_id', $company->aws_account_id ?? '') === (string) $account->id)>
-                                {{ $account->name }} · {{ $account->region }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <div class="form-hint">{{ __('companies.account_hint') }}</div>
-                </div>
+
+                @if(!$isEdit && !empty($availableKeys))
+                    @php
+                        // Keterangan key dirangkum di sini supaya JS tinggal menampilkan —
+                        // tidak ada panggilan AWS lagi saat pilihannya diganti-ganti.
+                        $keyIndex = collect($availableKeys)->flatMap(function ($group) {
+                            return collect($group['keys'])->mapWithKeys(function ($key) use ($group) {
+                                $expire = $key['expire_time'] ? \Carbon\Carbon::parse($key['expire_time']) : null;
+
+                                return [$group['id'] . '|' . $key['name'] => [
+                                    'account'  => $group['name'],
+                                    'desc'     => $key['description'],
+                                    'expire'   => $expire?->wib()->translatedFormat('d M Y, H:i'),
+                                    'expired'  => (bool) $expire?->isPast(),
+                                    'actions'  => $key['actions'],
+                                    'referers' => count($key['referers']),
+                                ]];
+                            });
+                        })->all();
+                    @endphp
+
+                    <div class="form-field">
+                        <label class="form-label-sm">
+                            {{ __('companies.pick_key') }} <span class="opt">{{ __('companies.optional') }}</span>
+                        </label>
+                        <select name="key_ref" id="keyRef" class="form-input">
+                            <option value="">{{ __('companies.pick_key_none') }}</option>
+                            @foreach($availableKeys as $group)
+                                <optgroup label="{{ $group['name'] }}">
+                                    @foreach($group['keys'] as $key)
+                                        <option value="{{ $group['id'] }}|{{ $key['name'] }}"
+                                            @selected(old('key_ref') === $group['id'] . '|' . $key['name'])>
+                                            {{ $key['name'] }}
+                                        </option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </select>
+                        <div class="form-hint">{{ __('companies.pick_key_hint') }}</div>
+
+                        <div class="key-detail" id="keyDetail" hidden></div>
+                    </div>
+                @endif
 
                 <div class="form-field">
                     <label class="form-label-sm">
@@ -278,7 +326,7 @@
                     'scCompany'     => true,
                     'scCurrent'     => $scCurrent ?? null,
                     'scAccountRule' => $scAccountRule ?? null,
-                    'scHasAccount'  => (bool) old('aws_account_id', $company->aws_account_id ?? null),
+                    'scHasAccount'  => (bool) ($company->aws_account_id ?? null),
                     'scHistory'     => $scHistory ?? collect(),
                 ])
 
@@ -298,6 +346,71 @@
 
 @push('scripts')
 <script>
+    // ---------- Ringkasan API key yang dipilih (hanya di formulir tambah) ----------
+    (function () {
+        const pick = document.getElementById('keyRef');
+        const box  = document.getElementById('keyDetail');
+        if (!pick || !box) return;
+
+        const KEYS = @json($keyIndex ?? []);
+        const NEVER   = @json(__('companies.key_never'));
+        const ACTIVE  = @json(__('companies.key_state_active'));
+        const EXPIRED = @json(__('companies.key_state_expired'));
+        const L_ACT   = @json(__('companies.key_detail_actions'));
+        const L_EXP   = @json(__('companies.key_detail_expiry'));
+        const L_REF   = @json(__('companies.key_detail_referers'));
+        const NONE    = @json(__('companies.key_detail_none'));
+
+        const LABELS = { 'geo-maps': 'Maps', 'geo-places': 'Places', 'geo-routes': 'Routes' };
+
+        const esc = (text) => String(text).replace(/[&<>"]/g, (c) => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
+        ));
+
+        // Aksi dikelompokkan per layanan, sama seperti di dokumen serah-terima.
+        function actionText(actions) {
+            const groups = [];
+
+            Object.entries(LABELS).forEach(([prefix, label]) => {
+                const names = (actions || [])
+                    .filter((a) => a.startsWith(prefix + ':'))
+                    .map((a) => a.slice(prefix.length + 1));
+
+                if (names.length) groups.push(label + ': ' + names.join(', '));
+            });
+
+            return groups.length ? groups.join(' · ') : NONE;
+        }
+
+        function render() {
+            const key = KEYS[pick.value];
+
+            if (!key) {
+                box.hidden = true;
+                box.innerHTML = '';
+                return;
+            }
+
+            const state = key.expired
+                ? '<span class="pill bad">' + esc(EXPIRED) + '</span>'
+                : '<span class="pill">' + esc(ACTIVE) + '</span>';
+
+            const rows = [
+                '<div class="row1">' + state + '<span class="pill plain">' + esc(key.account) + '</span></div>',
+                key.desc ? '<div class="desc">' + esc(key.desc) + '</div>' : '',
+                '<div class="grp"><b>' + esc(L_EXP) + '</b><span>' + esc(key.expire || NEVER) + '</span></div>',
+                '<div class="grp"><b>' + esc(L_ACT) + '</b><span>' + esc(actionText(key.actions)) + '</span></div>',
+                key.referers ? '<div class="grp"><b>' + esc(L_REF) + '</b><span>' + key.referers + '</span></div>' : '',
+            ];
+
+            box.innerHTML = rows.join('');
+            box.hidden = false;
+        }
+
+        pick.addEventListener('change', render);
+        render();
+    })();
+
     // Slug mengikuti nama perusahaan sampai orangnya mengetik slug sendiri —
     // setelah itu tidak pernah ditimpa lagi.
     (function () {

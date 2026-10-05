@@ -19,16 +19,6 @@
     }
     .back-pill:hover { color: var(--ink); transform: translateX(-2px); }
 
-    /* Kepala perusahaan */
-    .co-head { display: flex; align-items: center; gap: 15px; }
-    .co-logo {
-        width: 56px; height: 56px; border-radius: 17px; flex-shrink: 0;
-        display: flex; align-items: center; justify-content: center;
-        background: var(--surface); color: var(--muted); font-size: 1.15rem; overflow: hidden;
-    }
-    .co-logo img { width: 100%; height: 100%; object-fit: contain; }
-    .co-slug { font-size: 0.75rem; color: var(--muted); font-family: ui-monospace, monospace; }
-
     .pill-badge {
         display: inline-flex; align-items: center; gap: 5px;
         font-size: 0.66rem; font-weight: 700;
@@ -37,6 +27,97 @@
     .pill-badge.ok    { background: var(--green-soft); color: var(--green-text); }
     .pill-badge.plain { background: var(--surface); color: var(--muted); }
     .pill-badge.warn  { background: var(--warn-soft); color: var(--warn-fg); }
+
+
+    /* ======================= Kepala halaman ======================= */
+    /* Kartu identitas dibuat jadi satu bidang dengan angka ringkasnya: yang
+       dicari orang saat membuka halaman ini hampir selalu "berapa key" dan
+       "ada link aktif tidak", bukan teksnya. */
+    .co-hero {
+        position: relative; overflow: hidden;
+        border-radius: 24px; background: var(--card);
+        box-shadow: var(--shadow-card);
+        padding: 22px 24px 0;
+        margin-bottom: 16px;
+    }
+    .co-hero::before, .co-hero::after {
+        content: ''; position: absolute; border-radius: 50%;
+        filter: blur(46px); opacity: 0.5; pointer-events: none;
+    }
+    .co-hero::before {
+        width: 260px; height: 260px; top: -140px; right: -60px;
+        background: var(--green-soft);
+        animation: heroDrift 15s ease-in-out infinite alternate;
+    }
+    .co-hero::after {
+        width: 200px; height: 200px; bottom: -130px; left: 12%;
+        background: var(--tone-indigo-bg, var(--surface));
+        animation: heroDrift 19s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes heroDrift {
+        from { transform: translate3d(0, 0, 0) scale(1); }
+        to   { transform: translate3d(-26px, 18px, 0) scale(1.14); }
+    }
+
+    .co-head { position: relative; display: flex; align-items: center; gap: 15px; }
+    .co-logo {
+        width: 62px; height: 62px; border-radius: 19px; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--surface); color: var(--muted); font-size: 1.25rem; overflow: hidden;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+        transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.5, 1);
+    }
+    .co-hero:hover .co-logo { transform: translateY(-3px) rotate(-2deg); }
+    .co-logo img { width: 100%; height: 100%; object-fit: contain; }
+    .co-slug { font-size: 0.75rem; color: var(--muted); font-family: ui-monospace, monospace; }
+
+    /* Angka ringkas */
+    .co-stats {
+        position: relative;
+        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1px; margin: 20px -24px 0;
+        background: var(--line);
+        border-top: 1px solid var(--line);
+    }
+    @media (max-width: 540px) { .co-stats { grid-template-columns: 1fr 1fr; } }
+    .co-stat {
+        background: var(--card); padding: 14px 24px 16px;
+        animation: statIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+        animation-delay: var(--d, 0ms);
+    }
+    .co-stat .n {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em;
+        line-height: 1.1; font-variant-numeric: tabular-nums;
+    }
+    .co-stat .l {
+        font-size: 0.68rem; font-weight: 700; color: var(--muted);
+        text-transform: uppercase; letter-spacing: 0.05em; margin-top: 3px;
+    }
+    .co-stat.on .n { color: var(--green-text); }
+    @keyframes statIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: none; }
+    }
+
+    /* Kartu-kartu lain masuk berurutan, bukan muncul serentak. */
+    .q-card {
+        animation: cardIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+        animation-delay: var(--d, 0ms);
+        transition: transform 0.22s ease, box-shadow 0.22s ease;
+    }
+    .q-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-pop, var(--shadow-card)); }
+    @keyframes cardIn {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: none; }
+    }
+
+    /* Gerak hanya untuk yang memang mau — sisanya langsung di tempat. */
+    @media (prefers-reduced-motion: reduce) {
+        .co-hero::before, .co-hero::after,
+        .co-stat, .q-card, .sh, .visit-list { animation: none !important; }
+        .q-card:hover, .co-hero:hover .co-logo { transform: none; }
+    }
 
     /* Daftar key */
     .key-row { display: flex; align-items: center; gap: 11px; padding: 11px 0; border-bottom: 1px solid var(--line); }
@@ -196,7 +277,15 @@
     </div>
 </div>
 
-<div class="q-card" style="margin-bottom:16px;">
+@php
+    // Angka ringkas di kepala halaman — semuanya dari data yang sudah dimuat
+    // controller, tidak ada kueri tambahan di view.
+    $keyCount    = $company->apiKeys->count();
+    $activeLinks = $company->usageShares->filter(fn ($share) => $share->isActive())->count();
+    $visitHits   = (int) $company->usageShares->sum('visits_sum_hits');
+@endphp
+
+<div class="co-hero">
     <div class="co-head">
         <div class="co-logo">
             @if($company->logo_path)
@@ -211,18 +300,17 @@
                 <span class="pill-badge {{ $company->is_active ? 'ok' : 'warn' }}">
                     {{ $company->is_active ? __('companies.active') : __('companies.inactive') }}
                 </span>
-                <span class="pill-badge plain">
-                    <i class="bi bi-key-fill"></i>
-                    {{ __('companies.keys_count', ['count' => $company->apiKeys->count()]) }}
-                </span>
                 @if($company->awsAccount)
                     <span class="pill-badge plain"><i class="bi bi-cloud-fill"></i> {{ $company->awsAccount->name }}</span>
+                @endif
+                @if($company->aws_api_key_name)
+                    <span class="pill-badge plain"><i class="bi bi-key-fill"></i> {{ $company->aws_api_key_name }}</span>
                 @endif
             </div>
         </div>
 
         @can('companies.update')
-            @if($company->apiKeys->count())
+            @if($keyCount)
                 <form method="POST" action="{{ route('admin.companies.refresh-usage', $company) }}" style="margin:0;">
                     @csrf
                     <button type="submit" class="btn-soft" data-spin>
@@ -232,12 +320,27 @@
             @endif
         @endcan
     </div>
+
+    <div class="co-stats">
+        <div class="co-stat" style="--d:80ms">
+            <div class="n" data-count="{{ $keyCount }}">0</div>
+            <div class="l">{{ __('companies.stat_keys') }}</div>
+        </div>
+        <div class="co-stat {{ $activeLinks ? 'on' : '' }}" style="--d:150ms">
+            <div class="n" data-count="{{ $activeLinks }}">0</div>
+            <div class="l">{{ __('companies.stat_links') }}</div>
+        </div>
+        <div class="co-stat" style="--d:220ms">
+            <div class="n" data-count="{{ $visitHits }}">0</div>
+            <div class="l">{{ __('companies.stat_visits') }}</div>
+        </div>
+    </div>
 </div>
 
 <div class="co-grid2">
     {{-- ===================== API key ===================== --}}
     <div class="co-col">
-        <div class="q-card">
+        <div class="q-card" style="--d:120ms">
             <div class="q-card-head">
                 <div class="d-flex align-items-center gap-2">
                     <div class="q-icon-box"><i class="bi bi-key-fill"></i></div>
@@ -292,8 +395,8 @@
                             <select name="key_ref" class="form-input" required>
                                 @foreach($availableKeys as $group)
                                     <optgroup label="{{ $group['name'] }}">
-                                        @foreach($group['keys'] as $name)
-                                            <option value="{{ $group['id'] }}|{{ $name }}">{{ $name }}</option>
+                                        @foreach($group['keys'] as $key)
+                                            <option value="{{ $group['id'] }}|{{ $key['name'] }}">{{ $key['name'] }}</option>
                                         @endforeach
                                     </optgroup>
                                 @endforeach
@@ -320,7 +423,7 @@
 
         @can('companies.update')
             @if($company->apiKeys->count())
-                <div class="q-card">
+                <div class="q-card" style="--d:190ms">
                     <div class="q-card-head">
                         <div class="d-flex align-items-center gap-2">
                             <div class="q-icon-box"><i class="bi bi-plus-lg"></i></div>
@@ -387,7 +490,7 @@
 </div>
 
 {{-- Daftar link dibuat selebar halaman: satu perusahaan bisa punya banyak. --}}
-<div class="q-card">
+<div class="q-card" style="--d:260ms">
     <div class="q-card-head">
         <div class="d-flex align-items-center gap-2">
             <div class="q-icon-box"><i class="bi bi-link-45deg"></i></div>
@@ -527,6 +630,39 @@
 
 @push('scripts')
 <script>
+    // ---------- Angka ringkas naik dari nol ----------
+    // Hanya hiasan: angkanya sudah tercetak di HTML sebagai data-count, jadi
+    // tanpa JS pun (atau saat gerak dimatikan) nilainya tetap benar.
+    (function () {
+        const nums = document.querySelectorAll('.co-stat .n[data-count]');
+        if (!nums.length) return;
+
+        const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const fmt = new Intl.NumberFormat();
+
+        nums.forEach((el) => {
+            const target = Number(el.dataset.count) || 0;
+
+            if (still || target === 0) {
+                el.textContent = fmt.format(target);
+                return;
+            }
+
+            const started = performance.now();
+            const DURATION = 700;
+
+            function step(now) {
+                const t = Math.min((now - started) / DURATION, 1);
+                // Melambat di ujung — berhenti mendadak terbaca seperti kedip.
+                const eased = 1 - Math.pow(1 - t, 3);
+                el.textContent = fmt.format(Math.round(target * eased));
+                if (t < 1) requestAnimationFrame(step);
+            }
+
+            requestAnimationFrame(step);
+        });
+    })();
+
     // Daftar centang key hanya relevan kalau cakupannya "pilih key tertentu".
     (function () {
         const list = document.getElementById('pickList');

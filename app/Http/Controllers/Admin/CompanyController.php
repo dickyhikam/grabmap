@@ -43,13 +43,9 @@ class CompanyController extends Controller
 
     public function create()
     {
-        return view('admin.companies.form', ['awsAccounts' => $this->awsAccounts()]);
-    }
-
-    /** Akun AWS aktif untuk dropdown di form company. */
-    private function awsAccounts()
-    {
-        return AwsAccount::query()->active()->orderByDesc('is_default')->orderBy('id')->get();
+        return view('admin.companies.form', [
+            'availableKeys' => $this->availableKeys(),
+        ]);
     }
 
     public function store(Request $request)
@@ -59,9 +55,10 @@ class CompanyController extends Controller
             'slug'         => 'required|string|max:100|unique:companies,slug|regex:/^[a-z0-9\-]+$/',
             'logo'         => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:2048',
             'is_active'    => 'nullable|boolean',
-            'aws_account_id' => 'nullable|exists:aws_accounts,id',
             'aws_api_key'  => 'nullable|string|max:1000',
             'aws_key_active' => 'nullable|boolean',
+            // "akunId|namaKey", bentuk yang sama dengan dropdown di halaman detail.
+            'key_ref'      => 'nullable|string|max:160',
         ] + ServiceCharge::validationRules(true), ServiceCharge::validationMessages());
 
         $logoPath = null;
@@ -79,12 +76,15 @@ class CompanyController extends Controller
             'slug'           => $validated['slug'],
             'logo_path'      => $logoPath,
             'is_active'      => $request->boolean('is_active', true),
-            'aws_account_id' => $validated['aws_account_id'] ?? null,
             'aws_api_key'    => $apiKey && $apiKey !== '********' ? $apiKey : null,
             'aws_key_active' => $request->boolean('aws_key_active', true),
         ]);
 
-        ServiceCharge::saveFromRequest($request, $company->aws_account_id, $company->id);
+        // Key ditempel lebih dulu: akun perusahaan ikut akun key itu, dan tarif
+        // "ikut akun" di bawah ini perlu akunnya sudah terisi.
+        $keyWarning = $this->attachChosenKey($company, $validated['key_ref'] ?? null);
+
+        ServiceCharge::saveFromRequest($request, $company->fresh()->aws_account_id, $company->id);
 
         // Fitur peta tidak lagi diatur dari formulir perusahaan — pembatas yang
         // sebenarnya ada di izin API key-nya. Barisnya tetap dibuat aktif supaya
@@ -98,7 +98,46 @@ class CompanyController extends Controller
         }
 
         return redirect()->route('admin.companies.index')
-            ->with('success', "Company \"{$company->name}\" berhasil dibuat.");
+            ->with('success', "Company \"{$company->name}\" berhasil dibuat.")
+            ->with('warning', $keyWarning);
+    }
+
+    /**
+     * Tempelkan key yang dipilih di formulir tambah perusahaan.
+     *
+     * Daftar key di formulir bisa sudah basi kalau ada yang mengklaim key yang
+     * sama di sela-sela pengisian, jadi kepemilikannya diperiksa ulang di sini.
+     * Perusahaannya sendiri sudah telanjur dibuat, maka kegagalan di sini
+     * dilaporkan sebagai peringatan — bukan membatalkan apa pun.
+     *
+     * @return string|null Pesan peringatan kalau key-nya tidak jadi menempel.
+     */
+    private function attachChosenKey(Company $company, ?string $keyRef): ?string
+    {
+        if (!$keyRef) {
+            return null;
+        }
+
+        [$accountId, $keyName] = array_pad(explode('|', $keyRef, 2), 2, null);
+        $accountId = $accountId === '' ? null : (int) $accountId;
+
+        if (!$keyName) {
+            return __('companies.key_invalid');
+        }
+
+        if ($owner = CompanyApiKey::ownerOf($accountId, $keyName)) {
+            return __('companies.key_taken', ['name' => $owner->name]);
+        }
+
+        $company->apiKeys()->create([
+            'aws_account_id' => $accountId,
+            'key_name'       => $keyName,
+            'is_primary'     => true,
+        ]);
+
+        $company->syncPrimaryKeyName();
+
+        return null;
     }
 
     public function edit(Company $company)
@@ -109,7 +148,6 @@ class CompanyController extends Controller
 
         return view('admin.companies.form', [
             'company'       => $company,
-            'awsAccounts'   => $this->awsAccounts(),
             'scCurrent'     => $own,
             'scAccountRule' => $company->aws_account_id ? ServiceCharge::ruleFor($company->aws_account_id, null, $today) : null,
             'scHistory'     => ServiceCharge::history(null, $company->id),
@@ -132,7 +170,7 @@ class CompanyController extends Controller
 
         return view('admin.companies.show', [
             'company'       => $company,
-            'availableKeys' => $this->availableKeys($company),
+            'availableKeys' => $this->availableKeys(),
         ]);
     }
 
@@ -141,9 +179,13 @@ class CompanyController extends Controller
      * satu perusahaan boleh memegang key dari lebih dari satu akun. Tiap akun
      * cukup satu panggilan ListKeys (hasilnya di-cache service).
      *
-     * @return array<int, array{id: ?int, name: string, keys: array<int, string>}>
+     * Keterangan tiap key ikut dibawa (masa berlaku, aksi yang diizinkan) supaya
+     * yang memilih tahu key mana yang diambilnya. Semua itu sudah ada di hasil
+     * ListKeys — tidak ada panggilan DescribeKey tambahan per key.
+     *
+     * @return array<int, array{id: ?int, name: string, keys: array<int, array>}>
      */
-    private function availableKeys(Company $company): array
+    private function availableKeys(): array
     {
         $claimed = CompanyApiKey::query()
             ->get(['aws_account_id', 'key_name'])
@@ -159,9 +201,15 @@ class CompanyController extends Controller
             ->filter(fn ($account) => AwsLocationService::hasCredentials($account))
             ->map(function ($account) use ($claimed) {
                 $keys = collect(AwsLocationService::forAccount($account)->listApiKeys()['keys'] ?? [])
-                    ->pluck('key_name')
-                    ->filter()
-                    ->reject(fn ($name) => in_array($account?->id . '|' . $name, $claimed, true))
+                    ->filter(fn ($key) => !empty($key['key_name']))
+                    ->reject(fn ($key) => in_array($account?->id . '|' . $key['key_name'], $claimed, true))
+                    ->map(fn ($key) => [
+                        'name'        => $key['key_name'],
+                        'description' => $key['description'] ?? '',
+                        'expire_time' => $key['expire_time'] ?? null,
+                        'actions'     => $key['restrictions']['AllowActions'] ?? [],
+                        'referers'    => $key['restrictions']['AllowReferers'] ?? [],
+                    ])
                     ->values()
                     ->all();
 
@@ -375,7 +423,6 @@ class CompanyController extends Controller
             'slug'         => "required|string|max:100|unique:companies,slug,{$company->id}|regex:/^[a-z0-9\-]+$/",
             'logo'         => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:2048',
             'is_active'    => 'nullable|boolean',
-            'aws_account_id' => 'nullable|exists:aws_accounts,id',
             'aws_api_key'  => 'nullable|string|max:1000',
             'aws_key_active' => 'nullable|boolean',
         ] + ServiceCharge::validationRules(true), ServiceCharge::validationMessages());
@@ -396,7 +443,6 @@ class CompanyController extends Controller
             'slug'           => $validated['slug'],
             'logo_path'      => $logoPath,
             'is_active'      => $request->boolean('is_active', true),
-            'aws_account_id' => $validated['aws_account_id'] ?? null,
             'aws_key_active' => $request->boolean('aws_key_active', true),
         ];
 

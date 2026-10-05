@@ -45,10 +45,17 @@ class Company extends Model
         $primary = $this->apiKeys()->where('is_primary', true)->first()
             ?? $this->apiKeys()->first();
 
-        // Hanya nama key-nya yang disalin. Akun perusahaan sengaja tidak ikut
-        // berubah: key boleh berasal dari akun lain, sementara kolom ini dipakai
-        // halaman peta klien dan diatur sendiri lewat formulir.
-        $this->forceFill(['aws_api_key_name' => $primary?->key_name])->save();
+        $this->aws_api_key_name = $primary?->key_name;
+
+        // Akun perusahaan ikut akun key utamanya — tidak ada lagi pilihan akun
+        // di formulir. Saat key terakhir dilepas akunnya sengaja dibiarkan:
+        // tarif service charge yang sudah berjalan tidak boleh ikut berubah
+        // hanya karena daftar key sedang kosong.
+        if ($primary) {
+            $this->aws_account_id = $primary->aws_account_id;
+        }
+
+        $this->save();
     }
 
     public function features(): HasMany

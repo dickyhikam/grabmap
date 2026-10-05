@@ -144,8 +144,11 @@ class AwsAccountTest extends TestCase
         $this->actingAs($admin)->get(route('admin.aws-accounts.index'))->assertOk()->assertSee('Akun Utama');
         $this->actingAs($admin)->get(route('admin.aws-accounts.create'))->assertOk();
         $this->actingAs($admin)->get(route('admin.aws-accounts.edit', $account))->assertOk()->assertSee('AKIAEXAMPLE123');
-        // Label kolomnya sekarang ikut file lang (bisa EN/ID), jadi yang dicek nama fieldnya.
-        $this->actingAs($admin)->get(route('admin.companies.edit', $company))->assertOk()->assertSee('aws_account_id');
+        // Akun AWS tidak lagi dipilih di formulir perusahaan — ikut akun key utamanya.
+        $this->actingAs($admin)->get(route('admin.companies.edit', $company))
+            ->assertOk()
+            ->assertSee('Klien')
+            ->assertDontSee('aws_account_id');
     }
 
     public function test_company_usage_page_resolves_the_account_of_its_key(): void
