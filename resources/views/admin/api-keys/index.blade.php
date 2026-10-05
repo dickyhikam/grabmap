@@ -166,6 +166,7 @@
         transition: background 0.15s, color 0.15s;
     }
     .val-eye:hover { background: var(--green); color: #fff; }
+    .val-hint { font-size: 0.68rem; color: var(--muted); margin-top: 8px; text-align: center; }
     .btn-row > .btn-soft, .btn-row > .btn-solid { flex: 1; padding-left: 12px; padding-right: 12px; }
 @endpush
 
@@ -399,9 +400,19 @@
                         <i class="bi bi-shield-exclamation"></i><span>{{ __('apikeys.value_note') }}</span>
                     </div>
 
+                    <button type="button" class="btn-solid w-100" id="valCopyTpl" disabled
+                            style="justify-content:center;">
+                        <i class="bi bi-clipboard-check"></i> {{ __('apikeys.value_copy_tpl') }}
+                    </button>
+                    <a class="btn-soft w-100" id="valDoc" target="_blank" rel="noopener" href="#"
+                       style="justify-content:center;margin-top:8px;">
+                        <i class="bi bi-filetype-pdf"></i> {{ __('apikeys.value_doc') }}
+                    </a>
+                    <div class="val-hint">{{ __('apikeys.value_tpl_hint') }}</div>
+
                     <div class="btn-row">
                         <button type="button" class="btn-soft" data-close>{{ __('ui.close') }}</button>
-                        <button type="button" class="btn-solid" id="valCopy" disabled>
+                        <button type="button" class="btn-soft" id="valCopy" disabled>
                             <i class="bi bi-clipboard"></i> {{ __('apikeys.value_copy') }}
                         </button>
                     </div>
@@ -591,14 +602,19 @@
         const box    = document.getElementById('valText');
         const toggle = document.getElementById('valToggle');
         const copy   = document.getElementById('valCopy');
+        const copyTpl = document.getElementById('valCopyTpl');
+        const docLink = document.getElementById('valDoc');
+        const TPL_COPIED = @json(__('apikeys.value_tpl_copied'));
 
-        let value  = '';
+        let value    = '';
+        let template = '';
         // Nomor permintaan terakhir: balasan key yang sudah tidak dilihat diabaikan,
         // supaya nilai key A tidak pernah mendarat di modal yang sedang menampilkan key B.
         let ticket = 0;
 
         function reset() {
             value = '';
+            template = '';
             box.textContent = LOADING;
             box.classList.add('masked');
             toggle.hidden = true;
@@ -606,6 +622,7 @@
             toggle.title = SHOW;
             toggle.querySelector('i').className = 'bi bi-eye';
             copy.disabled = true;
+            copyTpl.disabled = true;
         }
 
         function close() {
@@ -627,6 +644,7 @@
             const name = btn.dataset.key;
             reset();
             document.getElementById('valName').textContent = name;
+            docLink.href = BASE + '/' + encodeURIComponent(name) + '/handover' + QUERY;
             box.classList.remove('masked');
             modal.classList.add('open');
 
@@ -646,10 +664,12 @@
                 }
 
                 value = data.key;
+                template = data.template || '';
                 box.textContent = value;
                 box.classList.add('masked');
                 toggle.hidden = false;
                 copy.disabled = false;
+                copyTpl.disabled = !template;
             } catch (err) {
                 if (mine === ticket) box.textContent = FAILED;
             }
@@ -662,12 +682,15 @@
             toggle.querySelector('i').className = masked ? 'bi bi-eye' : 'bi bi-eye-slash';
         });
 
-        copy.addEventListener('click', () => {
-            if (!value) return;
-            window.gmCopy(value)
-                .then(() => window.gmToast(COPIED, 'ok'))
+        function copyText(text, done) {
+            if (!text) return;
+            window.gmCopy(text)
+                .then(() => window.gmToast(done, 'ok'))
                 .catch(() => window.gmToast(FAILED, 'bad'));
-        });
+        }
+
+        copy.addEventListener('click', () => copyText(value, COPIED));
+        copyTpl.addEventListener('click', () => copyText(template, TPL_COPIED));
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && modal.classList.contains('open')) close();

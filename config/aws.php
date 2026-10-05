@@ -21,6 +21,12 @@ return [
         'expiry_days' => (int) env('AWS_NEW_KEY_EXPIRY_DAYS', 90),
     ],
 
+    // Keterangan tetap di teks serah-terima API key (resources/views/admin/api-keys/handover.blade.php).
+    'handover' => [
+        'provider'    => env('AWS_HANDOVER_PROVIDER', 'Grab Maps (AWS Location Service v2)'),
+        'environment' => env('AWS_HANDOVER_ENV', 'Production'),
+    ],
+
     // Tarif pajak (PPN) yang ditambahkan AWS pada tagihan. Indonesia = 11%.
     'tax_rate' => (float) env('AWS_TAX_RATE', 0.11),
 ];

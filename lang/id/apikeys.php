@@ -224,4 +224,8 @@ return [
     'budget_default_hint' => 'Terisi $:amount, sebesar kredit percobaan AWS. Geser ke 0 kalau tidak mau dibatasi.',
     'exp_default_hint'    => 'Terisi :days hari, selama masa kredit percobaan AWS. Pilih chip lain kalau perlu beda.',
     'iam_denied' => 'kredensial AWS yang dipakai panel belum diizinkan memakai aksi :action, jadi AWS menolak membuat key yang memberikan aksi itu. Tambahkan :action ke policy IAM user tersebut, atau hilangkan aksi itu dari pilihan di formulir.',
+    'value_copy_tpl'    => 'Copy teks serah-terima',
+    'value_tpl_hint'    => 'Isinya sama: teks siap tempel ke chat atau email, dokumen siap cetak jadi PDF.',
+    'value_tpl_copied'  => 'Teks serah-terima sudah dicopy.',
+    'value_doc'         => 'Buka dokumen serah-terima',
 ];

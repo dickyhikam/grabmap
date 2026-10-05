@@ -19,6 +19,21 @@ use Illuminate\Validation\Rule;
 
 class ApiKeyController extends Controller
 {
+    /** Prefix aksi AWS -> nama layanan sebagaimana ditulis di dokumen serah-terima. */
+    private const SERVICE_LABELS = [
+        'geo-maps'   => 'Maps',
+        'geo-places' => 'Places',
+        'geo-routes' => 'Routes',
+    ];
+
+    /** Nama manusiawi untuk region yang dipakai — sisanya jatuh ke kodenya sendiri. */
+    private const REGION_LABELS = [
+        'ap-southeast-1' => 'Asia Pacific (Singapore)',
+        'ap-southeast-3' => 'Asia Pacific (Jakarta)',
+        'ap-southeast-5' => 'Asia Pacific (Malaysia)',
+        'us-east-1'      => 'US East (N. Virginia)',
+    ];
+
     /**
      * Akun AWS yang sedang dilihat.
      *
@@ -381,6 +396,164 @@ class ApiKeyController extends Controller
     }
 
     /**
+     * Dokumen serah-terima API key — halaman cetak, bukan PDF yang dirakit server.
+     *
+     * Mengikuti cara invoice di modul biaya: HTML siap cetak lalu "Save as PDF"
+     * dari browser. Tidak menambah pustaka PDF, dan hasilnya bisa diperiksa mata
+     * sebelum dikirim ke klien. Dikunci di izin yang sama dengan lihat nilai key,
+     * karena halaman ini memuat kredensialnya.
+     */
+    public function handover(Request $request, string $keyName)
+    {
+        $account = $this->resolveAccount($request);
+
+        if (!AwsLocationService::hasCredentials($account)) {
+            return redirect()->route('admin.api-keys.index')->with('error', 'AWS credentials belum dikonfigurasi.');
+        }
+
+        $result = AwsLocationService::forAccount($account)->describeKey($keyName);
+
+        if ($result['error'] || empty($result['key']['key'])) {
+            return redirect()->route('admin.api-keys.index')
+                ->with('error', 'Gagal mengambil detail key: ' . ($result['error'] ?: __('apikeys.value_empty')));
+        }
+
+        $key = $result['key'];
+
+        Log::info('API key handover document opened', [
+            'key_name'       => $keyName,
+            'aws_account_id' => $account?->id,
+            'user'           => $request->user()?->name,
+        ]);
+
+        $company = Company::where('aws_api_key_name', $keyName)
+            ->when($account, fn ($q) => $q->where('aws_account_id', $account->id))
+            ->first();
+
+        $expire = $key['expire_time'] ? \Carbon\Carbon::parse($key['expire_time']) : null;
+        $off    = ApiKeyDisable::forKey($account?->id, $keyName);
+
+        $status = $off
+            ? __('apikeys.inactive')
+            : (($expire && $expire->isPast()) ? __('apikeys.expired') : __('apikeys.active'));
+
+        $region = $account?->region ?: config('aws.region');
+
+        return view('admin.api-keys.handover-doc', [
+            'key'         => $key,
+            'keyName'     => $keyName,
+            'company'     => $company,
+            'status'      => $status,
+            'expire'      => $expire,
+            'region'      => $region,
+            'regionLabel' => self::REGION_LABELS[$region] ?? $region,
+            'resources'   => self::handoverResources($key['restrictions']['AllowActions'] ?? [], $region),
+            'referers'    => $key['restrictions']['AllowReferers'] ?? [],
+            'provider'    => config('aws.handover.provider'),
+            'environment' => config('aws.handover.environment'),
+            'backUrl'     => route('admin.api-keys.index', ['account' => $account?->getRouteKey()]),
+        ]);
+    }
+
+    /**
+     * Aksi key dikelompokkan per layanan, siap dicetak: ['Maps' => ['GetTile'], ...].
+     *
+     * Prefix layanan dibuang karena sudah jadi judul kelompok, dan wildcard
+     * ditulis apa adanya ("All actions") — tim penerima tidak perlu tahu
+     * bentuk ARN-nya, cuma perlu tahu apa yang boleh dipanggil.
+     */
+    private static function groupActions(array $allowed): array
+    {
+        $out = [];
+
+        foreach (array_keys(self::SERVICE_LABELS) as $prefix) {
+            $actions = array_values(array_filter($allowed, fn ($a) => str_starts_with($a, $prefix . ':')));
+
+            if (!$actions) {
+                continue;
+            }
+
+            $out[$prefix] = array_map(function ($action) use ($prefix) {
+                $name = substr($action, strlen($prefix) + 1);
+                return $name === '*' ? 'All actions' : $name;
+            }, $actions);
+        }
+
+        return $out;
+    }
+
+    /**
+     * Baris tabel "Resources and Authorized Actions" di dokumen serah-terima:
+     * layanan, ARN provider yang dipakai, dan aksi yang diizinkan.
+     *
+     * ARN-nya diambil dari config/geo_actions.php — sumber yang sama dengan yang
+     * dikirim ke AWS saat key dibuat, jadi dokumen tidak bisa menyebut ARN yang
+     * berbeda dari isi key sebenarnya.
+     */
+    private static function handoverResources(array $allowed, string $region): array
+    {
+        $grouped = self::groupActions($allowed);
+        $rows = [];
+
+        foreach (config('geo_actions') as $group) {
+            $prefix = strtok($group['wildcard'], ':');
+
+            if (empty($grouped[$prefix])) {
+                continue;
+            }
+
+            $rows[] = [
+                'service' => self::SERVICE_LABELS[$prefix] ?? $prefix,
+                'arn'     => str_replace('{region}', $region, $group['resource']),
+                'actions' => $grouped[$prefix],
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Teks serah-terima key ke tim lain — satu blok siap tempel.
+     *
+     * Isinya dirakit dari key itu sendiri (bukan diketik ulang) supaya daftar aksi
+     * dan masa berlakunya tidak pernah berbeda dengan keadaan di AWS. Jam ditulis
+     * WIB dan diberi labelnya, karena yang menerima belum tentu di zona yang sama.
+     */
+    private function handoverText(array $key, ?AwsAccount $account): string
+    {
+        $lines = [];
+        foreach (self::groupActions($key['restrictions']['AllowActions'] ?? []) as $prefix => $actions) {
+            $lines[] = '- ' . (self::SERVICE_LABELS[$prefix] ?? $prefix);
+            foreach ($actions as $action) {
+                $lines[] = '  - ' . $action;
+            }
+            $lines[] = '';
+        }
+
+        // Pembatasan referer ikut dikirim: tim penerima perlu tahu dari domain mana
+        // key ini mau jalan, kalau tidak mereka akan mengejar error 403 tanpa petunjuk.
+        $referers = $key['restrictions']['AllowReferers'] ?? [];
+        $refText = $referers
+            ? "Allowed Referers\n" . implode("\n", array_map(fn ($r) => '- ' . $r, $referers)) . "\n\n"
+            : '';
+
+        $expiry = $key['expire_time']
+            ? \Carbon\Carbon::parse($key['expire_time'])->wib()->format('d F Y, H:i') . ' WIB'
+            : 'No expiry';
+
+        return trim(view('admin.api-keys.handover', [
+            'provider'    => config('aws.handover.provider'),
+            'environment' => config('aws.handover.environment'),
+            'region'      => $account?->region ?: config('aws.region'),
+            'keyName'     => $key['key_name'],
+            'expiry'      => $expiry,
+            'value'       => $key['key'],
+            'services'    => $lines ? implode("\n", $lines) : '- (none)' . "\n",
+            'referers'    => $refText,
+        ])->render()) . "\n";
+    }
+
+    /**
      * Nilai API key, untuk dilihat/dicopy dari panel (JSON).
      *
      * AWS mengembalikan nilainya kapan saja lewat DescribeKey — ini bukan rahasia
@@ -413,6 +586,7 @@ class ApiKeyController extends Controller
         return response()->json([
             'key_name' => $result['key']['key_name'],
             'key'      => $result['key']['key'],
+            'template' => $this->handoverText($result['key'], $account),
         ]);
     }
 

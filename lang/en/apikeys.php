@@ -224,4 +224,8 @@ return [
     'budget_default_hint' => 'Prefilled with $:amount, the size of the AWS trial credit. Slide to 0 for no limit.',
     'exp_default_hint'    => 'Prefilled with :days days, the length of the AWS trial credit. Pick another chip if you need different.',
     'iam_denied' => 'the AWS credentials this panel uses are not allowed to perform :action, so AWS refuses to create a key that grants it. Add :action to that IAM user policy, or drop the action from the form.',
+    'value_copy_tpl'    => 'Copy handover text',
+    'value_tpl_hint'    => 'Same content either way: text to paste into chat or email, document to print as PDF.',
+    'value_tpl_copied'  => 'Handover text copied.',
+    'value_doc'         => 'Open handover document',
 ];
