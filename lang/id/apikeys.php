@@ -221,4 +221,6 @@ return [
     'value_failed'  => 'Gagal mengambil nilai key.',
     'value_empty'   => 'AWS tidak mengembalikan nilai untuk key ini.',
     'value_note'    => 'Nilai ini kredensial: jangan ditempel di chat atau tiket publik. Kalau sampai tersebar, yang membatasi dampaknya hanya daftar referer dan aksi yang diizinkan key ini.',
+    'budget_default_hint' => 'Terisi $:amount, sebesar kredit percobaan AWS. Geser ke 0 kalau tidak mau dibatasi.',
+    'exp_default_hint'    => 'Terisi :days hari, selama masa kredit percobaan AWS. Pilih chip lain kalau perlu beda.',
 ];

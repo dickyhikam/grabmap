@@ -221,4 +221,6 @@ return [
     'value_failed'  => 'Could not fetch the key value.',
     'value_empty'   => 'AWS returned no value for this key.',
     'value_note'    => 'This value is a credential: never paste it into chat or a public ticket. If it leaks, the only thing limiting the damage is the referer and action list this key allows.',
+    'budget_default_hint' => 'Prefilled with $:amount, the size of the AWS trial credit. Slide to 0 for no limit.',
+    'exp_default_hint'    => 'Prefilled with :days days, the length of the AWS trial credit. Pick another chip if you need different.',
 ];

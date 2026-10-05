@@ -163,9 +163,20 @@
     // Nilai terpilih: dari input lama (validasi gagal) atau dari key itu sendiri.
     $chosen = old('actions', $keyActions->all());
 
-    // Mode masa berlaku: default "selamanya" untuk key baru, ikut keadaan key saat mengubah.
-    $mode = old('expiry_mode', $isNew ? 'never' : ($key['expire_time'] ? 'date' : 'never'));
     $presets = [30, 90, 180, 365];
+
+    // Key baru dibuka dengan nilai awal sebesar kredit percobaan AWS (config/aws.php):
+    // batas biaya dan masa berlaku sudah terisi, tapi cuma sebagai titik mulai —
+    // keduanya tetap bisa diubah atau dikosongkan sebelum disimpan.
+    $defaults    = config('aws.new_key_defaults');
+    $defaultDays = (int) ($defaults['expiry_days'] ?? 0);
+    // Hari di luar daftar preset tidak punya chip — jatuhkan ke "selamanya"
+    // daripada mengirim mode preset tanpa jumlah hari yang sah.
+    $defaultMode = $isNew && in_array($defaultDays, $presets, true) ? 'preset' : 'never';
+
+    // Mode masa berlaku: nilai awal untuk key baru, ikut keadaan key saat mengubah.
+    $mode = old('expiry_mode', $isNew ? $defaultMode : ($key['expire_time'] ? 'date' : 'never'));
+    $pickedDays = (int) old('preset_days', $mode === 'preset' ? $defaultDays : 0);
     // Pemilih tanggal bekerja dengan waktu Jakarta: nilai dari AWS (UTC) diubah
     // dulu, dan controller menafsirkan kiriman baliknya sebagai WIB juga —
     // supaya jam yang diketik sama dengan jam yang tersimpan.
@@ -293,15 +304,18 @@
                 </label>
                 @include('admin.partials.amount-slider', [
                     'name'    => 'budget_usd',
-                    'value'   => $budget?->limit_usd,
+                    'value'   => $budget?->limit_usd ?? ($isNew ? ($defaults['budget_usd'] ?? null) : null),
                     'max'     => 300,
                     'step'    => 5,
                     'prefix'  => '$',
                     'suffix'  => __('ui.per_month'),
                     'zero'    => __('ui.no_limit'),
-                    'presets' => [25, 50, 100, 170],
+                    'presets' => [25, 50, 100, 170, 200],
                 ])
                 <div class="form-hint">{{ __('apikeys.budget_hint') }}</div>
+                @if($isNew && ($defaults['budget_usd'] ?? 0) > 0)
+                    <div class="form-hint">{{ __('apikeys.budget_default_hint', ['amount' => (int) $defaults['budget_usd']]) }}</div>
+                @endif
                 @error('budget_usd')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
             </div>
 
@@ -317,7 +331,7 @@
                         <label style="cursor:pointer;">
                             <input type="radio" name="expiry_mode" value="preset" class="d-none"
                                    data-preset="{{ $days }}"
-                                   @checked($mode === 'preset' && (int) old('preset_days') === $days)>
+                                   @checked($mode === 'preset' && $pickedDays === $days)>
                             <span class="exp-chip">{{ __('apikeys.exp_days', ['count' => $days]) }}</span>
                         </label>
                     @endforeach
@@ -328,7 +342,7 @@
                     </label>
                 </div>
 
-                <input type="hidden" name="preset_days" id="presetDays" value="{{ old('preset_days') }}">
+                <input type="hidden" name="preset_days" id="presetDays" value="{{ $pickedDays ?: '' }}">
 
                 <div class="exp-date" id="expDate" @unless($mode === 'date') hidden @endunless>
                     @include('admin.partials.date-picker', [
@@ -338,6 +352,10 @@
                     ])
                     <div class="form-hint">{{ __('apikeys.exp_hint') }}</div>
                 </div>
+
+                @if($isNew && $defaultMode === 'preset')
+                    <div class="form-hint">{{ __('apikeys.exp_default_hint', ['days' => $defaultDays]) }}</div>
+                @endif
 
                 @error('expiry_mode')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
                 @error('expire_date')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
