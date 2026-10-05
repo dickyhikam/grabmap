@@ -223,4 +223,5 @@ return [
     'value_note'    => 'Nilai ini kredensial: jangan ditempel di chat atau tiket publik. Kalau sampai tersebar, yang membatasi dampaknya hanya daftar referer dan aksi yang diizinkan key ini.',
     'budget_default_hint' => 'Terisi $:amount, sebesar kredit percobaan AWS. Geser ke 0 kalau tidak mau dibatasi.',
     'exp_default_hint'    => 'Terisi :days hari, selama masa kredit percobaan AWS. Pilih chip lain kalau perlu beda.',
+    'iam_denied' => 'kredensial AWS yang dipakai panel belum diizinkan memakai aksi :action, jadi AWS menolak membuat key yang memberikan aksi itu. Tambahkan :action ke policy IAM user tersebut, atau hilangkan aksi itu dari pilihan di formulir.',
 ];

@@ -74,6 +74,23 @@ class ApiKeyController extends Controller
         return [array_values(array_unique($actions)), array_values(array_unique($resources))];
     }
 
+    /**
+     * Ubah penolakan IAM jadi kalimat yang bisa ditindaklanjuti.
+     *
+     * CreateKey/UpdateKey menolak memberi key aksi yang IAM user pemanggilnya
+     * sendiri tidak punya — pencegahan eskalasi hak. Pesan asli AWS benar, tapi
+     * di panel terbaca seolah key-nya yang salah, padahal yang kurang adalah izin
+     * kredensial di Pengaturan AWS. Pesan mentahnya tetap utuh di log Laravel.
+     */
+    private static function friendlyAwsError(?string $error): ?string
+    {
+        if ($error && preg_match('/not authorized to perform:\s*([\w-]+:[\w*]+)/i', $error, $m)) {
+            return __('apikeys.iam_denied', ['action' => $m[1]]);
+        }
+
+        return $error;
+    }
+
     /** Daftar akun untuk switcher di halaman list. */
     private function accountOptions()
     {
@@ -268,7 +285,7 @@ class ApiKeyController extends Controller
 
         // Hard create failure (CreateKey call itself failed)
         if (!($result['created'] ?? false)) {
-            return back()->with('error', 'Gagal membuat API Key: ' . ($result['error'] ?? 'Unknown error'))->withInput();
+            return back()->with('error', 'Gagal membuat API Key: ' . (self::friendlyAwsError($result['error']) ?? 'Unknown error'))->withInput();
         }
 
         // Batas biaya disimpan lokal (bukan ke AWS) — key sudah pasti ada di titik ini.
@@ -466,7 +483,7 @@ class ApiKeyController extends Controller
         $result = $service->updateKey($keyName, $params);
 
         if ($result['error']) {
-            return back()->with('error', 'Gagal update API Key: ' . $result['error'])->withInput();
+            return back()->with('error', 'Gagal update API Key: ' . self::friendlyAwsError($result['error']))->withInput();
         }
 
         // Batas biaya hanya tersimpan di aplikasi — tidak ikut dikirim ke AWS.

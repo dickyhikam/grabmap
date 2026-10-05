@@ -223,4 +223,5 @@ return [
     'value_note'    => 'This value is a credential: never paste it into chat or a public ticket. If it leaks, the only thing limiting the damage is the referer and action list this key allows.',
     'budget_default_hint' => 'Prefilled with $:amount, the size of the AWS trial credit. Slide to 0 for no limit.',
     'exp_default_hint'    => 'Prefilled with :days days, the length of the AWS trial credit. Pick another chip if you need different.',
+    'iam_denied' => 'the AWS credentials this panel uses are not allowed to perform :action, so AWS refuses to create a key that grants it. Add :action to that IAM user policy, or drop the action from the form.',
 ];
