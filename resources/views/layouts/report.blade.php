@@ -7,7 +7,7 @@
     <meta name="robots" content="noindex, nofollow">
     <title>@yield('title', __('apikeys.share_report_title')) | GrabMaps</title>
     <script>
-        (function () {
+        (function() {
             try {
                 document.documentElement.setAttribute('data-theme', localStorage.getItem('gm-theme') || 'system');
             } catch (e) {
@@ -91,7 +91,10 @@
             }
         }
 
-        * { -webkit-font-smoothing: antialiased; box-sizing: border-box; }
+        * {
+            -webkit-font-smoothing: antialiased;
+            box-sizing: border-box;
+        }
 
         body {
             font-family: 'Inter', system-ui, sans-serif;
@@ -101,7 +104,10 @@
             margin: 0;
         }
 
-        .display-font { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; letter-spacing: -0.02em; }
+        .display-font {
+            font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+            letter-spacing: -0.02em;
+        }
 
         /* Kerangkanya mengikuti panel admin v2: topbar mengambang berisi pil
            brand di kiri dan kendali di kanan, lalu isi halaman di bawahnya. */
@@ -112,7 +118,9 @@
         }
 
         @media (max-width: 860px) {
-            .report-wrap { padding: 12px 12px 26px; }
+            .report-wrap {
+                padding: 12px 12px 26px;
+            }
         }
 
         .report-top {
@@ -134,7 +142,12 @@
             box-shadow: var(--shadow-card);
         }
 
-        .report-brand img { width: 30px; height: 30px; object-fit: contain; }
+        .report-brand img {
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+        }
+
         .report-brand span {
             font-family: 'Plus Jakarta Sans', sans-serif;
             font-weight: 800;
@@ -143,32 +156,70 @@
             color: var(--ink);
         }
 
-        .report-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+        .report-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+            flex-wrap: wrap;
+        }
 
         /* Tab pemilih key — bentuknya sama dengan tab di panel admin. */
         .rp-tabs {
-            display: inline-flex; gap: 4px;
-            background: var(--card); border-radius: 999px;
-            padding: 5px; box-shadow: var(--shadow-card);
-            max-width: 100%; overflow-x: auto; scrollbar-width: none;
+            display: inline-flex;
+            gap: 4px;
+            background: var(--card);
+            border-radius: 999px;
+            padding: 5px;
+            box-shadow: var(--shadow-card);
+            max-width: 100%;
+            overflow-x: auto;
+            scrollbar-width: none;
         }
-        .rp-tabs::-webkit-scrollbar { display: none; }
+
+        .rp-tabs::-webkit-scrollbar {
+            display: none;
+        }
 
         .rp-tab {
-            display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
-            border: none; background: none; cursor: pointer; text-decoration: none;
-            border-radius: 999px; padding: 9px 16px;
-            font-size: 0.8rem; font-weight: 600; color: var(--muted);
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            white-space: nowrap;
+            border: none;
+            background: none;
+            cursor: pointer;
+            text-decoration: none;
+            border-radius: 999px;
+            padding: 9px 16px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--muted);
             transition: background 0.18s, color 0.18s;
         }
-        .rp-tab:hover { color: var(--ink); }
-        .rp-tab.on { background: var(--green); color: #fff; box-shadow: 0 4px 12px rgba(0, 177, 79, 0.3); }
 
-        @media (max-width: 1000px) {
-            .rp-tabs { order: 3; width: 100%; }
+        .rp-tab:hover {
+            color: var(--ink);
         }
 
-        @media print { .rp-tabs { display: none !important; } }
+        .rp-tab.on {
+            background: var(--green);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(0, 177, 79, 0.3);
+        }
+
+        @media (max-width: 1000px) {
+            .rp-tabs {
+                order: 3;
+                width: 100%;
+            }
+        }
+
+        @media print {
+            .rp-tabs {
+                display: none !important;
+            }
+        }
 
         .lang-pick {
             display: inline-flex;
@@ -194,8 +245,14 @@
             transition: background 0.16s, color 0.16s;
         }
 
-        .lang-pick a:hover { color: var(--ink); }
-        .lang-pick a.on { background: var(--green); color: #fff; }
+        .lang-pick a:hover {
+            color: var(--ink);
+        }
+
+        .lang-pick a.on {
+            background: var(--green);
+            color: #fff;
+        }
 
         /* Pemilih tema — pembaca laporan ini bukan pengguna panel, jadi
            pilihannya cukup disimpan di browsernya sendiri. */
@@ -223,8 +280,15 @@
             transition: background 0.16s, color 0.16s, transform 0.16s cubic-bezier(0.34, 1.5, 0.5, 1);
         }
 
-        .theme-pick button:hover { color: var(--ink); transform: scale(1.08); }
-        .theme-pick button.on { background: var(--green); color: #fff; }
+        .theme-pick button:hover {
+            color: var(--ink);
+            transform: scale(1.08);
+        }
+
+        .theme-pick button.on {
+            background: var(--green);
+            color: #fff;
+        }
 
         .report-foot {
             margin-top: 22px;
@@ -239,8 +303,17 @@
         }
 
         @media print {
-            .report-actions, .theme-pick, .lang-pick { display: none !important; }
-            .report-brand, .report-foot { box-shadow: none; }
+
+            .report-actions,
+            .theme-pick,
+            .lang-pick {
+                display: none !important;
+            }
+
+            .report-brand,
+            .report-foot {
+                box-shadow: none;
+            }
         }
 
         .q-card {
@@ -259,56 +332,128 @@
             flex-wrap: wrap;
         }
 
-        .q-card-title { font-weight: 700; font-size: 0.92rem; }
-        .q-card-sub { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+        .q-card-title {
+            font-weight: 700;
+            font-size: 0.92rem;
+        }
+
+        .q-card-sub {
+            font-size: 0.72rem;
+            color: var(--muted);
+            margin-top: 2px;
+        }
 
         .q-icon-box {
-            width: 36px; height: 36px; border-radius: 12px;
-            background: var(--green-soft); color: var(--green-text);
-            display: flex; align-items: center; justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
+            background: var(--green-soft);
+            color: var(--green-text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 0.95rem;
         }
 
-        .q-num { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; letter-spacing: -0.03em; }
-        .q-num .cents { color: var(--faint); font-weight: 700; }
+        .q-num {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        .q-num .cents {
+            color: var(--faint);
+            font-weight: 700;
+        }
 
         .q-pill {
-            display: inline-flex; align-items: center; gap: 7px;
-            background: var(--card); border: none; border-radius: 999px;
-            padding: 9px 16px; font-size: 0.78rem; font-weight: 600;
-            color: var(--ink); box-shadow: var(--shadow-card); cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--card);
+            border: none;
+            border-radius: 999px;
+            padding: 9px 16px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--ink);
+            box-shadow: var(--shadow-card);
+            cursor: pointer;
             text-decoration: none;
         }
 
         .q-page-head {
-            display: flex; align-items: flex-start; justify-content: space-between;
-            gap: 16px; flex-wrap: wrap; margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
         }
 
         .q-title {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 800; font-size: 1.45rem; letter-spacing: -0.03em; margin: 0;
+            font-weight: 800;
+            font-size: 1.45rem;
+            letter-spacing: -0.03em;
+            margin: 0;
         }
 
-        .q-title .soft { color: var(--muted); font-weight: 700; }
+        .q-title .soft {
+            color: var(--muted);
+            font-weight: 700;
+        }
 
         .q-alert {
-            display: flex; align-items: flex-start; gap: 12px;
-            padding: 14px 16px; border-radius: 16px; margin-bottom: 16px;
-            background: var(--warn-soft); color: var(--ink);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px 16px;
+            border-radius: 16px;
+            margin-bottom: 16px;
+            background: var(--warn-soft);
+            color: var(--ink);
         }
 
-        .q-alert.bad { background: var(--danger-soft); }
-        .q-alert-icon { font-size: 1.1rem; color: var(--warn-fg); }
-        .q-alert.bad .q-alert-icon { color: var(--danger-fg); }
-        .q-alert-body { font-size: 0.82rem; line-height: 1.45; }
+        .q-alert.bad {
+            background: var(--danger-soft);
+        }
 
-        .q-empty { text-align: center; padding: 34px 10px; color: var(--muted); }
-        .q-empty > i { font-size: 1.8rem; display: block; margin-bottom: 8px; color: var(--faint); }
+        .q-alert-icon {
+            font-size: 1.1rem;
+            color: var(--warn-fg);
+        }
+
+        .q-alert.bad .q-alert-icon {
+            color: var(--danger-fg);
+        }
+
+        .q-alert-body {
+            font-size: 0.82rem;
+            line-height: 1.45;
+        }
+
+        .q-empty {
+            text-align: center;
+            padding: 34px 10px;
+            color: var(--muted);
+        }
+
+        .q-empty>i {
+            font-size: 1.8rem;
+            display: block;
+            margin-bottom: 8px;
+            color: var(--faint);
+        }
 
         .select {
-            border: none; background: var(--surface); color: var(--ink);
-            border-radius: 999px; padding: 9px 14px; font-size: 0.78rem; font-weight: 600;
+            border: none;
+            background: var(--surface);
+            color: var(--ink);
+            border-radius: 999px;
+            padding: 9px 14px;
+            font-size: 0.78rem;
+            font-weight: 600;
         }
 
         @stack('styles')
@@ -332,8 +477,8 @@
                      parameter lain (rentang tanggal, key) ikut terbawa. --}}
                 <div class="lang-pick" role="group" aria-label="{{ __('ui.language') }}">
                     @foreach(['en' => 'EN', 'id' => 'ID'] as $code => $label)
-                        <a href="{{ request()->fullUrlWithQuery(['lang' => $code]) }}"
-                           class="{{ app()->getLocale() === $code ? 'on' : '' }}" data-no-loader>{{ $label }}</a>
+                    <a href="{{ request()->fullUrlWithQuery(['lang' => $code]) }}"
+                        class="{{ app()->getLocale() === $code ? 'on' : '' }}" data-no-loader>{{ $label }}</a>
                     @endforeach
                 </div>
 
@@ -354,7 +499,7 @@
 
     <script>
         // Pemilih tema: disimpan dengan kunci yang sama seperti panel admin.
-        (function () {
+        (function() {
             const root = document.documentElement;
             const buttons = document.querySelectorAll('[data-theme-pick]');
 
@@ -363,13 +508,17 @@
             }
 
             let current = 'system';
-            try { current = localStorage.getItem('gm-theme') || 'system'; } catch (e) {}
+            try {
+                current = localStorage.getItem('gm-theme') || 'system';
+            } catch (e) {}
             paint(current);
 
             buttons.forEach((btn) => btn.addEventListener('click', () => {
                 const mode = btn.dataset.themePick;
                 root.setAttribute('data-theme', mode);
-                try { localStorage.setItem('gm-theme', mode); } catch (e) {}
+                try {
+                    localStorage.setItem('gm-theme', mode);
+                } catch (e) {}
                 paint(mode);
             }));
         })();
@@ -377,4 +526,5 @@
 
     @stack('scripts')
 </body>
+
 </html>

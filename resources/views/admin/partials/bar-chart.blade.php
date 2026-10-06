@@ -112,7 +112,9 @@
     .q-bar:hover .q-knob { opacity: 1; transform: translateX(-50%) scale(1); }
     .q-bar:hover .q-bar-badge { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    .q-xaxis { display: flex; gap: 4px; margin-top: 9px; }
+    /* Label boleh meluber ke tetangganya, tapi tidak boleh keluar dari grafik:
+       di layar sempit label terakhir sempat mendorong lebar halaman. */
+    .q-xaxis { display: flex; gap: 4px; margin-top: 9px; overflow: hidden; }
     .q-xaxis span {
         flex: 1; text-align: center; font-size: 0.68rem; color: var(--muted);
         white-space: nowrap; overflow: hidden;

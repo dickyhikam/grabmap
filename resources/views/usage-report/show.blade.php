@@ -118,8 +118,8 @@
         .print-btn, .report-actions, .dr, .report-top .dr, [data-dr] { display: none !important; }
         body { background: #fff; }
         .q-card, .report-id { box-shadow: none; border: 1px solid #e6e9eb; break-inside: avoid; }
-        .usage-grid { grid-template-columns: 1fr; }
-        .cost-card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .cost-card, .u-table tr.cat-head td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .detail-grid { grid-template-columns: minmax(0, 1fr); }
     }
 
     /* Dua kartu angka ditumpuk di kiri; kartu biaya mengambil kolom kanan
@@ -250,24 +250,27 @@
         .stat-row .cost-card { grid-column: 2; grid-row: 1 / span 2; }
     }
 
-    /* Berdampingan hanya kalau tabel operasi (minimal ±640px sejak ada kolom
-       Rupiah) muat utuh; kalau tidak, kartu ditumpuk dan tidak melebihi layar. */
+    /* Perbandingan lebar sama dengan .stat-row, cuma dibalik sisinya: kolom
+       sempitnya selebar kartu Total requests di atas, jadi tepinya segaris. */
     .detail-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(min(690px, 100%), 1fr));
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
         gap: 16px;
         align-items: start;
         margin-top: 16px;
     }
-    @media (max-width: 620px) { .detail-grid { grid-template-columns: minmax(0, 1fr); } }
+    .detail-main, .detail-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+    .detail-side .rate-card { margin-bottom: 0; }
 
-    .usage-grid {
-        /* Kolom kategori minimal 330px supaya baris dolar + rupiahnya tidak menjepit label. */
-        display: grid; grid-template-columns: minmax(0, 2fr) minmax(330px, 1fr);
-        gap: 16px; align-items: start;
-    }
-    .usage-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-    @media (max-width: 900px) { .usage-grid { grid-template-columns: 1fr; } }
+    /* Di kolom sempit, keterangan kurs turun satu baris supaya batas bawah dan
+       atasnya tetap di ujung kiri-kanan rel. */
+    .detail-side .rate-foot { flex-wrap: wrap; }
+    .detail-side .rate-foot .hint { flex: 1 0 100%; order: 3; margin-top: 3px; }
+
+    /* Dua kolom hanya kalau kolom kirinya masih ≥760px — lebar minimum tabel
+       operasi sejak ada kolom Rupiah. Di 1300px kolom kiri tinggal ±764px; di
+       bawah itu tabelnya mulai menggeser ke samping, jadi kartu ditumpuk. */
+    @media (max-width: 1300px) { .detail-grid { grid-template-columns: minmax(0, 1fr); } }
 
     .u-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.82rem; }
     .u-table th {
@@ -280,18 +283,62 @@
     .u-table tbody tr td:first-child { border-radius: 12px 0 0 12px; }
     .u-table tbody tr td:last-child { border-radius: 0 12px 12px 0; }
     .u-table tfoot td { padding: 10px 14px; border-top: 1px solid var(--line); }
+    /* Semua kolom angka seragam: rata kanan, tidak patah, dan lebar digitnya
+       tetap supaya rupiah antar baris sejajar dan enak dibandingkan. */
+    .u-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; width: 1%; min-width: 118px; }
     .u-table .idr-cell { white-space: nowrap; }
+
+    /* Kolom nama operasi yang boleh menyusut; bar porsi dan harga satuan AWS
+       ikut di dalamnya, bukan jadi kolom sendiri. */
+    .op-cell { min-width: 0; }
+    .op-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .op-rate { font-size: 0.68rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+    /* Bar dibiarkan selebar kolomnya: kalau dipotong, ada jarak kosong antara
+       ujung bar dan kolom angka, dan panjangnya jadi sulit dibanding-bandingkan. */
+    .op-track { height: 5px; margin-top: 8px; border-radius: 999px; background: var(--surface); overflow: hidden; }
+    .op-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--green), #4bd07f); }
 
     .q-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
     .q-track { height: 6px; background: var(--surface); border-radius: 999px; overflow: hidden; }
     .q-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--green), #4bd07f); }
 
-    .cat-row { display: flex; align-items: center; gap: 11px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-    .cat-row:last-child { border-bottom: none; }
+    .cat-label { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
     .cat-ic {
-        width: 32px; height: 32px; border-radius: 10px;
-        display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0;
-        background: var(--surface);
+        width: 26px; height: 26px; border-radius: 8px; color: var(--cat);
+        display: flex; align-items: center; justify-content: center; font-size: 0.78rem; flex-shrink: 0;
+        background: var(--card);
+    }
+
+    /* Baris induk kategori: latar abu + garis warna di tepi kiri, supaya operasi
+       yang menjorok di bawahnya jelas miliknya. */
+    .u-table tr.cat-head td { background: var(--surface); padding-top: 13px; padding-bottom: 13px; }
+    .u-table tr.cat-head:hover td { background: var(--surface); }
+    .u-table tr.cat-head td:first-child { box-shadow: inset 3px 0 0 var(--cat); }
+    .cat-share {
+        font-size: 0.68rem; font-weight: 600; color: var(--muted);
+        padding: 1px 7px; border-radius: 999px; background: var(--card);
+    }
+    .u-table tr.cat-item td:first-child { padding-left: 30px; }
+    .u-table tr.cat-item .q-dot { background: var(--muted); opacity: 0.55; }
+
+    /* Di layar sempit tabel dipecah jadi tumpukan: tiap baris satu blok dengan
+       label di kiri dan angkanya di kanan. Tidak ada lagi geseran ke samping. */
+    @media (max-width: 560px) {
+        .u-table thead { display: none; }
+        .u-table, .u-table tbody, .u-table tfoot, .u-table tr, .u-table td { display: block; width: auto; }
+        .u-table tr { border-top: 1px solid var(--line); padding: 10px 2px; }
+        .u-table tbody tr:first-child { border-top: none; }
+        .u-table td, .u-table tfoot td { border: none; padding: 3px 0; }
+        .u-table td.num { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+        .u-table td.num::before {
+            content: attr(data-label);
+            font-size: 0.68rem; font-weight: 600; letter-spacing: 0.04em;
+            text-transform: uppercase; color: var(--muted);
+        }
+        .u-table tbody tr:hover td, .u-table tr.cat-head td { background: transparent; }
+        .u-table tr.cat-head { background: var(--surface); border-radius: 12px; padding: 10px 12px; }
+        .u-table tr.cat-head td:first-child { box-shadow: none; }
+        .u-table tr.cat-item td:first-child { padding-left: 0; }
     }
 @endpush
 
@@ -389,6 +436,38 @@
         'places' => ['label' => __('dash.cat_places'), 'icon' => 'bi-search',          'color' => '#6366f1', 'ops' => ['SearchText', 'ReverseGeocode', 'Suggest', 'GetPlace']],
         'routes' => ['label' => __('dash.cat_routes'), 'icon' => 'bi-sign-turn-right', 'color' => '#f59e0b', 'ops' => ['CalculateRoutes', 'CalculateRouteMatrix']],
     ];
+
+    // Rincian operasi dikelompokkan per kategori supaya sebangun dengan invoice:
+    // tiap kategori membawa subtotalnya sendiri, operasinya menjorok di bawahnya.
+    // Operasi di luar daftar kategori tetap dicetak, tanpa induk, supaya tidak hilang.
+    $grouped = [];
+    $claimed = [];
+
+    foreach ($categories as $cat) {
+        $rows = [];
+        foreach ($cat['ops'] as $op) {
+            if (isset($ops[$op])) {
+                $rows[$op] = $ops[$op];
+                $claimed[$op] = true;
+            }
+        }
+
+        if (!$rows) {
+            continue;
+        }
+
+        arsort($rows);
+        $catCost = AwsLocationService::estimateCost($rows);
+
+        $grouped[] = $cat + [
+            'rows'  => $rows,
+            'count' => array_sum($rows),
+            'cost'  => $catCost,
+            'share' => $totalCost > 0 ? ($catCost / $totalCost) * 100 : 0,
+        ];
+    }
+
+    $ungrouped = array_diff_key($ops, $claimed);
 @endphp
 
 {{-- Laporan ini dibaca klien, jadi yang dibesarkan namanya sendiri — bukan
@@ -543,131 +622,28 @@
     </div>
 </div>
 
-{{-- Kurs bawaan diambil dari menu Kurs & Pajak. Pembaca boleh menggesernya
-     untuk hitungan kasar sendiri; angka rupiah di halaman ini ikut berubah,
-     sementara angka dolarnya tidak tersentuh. --}}
-<div class="q-card rate-card {{ $rateOffPeriod ? 'off' : '' }}" data-rate-card
-     data-default="{{ $idrRate }}"
-     data-min="{{ (int) round($idrRate * 0.8) }}"
-     data-max="{{ (int) round($idrRate * 1.2) }}"
-     data-total-vat="{{ $totalVat }}"
-     data-sc-pct="{{ $sc['percent'] }}"
-     data-sc-min-idr="{{ $scMinIdr }}">
-    <div class="rate-head">
-        <div>
-            <div class="rate-lbl">{{ __('apikeys.rate_title') }}</div>
-            <div class="rate-val">
-                <span class="pfx">Rp</span>
-                <input type="text" inputmode="decimal" data-rate-num value="{{ number_format($idrRate, 0, ',', '.') }}">
-                <span class="sfx">/ USD</span>
+<div class="q-card">
+    <div class="q-card-head">
+        <div class="d-flex align-items-center gap-2">
+            <div class="q-icon-box"><i class="bi bi-bar-chart-line"></i></div>
+            <div>
+                <div class="q-card-title">{{ __('apikeys.daily_chart') }}</div>
+                <div class="q-card-sub">{{ __('apikeys.daily_chart_sub', ['range' => $rangeLabel]) }}</div>
             </div>
-            @if($rateDate)
-                <div class="rate-meta">
-                    {{ __('apikeys.rate_date', ['date' => $rateDate->translatedFormat('d M Y')]) }}
-                    @if($activeRate->source) · {{ $activeRate->source }} @endif
-                </div>
-            @endif
         </div>
-
-        <button type="button" class="rate-reset" data-rate-reset hidden>
-            <i class="bi bi-arrow-counterclockwise"></i> {{ __('apikeys.rate_reset') }}
-        </button>
-
-        <span class="rate-tag" data-rate-tag
-              data-official="{{ __('apikeys.rate_official') }}"
-              data-custom="{{ __('apikeys.rate_custom') }}">{{ __('apikeys.rate_official') }}</span>
     </div>
 
-    @if($rateOffPeriod)
-        <div class="rate-warn">
-            <i class="bi bi-exclamation-triangle-fill"></i>
-            <span>{{ __('apikeys.rate_off_period', [
-                'date'   => $rateDate->translatedFormat('d M Y'),
-                'period' => $rangeEnd->translatedFormat('F Y'),
-            ]) }}</span>
-        </div>
+    @if($daily->sum() === 0)
+        <div class="q-empty"><i class="bi bi-bar-chart"></i>{{ __('apikeys.no_usage') }}</div>
+    @else
+        @include('admin.partials.bar-chart', ['series' => $daily])
     @endif
-
-    <div class="rate-track">
-        <input type="range" data-rate-range
-               min="{{ (int) round($idrRate * 0.8) }}"
-               max="{{ (int) round($idrRate * 1.2) }}"
-               step="10" value="{{ (int) $idrRate }}">
-        {{-- Penanda kurs resmi: posisinya tetap, jadi kelihatan seberapa jauh
-             geserannya dari angka yang dipakai sistem. --}}
-        <span class="rate-mark" data-rate-mark><span class="dot"></span><span class="tx">{{ __('apikeys.rate_official') }}</span></span>
-    </div>
-
-    <div class="rate-foot">
-        <span>Rp {{ number_format(round($idrRate * 0.8), 0, ',', '.') }}</span>
-        <span class="hint">{{ __('apikeys.rate_hint') }}</span>
-        <span>Rp {{ number_format(round($idrRate * 1.2), 0, ',', '.') }}</span>
-    </div>
 </div>
 
-<div class="usage-grid">
-    <div class="usage-col">
-        <div class="q-card">
-            <div class="q-card-head">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="q-icon-box"><i class="bi bi-bar-chart-line"></i></div>
-                    <div>
-                        <div class="q-card-title">{{ __('apikeys.daily_chart') }}</div>
-                        <div class="q-card-sub">{{ __('apikeys.daily_chart_sub', ['range' => $rangeLabel]) }}</div>
-                    </div>
-                </div>
-            </div>
-
-            @if($daily->sum() === 0)
-                <div class="q-empty"><i class="bi bi-bar-chart"></i>{{ __('apikeys.no_usage') }}</div>
-            @else
-                @include('admin.partials.bar-chart', ['series' => $daily])
-            @endif
-        </div>
-
-    </div>
-
-    <div class="usage-col">
-        @if($totalReq > 0)
-            <div class="q-card">
-                <div class="q-card-head">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="q-icon-box"><i class="bi bi-wallet2"></i></div>
-                        <div>
-                            <div class="q-card-title">{{ __('apikeys.cat_title') }}</div>
-                            <div class="q-card-sub">{{ __('dash.cat_sub') }}</div>
-                        </div>
-                    </div>
-                </div>
-
-                @foreach($categories as $cat)
-                    @php
-                        $catCount = collect($cat['ops'])->sum(fn ($op) => $ops[$op] ?? 0);
-                        $catCost  = AwsLocationService::estimateCost(collect($cat['ops'])->mapWithKeys(fn ($op) => [$op => $ops[$op] ?? 0])->all());
-                        $sharePct = $totalCost > 0 ? ($catCost / $totalCost) * 100 : 0;
-                    @endphp
-                    <div class="cat-row">
-                        <div class="cat-ic" style="color: {{ $cat['color'] }};"><i class="bi {{ $cat['icon'] }}"></i></div>
-                        <div class="flex-grow-1" style="min-width:0;">
-                            <div style="font-size:0.82rem;font-weight:600;">{{ $cat['label'] }}</div>
-                            {{-- Porsi pindah ke kiri supaya kolom kanan cukup untuk dolar + rupiah. --}}
-                            <div style="font-size:0.7rem;color:var(--muted);">{{ number_format($catCount) }} {{ __('dash.requests_word') }}<span style="white-space:nowrap;"> · {{ number_format($sharePct, 1) }}%</span></div>
-                        </div>
-                        <div class="text-end">
-                            <div style="font-size:0.85rem;font-weight:600;">{{ $usd($catCost) }}</div>
-                            <div style="font-size:0.7rem;color:var(--muted);white-space:nowrap;"
-                                 data-idr="{{ $catCost }}" data-idr-prefix="Rp ">{{ $rp($catCost) }}</div>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        @endif
-    </div>
-</div>
-
-{{-- Tabel rincian ditaruh berdampingan supaya lebar halaman terpakai dan tidak
-     ada kolom yang berhenti duluan. Satu kartu saja otomatis melebar penuh. --}}
+{{-- Rincian operasi mengambil kolom lebar di kiri; kurs dan porsi per API key
+     ditumpuk di kolom sempit sebelah kanan, selebar kartu Total requests. --}}
 <div class="detail-grid">
+    <div class="detail-main">
         @if(!empty($ops) || $sc['active'])
             <div class="q-card">
                 <div class="q-card-head">
@@ -681,11 +657,10 @@
                     <table class="u-table">
                         <thead>
                             <tr>
-                                <th style="width:200px;">{{ __('apikeys.op') }}</th>
-                                <th>{{ __('apikeys.usage') }}</th>
-                                <th class="text-end">{{ __('apikeys.requests') }}</th>
-                                <th class="text-end">{{ __('apikeys.est_cost') }}</th>
-                                <th class="text-end">
+                                <th>{{ __('apikeys.op') }}</th>
+                                <th class="num">{{ __('apikeys.requests') }}</th>
+                                <th class="num">{{ __('apikeys.est_cost') }}</th>
+                                <th class="num">
                                     {{ __('apikeys.cost_idr') }}
                                     <span class="th-rate" data-rate-echo data-tpl="@ :rate / USD">
                                         <span data-rate-echo-text>@ {{ $rateText }} / USD</span>
@@ -694,45 +669,47 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($ops as $op => $count)
-                                @php
-                                    $rate = AwsLocationService::PRICING[$op] ?? 0;
-                                    $cost = ($count / 1000) * $rate;
-                                @endphp
-                                <tr>
+                            @foreach($grouped as $cat)
+                                <tr class="cat-head" style="--cat: {{ $cat['color'] }};">
                                     <td>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <span class="q-dot"></span>
-                                            <span class="fw-semibold">{{ $op }}</span>
+                                        <div class="cat-label">
+                                            <div class="cat-ic"><i class="bi {{ $cat['icon'] }}"></i></div>
+                                            <span class="fw-semibold">{{ $cat['label'] }}</span>
+                                            <span class="cat-share">{{ number_format($cat['share'], 1) }}%</span>
                                         </div>
                                     </td>
-                                    <td style="min-width:130px;">
-                                        <div class="q-track"><div class="q-fill" style="width: {{ ($count / $opMax) * 100 }}%;"></div></div>
-                                    </td>
-                                    <td class="text-end fw-semibold">{{ number_format($count) }}</td>
-                                    <td class="text-end fw-semibold">{{ $usd($cost) }}</td>
-                                    <td class="text-end fw-semibold idr-cell" data-idr="{{ $cost }}" data-idr-prefix="Rp ">{{ $rp($cost) }}</td>
+                                    <td class="num fw-semibold" data-label="{{ __('apikeys.requests') }}">{{ number_format($cat['count']) }}</td>
+                                    <td class="num fw-semibold" data-label="{{ __('apikeys.est_cost') }}">{{ $usd($cat['cost']) }}</td>
+                                    <td class="num fw-semibold idr-cell" data-label="{{ __('apikeys.cost_idr') }}" data-idr="{{ $cat['cost'] }}" data-idr-prefix="Rp ">{{ $rp($cat['cost']) }}</td>
                                 </tr>
+
+                                @foreach($cat['rows'] as $op => $count)
+                                    @include('usage-report.partials.op-row', ['op' => $op, 'count' => $count, 'child' => true])
+                                @endforeach
+                            @endforeach
+
+                            @foreach($ungrouped as $op => $count)
+                                @include('usage-report.partials.op-row', ['op' => $op, 'count' => $count, 'child' => false])
                             @endforeach
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="2" style="color:var(--muted);">{{ __('apikeys.subtotal') }}</td>
-                                <td class="text-end fw-semibold">{{ number_format(array_sum($ops)) }}</td>
-                                <td class="text-end fw-semibold">{{ $usd($totalCost) }}</td>
-                                <td class="text-end fw-semibold idr-cell" data-idr="{{ $totalCost }}" data-idr-prefix="Rp ">{{ $rp($totalCost) }}</td>
+                                <td style="color:var(--muted);">{{ __('apikeys.subtotal') }}</td>
+                                <td class="num fw-semibold" data-label="{{ __('apikeys.requests') }}">{{ number_format(array_sum($ops)) }}</td>
+                                <td class="num fw-semibold" data-label="{{ __('apikeys.est_cost') }}">{{ $usd($totalCost) }}</td>
+                                <td class="num fw-semibold idr-cell" data-label="{{ __('apikeys.cost_idr') }}" data-idr="{{ $totalCost }}" data-idr-prefix="Rp ">{{ $rp($totalCost) }}</td>
                             </tr>
                             <tr>
-                                <td colspan="3" style="color:var(--muted);">{{ __('apikeys.vat', ['pct' => round($taxRate * 100, 2)]) }}</td>
-                                <td class="text-end" style="color:var(--muted);">{{ $usd($tax) }}</td>
-                                <td class="text-end idr-cell" style="color:var(--muted);"
+                                <td colspan="2" style="color:var(--muted);">{{ __('apikeys.vat', ['pct' => round($taxRate * 100, 2)]) }}</td>
+                                <td class="num" style="color:var(--muted);" data-label="{{ __('apikeys.est_cost') }}">{{ $usd($tax) }}</td>
+                                <td class="num idr-cell" style="color:var(--muted);" data-label="{{ __('apikeys.cost_idr') }}"
                                     data-idr="{{ $tax }}" data-idr-prefix="Rp ">{{ $rp($tax) }}</td>
                             </tr>
                             {{-- Service charge PT Alfa adalah jasa di luar AWS: dihitung dan
                                  ditagih dalam Rupiah dari total AWS + PPN, tanpa nilai dolar. --}}
                             <tr>
-                                <td colspan="3" class="{{ $sc['active'] ? 'fw-semibold' : 'fw-bold' }}">{{ __('apikeys.total_vat') }}</td>
-                                <td class="text-end">
+                                <td colspan="2" class="{{ $sc['active'] ? 'fw-semibold' : 'fw-bold' }}">{{ __('apikeys.total_vat') }}</td>
+                                <td class="num" data-label="{{ __('apikeys.est_cost') }}">
                                     <div class="q-num" @if($sc['active']) style="font-size:0.95rem;" @else style="font-size:1.05rem;color:var(--green-text);" @endif>
                                         @if($tiny)
                                             ${{ $grandTiny[0] }}<span class="cents">.{{ $grandTiny[1] }}</span>
@@ -741,14 +718,14 @@
                                         @endif
                                     </div>
                                 </td>
-                                <td class="text-end idr-cell">
+                                <td class="num idr-cell" data-label="{{ __('apikeys.cost_idr') }}">
                                     <div class="q-num" @if($sc['active']) style="font-size:0.95rem;" @else style="font-size:1.05rem;color:var(--green-text);" @endif
                                          data-idr="{{ $totalVat }}" data-idr-prefix="Rp ">{{ $rp($totalVat) }}</div>
                                 </td>
                             </tr>
                             @if($sc['active'])
                                 <tr>
-                                    <td colspan="3" style="color:var(--muted);">
+                                    <td colspan="2" style="color:var(--muted);">
                                         {{ __('servicecharge.line') }}
                                         @if($scLabels)
                                             @foreach($scLabels as $basis => $label)
@@ -758,14 +735,14 @@
                                             ({{ \App\Models\ServiceCharge::basisLabel($sc) }})
                                         @endif
                                     </td>
-                                    <td class="text-end" style="color:var(--muted);">—</td>
-                                    <td class="text-end idr-cell" style="color:var(--muted);"
+                                    <td class="num" style="color:var(--muted);" data-label="{{ __('apikeys.est_cost') }}">&mdash;</td>
+                                    <td class="num idr-cell" style="color:var(--muted);" data-label="{{ __('apikeys.cost_idr') }}"
                                         data-idr data-idr-role="sc" data-idr-prefix="Rp ">{{ $rpIdr($sc['charge_idr']) }}</td>
                                 </tr>
                                 <tr>
-                                    <td colspan="3" class="fw-bold">{{ __('apikeys.grand_total') }}</td>
-                                    <td class="text-end" style="color:var(--muted);">—</td>
-                                    <td class="text-end idr-cell">
+                                    <td colspan="2" class="fw-bold">{{ __('apikeys.grand_total') }}</td>
+                                    <td class="num" style="color:var(--muted);" data-label="{{ __('apikeys.est_cost') }}">&mdash;</td>
+                                    <td class="num idr-cell" data-label="{{ __('apikeys.cost_idr') }}">
                                         <div class="q-num" style="font-size:1.05rem;color:var(--green-text);"
                                              data-idr data-idr-role="grand" data-idr-prefix="Rp ">{{ $rpIdr($sc['grand_idr']) }}</div>
                                     </td>
@@ -777,6 +754,70 @@
             </div>
         @endif
 
+    </div>
+
+    <div class="detail-side">
+        {{-- Kurs bawaan diambil dari menu Kurs & Pajak. Pembaca boleh menggesernya
+             untuk hitungan kasar sendiri; angka rupiah di halaman ini ikut berubah,
+             sementara angka dolarnya tidak tersentuh. --}}
+        <div class="q-card rate-card {{ $rateOffPeriod ? 'off' : '' }}" data-rate-card
+             data-default="{{ $idrRate }}"
+             data-min="{{ (int) round($idrRate * 0.8) }}"
+             data-max="{{ (int) round($idrRate * 1.2) }}"
+             data-total-vat="{{ $totalVat }}"
+             data-sc-pct="{{ $sc['percent'] }}"
+             data-sc-min-idr="{{ $scMinIdr }}">
+            <div class="rate-head">
+                <div>
+                    <div class="rate-lbl">{{ __('apikeys.rate_title') }}</div>
+                    <div class="rate-val">
+                        <span class="pfx">Rp</span>
+                        <input type="text" inputmode="decimal" data-rate-num value="{{ number_format($idrRate, 0, ',', '.') }}">
+                        <span class="sfx">/ USD</span>
+                    </div>
+                    @if($rateDate)
+                        <div class="rate-meta">
+                            {{ __('apikeys.rate_date', ['date' => $rateDate->translatedFormat('d M Y')]) }}
+                            @if($activeRate->source) · {{ $activeRate->source }} @endif
+                        </div>
+                    @endif
+                </div>
+
+                <button type="button" class="rate-reset" data-rate-reset hidden>
+                    <i class="bi bi-arrow-counterclockwise"></i> {{ __('apikeys.rate_reset') }}
+                </button>
+
+                <span class="rate-tag" data-rate-tag
+                      data-official="{{ __('apikeys.rate_official') }}"
+                      data-custom="{{ __('apikeys.rate_custom') }}">{{ __('apikeys.rate_official') }}</span>
+            </div>
+
+            @if($rateOffPeriod)
+                <div class="rate-warn">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span>{{ __('apikeys.rate_off_period', [
+                        'date'   => $rateDate->translatedFormat('d M Y'),
+                        'period' => $rangeEnd->translatedFormat('F Y'),
+                    ]) }}</span>
+                </div>
+            @endif
+
+            <div class="rate-track">
+                <input type="range" data-rate-range
+                       min="{{ (int) round($idrRate * 0.8) }}"
+                       max="{{ (int) round($idrRate * 1.2) }}"
+                       step="10" value="{{ (int) $idrRate }}">
+                {{-- Penanda kurs resmi: posisinya tetap, jadi kelihatan seberapa jauh
+                     geserannya dari angka yang dipakai sistem. --}}
+                <span class="rate-mark" data-rate-mark><span class="dot"></span><span class="tx">{{ __('apikeys.rate_official') }}</span></span>
+            </div>
+
+            <div class="rate-foot">
+                <span>Rp {{ number_format(round($idrRate * 0.8), 0, ',', '.') }}</span>
+                <span class="hint">{{ __('apikeys.rate_hint') }}</span>
+                <span>Rp {{ number_format(round($idrRate * 1.2), 0, ',', '.') }}</span>
+            </div>
+        </div>
         @isset($usage)
             <div class="q-card">
                 <div class="q-card-head">
@@ -794,10 +835,9 @@
                         <thead>
                             <tr>
                                 <th>{{ __('apikeys.share_key_col') }}</th>
-                                <th class="text-end">{{ __('apikeys.requests') }}</th>
-                                <th class="text-end">{{ __('apikeys.est_cost') }}</th>
-                                <th class="text-end">{{ __('apikeys.cost_idr') }}</th>
-                                <th class="text-end">{{ __('apikeys.share_portion') }}</th>
+                                <th class="num">{{ __('apikeys.requests') }}</th>
+                                <th class="num">{{ __('apikeys.est_cost') }}</th>
+                                <th class="num">{{ __('apikeys.cost_idr') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -813,13 +853,17 @@
                                                 {{ __('apikeys.share_key_no_data') }}
                                             </span>
                                         @endunless
+
+                                        {{-- Porsi menempel pada nama key, bukan kolom sendiri:
+                                             kolomnya habis dipakai angka yang tidak boleh terpotong. --}}
+                                        <div class="op-track" title="{{ __('apikeys.share_portion') }}">
+                                            <div class="op-fill" style="width: {{ $totalCost > 0 ? ($row['cost'] / $totalCost) * 100 : 0 }}%;"></div>
+                                        </div>
+                                        <span class="op-rate">{{ __('apikeys.share_portion') }} {{ $totalCost > 0 ? number_format(($row['cost'] / $totalCost) * 100, 1) : '0,0' }}%</span>
                                     </td>
-                                    <td class="text-end">{{ number_format($row['total']) }}</td>
-                                    <td class="text-end">{{ $usd($row['cost']) }}</td>
-                                    <td class="text-end idr-cell" data-idr="{{ $row['cost'] }}" data-idr-prefix="Rp ">{{ $rp($row['cost']) }}</td>
-                                    <td class="text-end" style="color:var(--muted);">
-                                        {{ $totalCost > 0 ? number_format(($row['cost'] / $totalCost) * 100, 1) : '0,0' }}%
-                                    </td>
+                                    <td class="num" data-label="{{ __('apikeys.requests') }}">{{ number_format($row['total']) }}</td>
+                                    <td class="num" data-label="{{ __('apikeys.est_cost') }}">{{ $usd($row['cost']) }}</td>
+                                    <td class="num idr-cell" data-label="{{ __('apikeys.cost_idr') }}" data-idr="{{ $row['cost'] }}" data-idr-prefix="Rp ">{{ $rp($row['cost']) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -827,6 +871,7 @@
                 </div>
             </div>
         @endisset
+    </div>
 </div>
 @endsection
 
