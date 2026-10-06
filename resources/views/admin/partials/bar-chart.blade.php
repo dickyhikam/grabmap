@@ -128,6 +128,17 @@
 
     .chart-pane[hidden] { display: none; }
 
+    /* Batang grafik digambar sebagai latar elemen. Browser membuang latar saat
+       mencetak kecuali diminta tegas, dan grafiknya keluar kosong di PDF. */
+    @media print {
+        .q-bar, .q-bar.is-zero, .q-gl {
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
+        }
+        /* Pengalih skala tidak bisa ditekan di kertas. */
+        .q-scale { display: none !important; }
+        .q-knob, .q-bar-badge { display: none !important; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
         .q-knob, .q-bar-badge { transition: opacity 0.12s ease; }
     }
