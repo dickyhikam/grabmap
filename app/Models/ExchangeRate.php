@@ -15,7 +15,7 @@ class ExchangeRate extends Model
     ];
 
     protected $casts = [
-        'rate'      => 'decimal:2',
+        'rate'      => 'decimal:4',
         'rate_date' => 'date',
         'is_active' => 'boolean',
         'created_at' => 'datetime',
@@ -28,6 +28,29 @@ class ExchangeRate extends Model
     {
         return static::where('is_active', true)->latest('rate_date')->first()
             ?? static::latest('rate_date')->latest('id')->first();
+    }
+
+    /**
+     * Kurs yang berlaku untuk satu periode laporan. Laporan klien dipakai untuk
+     * mencocokkan tagihan AWS, dan AWS memakai kursnya sendiri tiap bulan, jadi
+     * laporan Agustus harus memakai kurs Agustus — bukan kurs yang kebetulan
+     * sedang aktif hari ini. Urutan: kurs di bulan yang sama dengan akhir
+     * periode, lalu kurs terakhir sebelum periode berakhir, lalu kurs aktif.
+     */
+    public static function forPeriod(?string $endDate): ?self
+    {
+        if (!$endDate) {
+            return static::current();
+        }
+
+        $end = \Carbon\Carbon::parse($endDate)->endOfDay();
+
+        return static::whereYear('rate_date', $end->year)
+                ->whereMonth('rate_date', $end->month)
+                ->latest('rate_date')->latest('id')->first()
+            ?? static::whereDate('rate_date', '<=', $end)
+                ->latest('rate_date')->latest('id')->first()
+            ?? static::current();
     }
 
     /**

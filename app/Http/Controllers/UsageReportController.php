@@ -99,7 +99,7 @@ class UsageReportController extends Controller
             ? $this->companyReport($request, $share, $startDate, $endDate)
             : $this->keyReport($share, $startDate, $endDate);
 
-        $activeRate = ExchangeRate::current();
+        $activeRate = ExchangeRate::forPeriod($endDate);
 
         $data = array_merge(['keyTabs' => collect(), 'activeKey' => null], $view['data'], [
             'share'      => $share,
