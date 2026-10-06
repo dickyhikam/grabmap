@@ -137,13 +137,20 @@ class UsageReportExcel
             $this->formats($sheet, $r, ['B' => self::INT, 'C' => self::USD, 'D' => self::IDR, 'E' => '0.0%']);
         }
 
+        // Batas pemakaian laporan ikut terbawa ke unduhan: file ini beredar
+        // lepas dari halamannya, jadi tidak boleh terbaca seperti invoice.
         $r += 2;
+        $sheet->setCellValue("A{$r}", __('apikeys.estimate_title'));
+        $sheet->mergeCells("A{$r}:E{$r}");
+        $sheet->getStyle("A{$r}")->getFont()->setBold(true)->setSize(10)->getColor()->setARGB('FFB45309');
+
+        $r++;
         // Disclaimer digabung A:E supaya teks panjangnya tidak ikut melebarkan kolom A.
-        $sheet->setCellValue("A{$r}", __('apikeys.share_disclaimer'));
+        $sheet->setCellValue("A{$r}", __('apikeys.estimate_body') . ' ' . __('apikeys.share_disclaimer'));
         $sheet->mergeCells("A{$r}:E{$r}");
         $sheet->getStyle("A{$r}")->getAlignment()->setWrapText(true)->setVertical('top');
         $sheet->getStyle("A{$r}")->getFont()->setItalic(true)->setSize(9)->getColor()->setARGB('FF6B7280');
-        $sheet->getRowDimension($r)->setRowHeight(48);
+        $sheet->getRowDimension($r)->setRowHeight(72);
 
         $this->autosize($sheet, 'E');
     }

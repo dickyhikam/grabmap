@@ -181,6 +181,19 @@
         background: var(--warn-soft); color: var(--warn-fg);
         font-size: 0.74rem; font-weight: 600; line-height: 1.4;
     }
+    /* Catatan batas pemakaian laporan. Nadanya pemberitahuan, bukan peringatan
+       galat, supaya tetap terbaca tanpa membuat halaman terlihat bermasalah. */
+    .est-note {
+        display: flex; gap: 12px; align-items: flex-start;
+        background: var(--card); border-radius: var(--r-card);
+        border-left: 4px solid var(--warn-fg);
+        padding: 14px 18px; margin-bottom: 16px;
+        box-shadow: var(--shadow-card);
+    }
+    .est-note-ic { color: var(--warn-fg); font-size: 1rem; line-height: 1.3; flex-shrink: 0; }
+    .est-note-title { font-size: 0.82rem; font-weight: 700; margin-bottom: 2px; }
+    .est-note-body { font-size: 0.74rem; color: var(--muted); line-height: 1.5; margin: 0; }
+
     .th-rate { display: block; font-size: 0.62rem; font-weight: 600; color: var(--muted); text-transform: none; letter-spacing: 0; }
     .th-rate.custom { color: var(--warn-fg); }
 
@@ -524,6 +537,17 @@
         <button type="button" class="print-btn" onclick="window.print()">
             <i class="bi bi-printer"></i> {{ __('apikeys.share_print') }}
         </button>
+    </div>
+</div>
+
+{{-- Laporan ini dibaca klien dan angkanya mendekati tagihan, jadi batasnya
+     dinyatakan di muka, bukan hanya di catatan kaki: ini hitungan dari metrik
+     CloudWatch, bukan salinan invoice AWS. --}}
+<div class="est-note">
+    <span class="est-note-ic"><i class="bi bi-info-circle-fill"></i></span>
+    <div>
+        <div class="est-note-title">{{ __('apikeys.estimate_title') }}</div>
+        <p class="est-note-body">{{ __('apikeys.estimate_body') }}</p>
     </div>
 </div>
 
