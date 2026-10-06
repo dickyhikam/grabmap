@@ -269,11 +269,17 @@ class AwsLocationService
         'CalculateRoutes', 'CalculateRouteMatrix',
     ];
 
+    // CloudWatch menerbitkan CallCount pada dua rangkaian dimensi yang TERPISAH:
+    // satu tanpa OperationVersion, satu dengan OperationVersion=V2. Keduanya harus
+    // dijumlahkan supaya cocok dengan tagihan — GetTile V2 bisa >85% dari total tile.
+    // (Varian ResourceName=default adalah duplikat dari rangkaian yang sama, jangan ikut.)
+    private const OPERATION_VERSIONS = [null, 'V2'];
+
     // Harga AWS Location Service (USD per 1.000 request) — ap-southeast-1, satu sumber kebenaran.
     // Glyphs/Sprites/StyleDescriptor tidak ditagih terpisah (bagian dari load peta) => 0.
     public const PRICING = [
         'GetMapTile' => 0.04, 'GetTile' => 0.04, 'GetMapStyleDescriptor' => 0, 'GetMapGlyphs' => 0, 'GetMapSprites' => 0,
-        'SearchText' => 0.50, 'ReverseGeocode' => 0.50, 'Suggest' => 0.50, 'GetPlace' => 1.50,
+        'SearchText' => 0.50, 'ReverseGeocode' => 0.50, 'Suggest' => 0.50, 'GetPlace' => 0.50,
         'CalculateRoutes' => 0.50, 'CalculateRouteMatrix' => 0.50,
     ];
 
@@ -610,23 +616,33 @@ class AwsLocationService
             $ops = $filterOperation ? [$filterOperation] : self::OPERATIONS;
 
             $queries = [];
+            $queryOps = [];             // id query => nama operasi
             foreach ($ops as $i => $op) {
-                $queries[] = [
-                    'Id' => 'op_' . $i,
-                    'MetricStat' => [
-                        'Metric' => [
-                            'Namespace'  => 'AWS/Location',
-                            'MetricName' => 'CallCount',
-                            'Dimensions' => [
-                                ['Name' => 'ApiKeyName', 'Value' => $keyName],
-                                ['Name' => 'OperationName', 'Value' => $op],
+                foreach (self::OPERATION_VERSIONS as $v => $version) {
+                    $dimensions = [
+                        ['Name' => 'ApiKeyName', 'Value' => $keyName],
+                        ['Name' => 'OperationName', 'Value' => $op],
+                    ];
+                    if ($version !== null) {
+                        $dimensions[] = ['Name' => 'OperationVersion', 'Value' => $version];
+                    }
+
+                    $id = 'op_' . $i . '_' . $v;
+                    $queryOps[$id] = $op;
+                    $queries[] = [
+                        'Id' => $id,
+                        'MetricStat' => [
+                            'Metric' => [
+                                'Namespace'  => 'AWS/Location',
+                                'MetricName' => 'CallCount',
+                                'Dimensions' => $dimensions,
                             ],
+                            'Period' => 86400,
+                            'Stat'   => 'Sum',
                         ],
-                        'Period' => 86400,
-                        'Stat'   => 'Sum',
-                    ],
-                    'ReturnData' => true,
-                ];
+                        'ReturnData' => true,
+                    ];
+                }
             }
 
             $result = $cloudwatch->getMetricData([
@@ -641,9 +657,10 @@ class AwsLocationService
             $matrix = [];               // [tanggal][operasi] => jumlah
 
             foreach ($result['MetricDataResults'] ?? [] as $metricResult) {
-                $idx = (int) str_replace('op_', '', $metricResult['Id']);
-                $opName = $ops[$idx] ?? '';
-                $opTotal = 0;
+                $opName = $queryOps[$metricResult['Id']] ?? '';
+                if ($opName === '') {
+                    continue;
+                }
 
                 $timestamps = $metricResult['Timestamps'] ?? [];
                 $values = $metricResult['Values'] ?? [];
@@ -651,14 +668,13 @@ class AwsLocationService
                 for ($i = 0; $i < count($timestamps); $i++) {
                     $date = $timestamps[$i]->format('Y-m-d');
                     $count = (int) ($values[$i] ?? 0);
+                    if ($count === 0) {
+                        continue;
+                    }
                     $daily[$date] = ($daily[$date] ?? 0) + $count;
                     $matrix[$date][$opName] = ($matrix[$date][$opName] ?? 0) + $count;
+                    $operations[$opName] = ($operations[$opName] ?? 0) + $count;
                     $total += $count;
-                    $opTotal += $count;
-                }
-
-                if ($opTotal > 0) {
-                    $operations[$opName] = $opTotal;
                 }
             }
 
