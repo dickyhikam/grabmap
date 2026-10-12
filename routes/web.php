@@ -75,6 +75,7 @@ Route::post('/api/places/reverse', [MapController::class, 'reverseGeocode']);
 Route::post('/api/routes/calculate', [MapController::class, 'calculateRoute']);
 Route::post('/api/routes/matrix', [MapController::class, 'calculateRouteMatrix']);
 Route::post('/api/v2/routes/calculate', [MapController::class, 'calculateRouteV2']);
+Route::post('/api/v2/routes/matrix', [MapController::class, 'calculateRouteMatrixV2']);
 
 //route API
 Route::get('/map-style', function () {
@@ -133,6 +134,11 @@ Route::get('/tester-api', function (Request $request) {
 Route::get('/feature-lab', function () {
     return view('features.lab');
 })->name('pageFeatureLab');
+
+// Demo kebutuhan Wings (routing truk, multi-drop, tracking). Harus di atas catch-all /{slug}.
+Route::get('/wings', function () {
+    return view('wings.index');
+})->name('wings.demo');
 
 // === Tools: transfers.txt (GTFS) generator ===
 Route::get('/tools/transfers', [TransfersToolController::class, 'index'])->name('tools.transfers');

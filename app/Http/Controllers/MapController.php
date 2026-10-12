@@ -911,4 +911,22 @@ class MapController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    /**
+     * Route Matrix v2 — passthrough: body and response are AWS's own shape, untouched.
+     */
+    public function calculateRouteMatrixV2(Request $request)
+    {
+        $cfg = $this->resolveAwsConfig($request);
+        $url = "https://routes.geo.{$cfg['region']}.amazonaws.com/v2/route-matrix?key={$cfg['api_key']}";
+
+        try {
+            $response = Http::timeout(30)->post($url, $request->all());
+            $this->logUsage($cfg['company'], 'calculate_route_matrix_v2', $response->status());
+            return response()->json($response->json(), $response->status());
+        } catch (\Exception $e) {
+            $this->logUsage($cfg['company'], 'calculate_route_matrix_v2', 500);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
 }
