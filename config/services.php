@@ -43,4 +43,8 @@ return [
         'route_calculator' => env('AWS_MAP_ROUTE'),
     ],
 
+    'grabmaps' => [
+        'api_key' => env('GRABMAPS_API_KEY'),
+    ],
+
 ];

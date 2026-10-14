@@ -2217,7 +2217,7 @@
                             ['Dipakai', 'Dari tiap <code>TravelSteps[]</code>: <code>Type</code>, <code>TurnStepDetails.SteeringDirection</code>, <code>TurnStepDetails.TurnIntensity</code>, <code>CurrentRoad.RoadName[0].Value</code>, <code>NextRoad.RoadName[0].Value</code>, <code>Distance</code>, <code>Duration</code>'],
                         ]),
                         page('Rangkai kalimat instruksi', [
-                            ['Cara', 'AWS tidak mengirim kalimat. Halaman memetakan <code>Type</code> ke templat: <code>Turn</code> + <code>Left</code> → “Belok kiri ke {NextRoad}”; <code>Sharp</code> → “Belok tajam”, <code>Slight</code> → “Serong”; <code>Keep</code> → “Ambil lajur”; <code>UTurn</code> → “Putar balik”; <code>RoundaboutEnter</code> → “Masuk bundaran”; dan seterusnya. Ikon panah dipilih dengan aturan yang sama'],
+                            ['Cara', 'AWS bisa mengirim kalimat siap pakai (<code>LegAdditionalFeatures: ["TravelStepInstructions"]</code> → field <code>Instruction</code>, mis. “Turn left”), tetapi hanya bahasa Inggris — <code>Languages</code> dibalas 400 di region ini. Supaya berbahasa Indonesia, halaman memetakan <code>Type</code> ke templat: <code>Turn</code> + <code>Left</code> → “Belok kiri ke {NextRoad}”; <code>Sharp</code> → “Belok tajam”, <code>Slight</code> → “Serong”; <code>Keep</code> → “Ambil lajur”; <code>UTurn</code> → “Putar balik”; <code>RoundaboutEnter</code> → “Masuk bundaran”; dan seterusnya. Ikon panah dipilih dengan aturan yang sama'],
                         ]),
                         MOVE_STEP('×10 / ×30 / ×80'),
                         page('Isi layar ponsel', [

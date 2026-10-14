@@ -13,6 +13,7 @@ use App\Http\Controllers\ClientMapController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\PricingController;
 use App\Http\Controllers\RouteLinkController;
+use App\Http\Controllers\SocoDemoController;
 use App\Http\Controllers\Tools\TransfersToolController;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
@@ -139,6 +140,14 @@ Route::get('/feature-lab', function () {
 Route::get('/wings', function () {
     return view('wings.index');
 })->name('wings.demo');
+
+// Demo kebutuhan SOCO (cari tempat, review, tag lokasi di post). Harus di atas catch-all /{slug}.
+Route::get('/soco', [SocoDemoController::class, 'index'])->name('soco.demo');
+Route::middleware('throttle:120,1')->group(function () {
+    Route::post('/api/soco/aws/{op}', [SocoDemoController::class, 'aws']);
+    Route::get('/api/soco/aws/place/{placeId}', [SocoDemoController::class, 'awsPlace']);
+    Route::get('/api/soco/grab/{op}', [SocoDemoController::class, 'grab']);
+});
 
 // === Tools: transfers.txt (GTFS) generator ===
 Route::get('/tools/transfers', [TransfersToolController::class, 'index'])->name('tools.transfers');
