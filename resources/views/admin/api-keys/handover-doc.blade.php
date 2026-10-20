@@ -86,9 +86,10 @@
         @media print {
             body { background: #fff; font-size: 12px; }
             .toolbar { display: none; }
-            .sheet { box-shadow: none; margin: 0; max-width: 100%; padding: 0; border-radius: 0; }
+            .sheet { box-shadow: none; margin: 0; max-width: 100%; padding: 36mm 16mm 16mm; border-radius: 0; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+            .head { position: fixed; top: 6mm; left: 16mm; right: 16mm; margin: 0; background: #fff; }
             section { break-inside: avoid; }
-            @page { margin: 16mm; }
+            @page { margin: 0; }
         }
     </style>
 </head>
@@ -250,10 +251,7 @@
             </ul>
         </section>
 
-        <div class="foot">
-            <span>CONFIDENTIAL &mdash; Client Delivery</span>
-            <span>Version 1.0 | Issued {{ now()->wib()->format('d F Y') }}</span>
-        </div>
+            <div class="foot"><span>CONFIDENTIAL &mdash; Client Delivery</span><span>Version 1.0 | Issued {{ now()->wib()->format('d F Y') }}</span></div>
     </div>
 </body>
 </html>
