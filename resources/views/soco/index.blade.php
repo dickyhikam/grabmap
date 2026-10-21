@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>SOCO × GrabMaps — Demo Review Tempat</title>
+    <title>SOCO × GrabMaps — Place Review Demo</title>
 
     <link rel="shortcut icon" href="{{ asset('logo2.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('logo2.png') }}" type="image/png" sizes="32x32">
@@ -224,15 +224,15 @@
 
     <header class="top">
         <img src="{{ asset('logo.png') }}" alt="GrabMaps">
-        <h1 title="SOCO × GrabMaps — review tempat">SOCO × GrabMaps — review tempat</h1>
-        <div class="seg" id="provSeg" title="Jalur API yang dipakai aplikasi">
+        <h1 title="SOCO × GrabMaps — place reviews">SOCO × GrabMaps — place reviews</h1>
+        <div class="seg" id="provSeg" title="API used by the app">
             <button type="button" data-prov="aws">AWS Location</button>
-            <button type="button" data-prov="grab" @disabled(!$hasGrab)>GrabMaps langsung</button>
+            <button type="button" data-prov="grab" @disabled(!$hasGrab)>GrabMaps Direct</button>
         </div>
-        <label class="switch" id="storeWrap" title="SearchText dikirim dengan IntendedUse=Storage supaya hasilnya boleh disimpan">
-            <input type="checkbox" id="storeChk" checked> Mode simpan
+        <label class="switch" id="storeWrap" title="SearchText is sent with IntendedUse=Storage so the results may be stored">
+            <input type="checkbox" id="storeChk" checked> Storage mode
         </label>
-        <button type="button" class="icon-btn" id="locBtn" title="Pakai lokasi perangkat"><i class="bi bi-crosshair"></i></button>
+        <button type="button" class="icon-btn" id="locBtn" title="Use device location"><i class="bi bi-crosshair"></i></button>
     </header>
 
     <!-- ================= Aplikasi (mock) ================= -->
@@ -241,14 +241,14 @@
 
             <!-- A. Cari tempat -->
             <div class="sheet" id="scrSearch">
-                <div class="app-bar"><span class="brand">SOCO</span><h2>Cari tempat</h2></div>
+                <div class="app-bar"><span class="brand">SOCO</span><h2>Find places</h2></div>
                 <div class="body">
                     <div class="field">
                         <i class="bi bi-search"></i>
-                        <input class="input" id="q" type="search" placeholder="Gyu Kaku, Sociolla, restoran dekat saya…" autocomplete="off">
+                        <input class="input" id="q" type="search" placeholder="Gyu Kaku, Sociolla, restaurants near me…" autocomplete="off">
                     </div>
                     <div class="chips" id="catChips"></div>
-                    <p class="hint">Saran muncul saat mengetik; Enter atau kategori menjalankan pencarian penuh di sekitar titik biru pada peta (bisa digeser).</p>
+                    <p class="hint">Suggestions appear as you type. Press Enter or pick a category to run a full search around the blue dot on the map (drag it to move).</p>
                     <div id="results"></div>
                 </div>
             </div>
@@ -257,7 +257,7 @@
             <div class="sheet" id="scrDetail" hidden>
                 <div class="app-bar">
                     <button type="button" class="icon-btn" data-back><i class="bi bi-arrow-left"></i></button>
-                    <h2 id="dTitle">Detail tempat</h2>
+                    <h2 id="dTitle">Place details</h2>
                 </div>
                 <div class="body" id="detailBody"></div>
             </div>
@@ -266,26 +266,26 @@
             <div class="sheet" id="scrReview" hidden>
                 <div class="app-bar">
                     <button type="button" class="icon-btn" data-back><i class="bi bi-arrow-left"></i></button>
-                    <h2>Tulis review</h2>
+                    <h2>Write a review</h2>
                 </div>
                 <div class="body">
                     <div class="card" id="rvPlace"></div>
                     <label class="lbl">Rating</label>
                     <div class="stars" id="rvStars"></div>
-                    <label class="lbl" for="rvText">Ulasan</label>
-                    <textarea class="input" id="rvText" placeholder="Ceritakan pengalamanmu di tempat ini"></textarea>
-                    <label class="lbl">Foto (maks. 3)</label>
+                    <label class="lbl" for="rvText">Review</label>
+                    <textarea class="input" id="rvText" placeholder="Tell us about your experience here"></textarea>
+                    <label class="lbl">Photos (max. 3)</label>
                     <input type="file" id="rvFiles" accept="image/*" multiple>
                     <div class="thumbs" id="rvThumbs"></div>
-                    <p class="hint">Review disimpan di browser ini (localStorage) sebagai pengganti database SOCO.</p>
-                    <button type="button" class="btn" id="rvSubmit">Kirim review</button>
+                    <p class="hint">Reviews are saved in this browser (localStorage) in place of the SOCO database.</p>
+                    <button type="button" class="btn" id="rvSubmit">Submit review</button>
                 </div>
             </div>
 
             <!-- Komunitas -->
             <div class="sheet" id="scrFeed" hidden>
-                <div class="app-bar"><span class="brand">SOCO</span><h2>Komunitas</h2>
-                    <button type="button" class="icon-btn" id="newPost" title="Buat post"><i class="bi bi-plus-lg"></i></button>
+                <div class="app-bar"><span class="brand">SOCO</span><h2>Community</h2>
+                    <button type="button" class="icon-btn" id="newPost" title="Create post"><i class="bi bi-plus-lg"></i></button>
                 </div>
                 <div class="body" id="feedBody"></div>
             </div>
@@ -294,20 +294,20 @@
             <div class="sheet" id="scrPost" hidden>
                 <div class="app-bar">
                     <button type="button" class="icon-btn" data-back><i class="bi bi-arrow-left"></i></button>
-                    <h2>Buat post</h2>
+                    <h2>Create post</h2>
                 </div>
                 <div class="body">
-                    <label class="lbl" for="poTitle">Judul</label>
-                    <input class="input" id="poTitle" placeholder="Judul post">
-                    <label class="lbl" for="poText">Deskripsi</label>
-                    <textarea class="input" id="poText" placeholder="Tulis sesuatu"></textarea>
-                    <label class="lbl">Foto (maks. 3)</label>
+                    <label class="lbl" for="poTitle">Title</label>
+                    <input class="input" id="poTitle" placeholder="Post title">
+                    <label class="lbl" for="poText">Description</label>
+                    <textarea class="input" id="poText" placeholder="Write something"></textarea>
+                    <label class="lbl">Photos (max. 3)</label>
                     <input type="file" id="poFiles" accept="image/*" multiple>
                     <div class="thumbs" id="poThumbs"></div>
-                    <label class="lbl">Lokasi</label>
+                    <label class="lbl">Location</label>
                     <div id="poPlace"></div>
                     <div style="height:12px"></div>
-                    <button type="button" class="btn" id="poSubmit">Publikasikan</button>
+                    <button type="button" class="btn" id="poSubmit">Publish</button>
                 </div>
             </div>
 
@@ -315,35 +315,35 @@
             <div class="sheet" id="scrPick" hidden>
                 <div class="app-bar">
                     <button type="button" class="icon-btn" data-back><i class="bi bi-arrow-left"></i></button>
-                    <h2>Tambah tempat</h2>
+                    <h2>Add place</h2>
                 </div>
                 <div class="body">
                     <div class="field">
                         <i class="bi bi-geo-alt"></i>
-                        <input class="input" id="pickQ" type="search" placeholder="Cari nama tempat" autocomplete="off">
+                        <input class="input" id="pickQ" type="search" placeholder="Search place name" autocomplete="off">
                     </div>
                     <div id="pickResults"></div>
                 </div>
             </div>
 
             <nav class="tabbar" id="tabbar">
-                <button type="button" data-tab="scrSearch" class="on"><i class="bi bi-search"></i>Cari tempat</button>
-                <button type="button" data-tab="scrFeed"><i class="bi bi-people"></i>Komunitas</button>
+                <button type="button" data-tab="scrSearch" class="on"><i class="bi bi-search"></i>Find places</button>
+                <button type="button" data-tab="scrFeed"><i class="bi bi-people"></i>Community</button>
             </nav>
         </div>
     </section>
 
     <!-- ================= Panel data & API ================= -->
     <aside class="panel">
-        <div class="meter" title="Setiap angka berasal dari panggilan API sungguhan selama demo ini">
-            <div><b id="mReq">0</b><span>Request API</span></div>
-            <div><b id="mLast">–</b><span>Terakhir ms</span></div>
-            <div><b id="mCost">–</b><span>Biaya sesi</span></div>
+        <div class="meter" title="Every number comes from real API calls made during this demo">
+            <div><b id="mReq">0</b><span>API requests</span></div>
+            <div><b id="mLast">–</b><span>Last (ms)</span></div>
+            <div><b id="mCost">–</b><span>Session cost</span></div>
         </div>
         <div class="ptabs" id="ptabs">
-            <button type="button" data-p="data" class="on">Data tempat</button>
-            <button type="button" data-p="calls">Panggilan API</button>
-            <button type="button" data-p="cost">Biaya &amp; simpan</button>
+            <button type="button" data-p="data" class="on">Place data</button>
+            <button type="button" data-p="calls">API calls</button>
+            <button type="button" data-p="cost">Cost &amp; storage</button>
         </div>
         <div class="pbody" id="pData"></div>
         <div class="pbody" id="pCalls" hidden></div>
@@ -384,7 +384,7 @@
             let db = { places: {}, reviews: [], posts: [] };
             try { db = Object.assign(db, JSON.parse(localStorage.getItem(DB_KEY) || '{}')); } catch (e) { /* penyimpanan diblokir */ }
             function persist() {
-                try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch (e) { toast('Penyimpanan browser penuh — foto tidak tersimpan'); }
+                try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch (e) { toast('Browser storage is full — photos were not saved'); }
             }
             const pkey = (p) => p.provider + ':' + p.id;
 
@@ -533,30 +533,30 @@
             /* ---------- Pemetaan ke kategori aplikasi SOCO ---------- */
             const SOCO_CATS = [
                 ['Salon & Spa', /salon|spa|beauty|barber|hair|nail|massage|kecantikan/i],
-                ['Klinik & Kesehatan', /clinic|klinik|hospital|health|medical|pharmacy|dental|apotek/i],
-                ['Kafe', /cafe|coffee|kopi|bakery|dessert|tea/i],
-                ['Makan & Minum', /restaurant|food|beverage|diner|bar|yakiniku|japanese|indonesian|chinese|korean|western/i],
-                ['Belanja', /shop|store|mall|retail|market|cosmetic|fashion|commercial/i],
-                ['Hotel & Penginapan', /hotel|lodging|resort|hostel/i],
+                ['Clinic & Health', /clinic|klinik|hospital|health|medical|pharmacy|dental|apotek/i],
+                ['Cafe', /cafe|coffee|kopi|bakery|dessert|tea/i],
+                ['Food & Drink', /restaurant|food|beverage|diner|bar|yakiniku|japanese|indonesian|chinese|korean|western/i],
+                ['Shopping', /shop|store|mall|retail|market|cosmetic|fashion|commercial/i],
+                ['Hotel & Lodging', /hotel|lodging|resort|hostel/i],
             ];
-            const socoCat = (raw) => (raw && SOCO_CATS.find(([, re]) => re.test(raw))?.[0]) || 'Lainnya';
+            const socoCat = (raw) => (raw && SOCO_CATS.find(([, re]) => re.test(raw))?.[0]) || 'Other';
 
-            const CHIPS = [['Restoran', 'restoran'], ['Kafe', 'kafe'], ['Salon', 'salon'], ['Spa', 'spa'], ['Klinik kecantikan', 'klinik kecantikan'], ['Toko kosmetik', 'kosmetik']];
+            const CHIPS = [['Restaurants', 'restoran'], ['Cafes', 'kafe'], ['Salons', 'salon'], ['Spas', 'spa'], ['Beauty clinics', 'klinik kecantikan'], ['Cosmetics stores', 'kosmetik']];
 
             const distTxt = (m) => (m == null ? '' : m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km');
 
-            const DAYS = [['monday', 'Sen'], ['tuesday', 'Sel'], ['wednesday', 'Rab'], ['thursday', 'Kam'], ['friday', 'Jum'], ['saturday', 'Sab'], ['sunday', 'Min']];
+            const DAYS = [['monday', 'Mon'], ['tuesday', 'Tue'], ['wednesday', 'Wed'], ['thursday', 'Thu'], ['friday', 'Fri'], ['saturday', 'Sat'], ['sunday', 'Sun']];
             function hoursHtml(h) {
-                if (h === undefined) return '<span class="na">Tidak tersedia dari API ini</span>';
-                if (!h) return '<span style="color:var(--mut)">Kosong untuk tempat ini</span>';
-                return DAYS.map(([k, l]) => `${l} ${(h[k] || []).map((r) => esc(r.join('–'))).join(', ') || 'tutup'}`).join('<br>');
+                if (h === undefined) return '<span class="na">Not available from this API</span>';
+                if (!h) return '<span style="color:var(--mut)">Empty for this place</span>';
+                return DAYS.map(([k, l]) => `${l} ${(h[k] || []).map((r) => esc(r.join('–'))).join(', ') || 'closed'}`).join('<br>');
             }
             function statusHtml(s, provider) {
-                if (s === undefined && provider === 'grab') return '<span style="color:var(--mut)">Tidak dibawa autocomplete — ada di hasil search-text</span>';
-                if (s === undefined) return '<span class="na">Tidak tersedia dari API ini</span>';
-                return `<code>status: ${esc(s)}</code>` + (s === 1 ? ' <span class="tag ok">aktif</span>' : ' <span class="tag warn">arti nilai perlu konfirmasi Grab</span>');
+                if (s === undefined && provider === 'grab') return '<span style="color:var(--mut)">Not returned by autocomplete — available in search-text results</span>';
+                if (s === undefined) return '<span class="na">Not available from this API</span>';
+                return `<code>status: ${esc(s)}</code>` + (s === 1 ? ' <span class="tag ok">active</span>' : ' <span class="tag warn">meaning of value needs confirmation from Grab</span>');
             }
-            const NA = '<span class="na">Tidak tersedia dari API ini</span>';
+            const NA = '<span class="na">Not available from this API</span>';
 
             /* =========================================
                Peta
@@ -578,7 +578,7 @@
 
             const meEl = document.createElement('div');
             meEl.className = 'me-dot';
-            meEl.title = 'Lokasi pengguna — geser untuk pindah';
+            meEl.title = 'User location — drag to move';
             const meMarker = new maplibregl.Marker({ element: meEl, draggable: true }).setLngLat(S.me).addTo(map);
             meMarker.on('dragend', () => { const l = meMarker.getLngLat(); S.me = [l.lng, l.lat]; });
             map.once('load', () => map.jumpTo({ center: S.me }));
@@ -606,12 +606,12 @@
             }
 
             $('#locBtn').addEventListener('click', () => {
-                if (!navigator.geolocation) return toast('Browser tidak mendukung geolokasi');
+                if (!navigator.geolocation) return toast('This browser does not support geolocation');
                 navigator.geolocation.getCurrentPosition((g) => {
                     S.me = [g.coords.longitude, g.coords.latitude];
                     meMarker.setLngLat(S.me);
                     map.easeTo({ center: S.me, zoom: 14 });
-                }, () => toast('Lokasi tidak diizinkan — geser titik biru secara manual'));
+                }, () => toast('Location permission denied — drag the blue dot manually'));
             });
 
             /* =========================================
@@ -666,7 +666,7 @@
                     const list = await P[S.provider].suggest(q);
                     if (seq !== typeSeq) return;
                     S.results = list;
-                    $('#results').innerHTML = `<div class="sec">Saran (${S.provider === 'aws' ? 'Suggest' : 'autocomplete'})</div>` + (rowsHtml(list, false) || '<div class="empty">Tidak ada saran</div>');
+                    $('#results').innerHTML = `<div class="sec">Suggestions (${S.provider === 'aws' ? 'Suggest' : 'autocomplete'})</div>` + (rowsHtml(list, false) || '<div class="empty">No suggestions</div>');
                     $('#results').dataset.src = 'suggest';
                     drawPins([], null);
                 } catch (e) {
@@ -677,7 +677,7 @@
             async function runSearch(q, near = false) {
                 if (!q) return;
                 const seq = ++typeSeq;
-                $('#results').innerHTML = loading('Mencari tempat…');
+                $('#results').innerHTML = loading('Searching places…');
                 try {
                     let list = await P[S.provider].search(q, near);
                     if (seq !== typeSeq) return;
@@ -685,7 +685,7 @@
                     if (near) list = list.filter((p) => p.dist == null || p.dist <= NEAR_M).sort((a, b) => (a.dist ?? 0) - (b.dist ?? 0));
                     S.results = list;
                     $('#results').dataset.src = 'list';
-                    $('#results').innerHTML = `<div class="sec">${list.length} hasil untuk “${esc(q)}”${near ? ' dalam ' + NEAR_M / 1000 + ' km' : ''}</div>` + (rowsHtml(list, true) || '<div class="empty">Tidak ada hasil</div>');
+                    $('#results').innerHTML = `<div class="sec">${list.length} result${list.length === 1 ? '' : 's'} for “${esc(q)}”${near ? ' within ' + NEAR_M / 1000 + ' km' : ''}</div>` + (rowsHtml(list, true) || '<div class="empty">No results</div>');
                     drawPins(list, null);
                     fit(list);
                 } catch (e) {
@@ -695,7 +695,7 @@
 
             $('#q').addEventListener('input', onType);
             $('#q').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') runSearch($('#q').value.trim()); });
-            $('#catChips').innerHTML = CHIPS.map(([l, q]) => `<button type="button" class="chip" data-q="${esc(q)}">${esc(l)} dekat saya</button>`).join('');
+            $('#catChips').innerHTML = CHIPS.map(([l, q]) => `<button type="button" class="chip" data-q="${esc(q)}">${esc(l)} near me</button>`).join('');
             $('#catChips').addEventListener('click', (ev) => {
                 const b = ev.target.closest('.chip');
                 if (!b) return;
@@ -716,7 +716,7 @@
                 // AWS: saran (Suggest) hanya ringkasan, jadi detail diambil ulang per PlaceId.
                 // Hasil SearchText sudah lengkap, dan hanya itu yang bisa bertier Stored.
                 if (p.provider === 'aws' && src !== 'list') {
-                    $('#detailBody').innerHTML = loading('Mengambil detail per PlaceId…');
+                    $('#detailBody').innerHTML = loading('Fetching details by PlaceId…');
                     try { p = await P.aws.byId(p.id); } catch (e) { $('#detailBody').innerHTML = errBox(e); return; }
                 }
                 S.place = p;
@@ -737,27 +737,27 @@
                 $('#detailBody').innerHTML = `
                     <h3 style="margin:0 0 4px;font-size:16px">${esc(p.name)}</h3>
                     <div><span class="tag pink">${esc(socoCat(p.cat))}</span>
-                        ${rv.length ? starsRo(Math.round(avg)) + ` <b>${avg.toFixed(1)}</b> <span style="color:var(--mut)">(${rv.length})</span>` : '<span style="color:var(--mut)">Belum ada review</span>'}
+                        ${rv.length ? starsRo(Math.round(avg)) + ` <b>${avg.toFixed(1)}</b> <span style="color:var(--mut)">(${rv.length})</span>` : '<span style="color:var(--mut)">No reviews yet</span>'}
                     </div>
                     <dl class="kv">
-                        <dt>Alamat</dt><dd>${esc(p.label)}</dd>
-                        <dt>Kota</dt><dd>${p.city === undefined ? '<span class="na">Tidak ada sebagai komponen</span>' : esc(p.city || '—')}</dd>
-                        <dt>Provinsi</dt><dd>${esc(p.province || '—')}</dd>
-                        <dt>Kode pos</dt><dd>${esc(p.postcode || '—')}</dd>
+                        <dt>Address</dt><dd>${esc(p.label)}</dd>
+                        <dt>City</dt><dd>${p.city === undefined ? '<span class="na">Not a separate address component</span>' : esc(p.city || '—')}</dd>
+                        <dt>Province</dt><dd>${esc(p.province || '—')}</dd>
+                        <dt>Postcode</dt><dd>${esc(p.postcode || '—')}</dd>
                         <dt>Status</dt><dd>${statusHtml(p.status, p.provider)}</dd>
-                        <dt>Jam buka</dt><dd>${hoursHtml(p.hours)}</dd>
-                        <dt>Deskripsi</dt><dd>${NA}</dd>
+                        <dt>Opening hours</dt><dd>${hoursHtml(p.hours)}</dd>
+                        <dt>Description</dt><dd>${NA}</dd>
                         <dt>Website</dt><dd>${NA}</dd>
                     </dl>
-                    <button type="button" class="btn" id="goReview"><i class="bi bi-pencil-square"></i> Review</button>
-                    <div class="sec">Review (${rv.length})</div>
-                    ${rv.map(reviewHtml).join('') || '<div class="empty"><i class="bi bi-chat-square-text"></i>Jadilah yang pertama mereview tempat ini</div>'}`;
+                    <button type="button" class="btn" id="goReview"><i class="bi bi-pencil-square"></i> Write a review</button>
+                    <div class="sec">Reviews (${rv.length})</div>
+                    ${rv.map(reviewHtml).join('') || '<div class="empty"><i class="bi bi-chat-square-text"></i>Be the first to review this place</div>'}`;
                 $('#goReview').addEventListener('click', startReview);
             }
 
             const reviewHtml = (r) => `
                 <div class="card">
-                    ${starsRo(r.rating)} <span style="color:var(--mut);font-size:11px">${esc(new Date(r.at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }))}</span>
+                    ${starsRo(r.rating)} <span style="color:var(--mut);font-size:11px">${esc(new Date(r.at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }))}</span>
                     <p>${esc(r.text)}</p>
                     ${r.images?.length ? `<div class="thumbs">${r.images.map((s) => `<img src="${esc(s)}" alt="">`).join('')}</div>` : ''}
                 </div>`;
@@ -821,15 +821,15 @@
             $('#rvSubmit').addEventListener('click', () => {
                 const p = S.place;
                 const text = $('#rvText').value.trim();
-                if (!rvRating) return toast('Pilih rating dulu');
-                if (!text) return toast('Ulasan masih kosong');
+                if (!rvRating) return toast('Please choose a rating first');
+                if (!text) return toast('Review text is empty');
                 db.places[pkey(p)] = p; // record tempat ikut disimpan — review menempel ke record ini
                 db.reviews.unshift({ place: pkey(p), rating: rvRating, text, images: [...rvImages], at: Date.now() });
                 persist();
                 back();
                 renderDetail();
                 renderCost();
-                toast('Review terkirim');
+                toast('Review submitted');
             });
 
             /* =========================================
@@ -841,8 +841,8 @@
 
             function paintTag() {
                 $('#poPlace').innerHTML = poTag
-                    ? `<span class="tag pink"><i class="bi bi-geo-alt-fill"></i> ${esc(poTag.name)}</span> <button type="button" class="place-link" id="poClear" style="color:var(--mut)">hapus</button>`
-                    : '<button type="button" class="btn ghost" id="poAdd"><i class="bi bi-geo-alt"></i> Tambah tempat</button>';
+                    ? `<span class="tag pink"><i class="bi bi-geo-alt-fill"></i> ${esc(poTag.name)}</span> <button type="button" class="place-link" id="poClear" style="color:var(--mut)">remove</button>`
+                    : '<button type="button" class="btn ghost" id="poAdd"><i class="bi bi-geo-alt"></i> Add place</button>';
                 $('#poAdd')?.addEventListener('click', () => { $('#pickQ').value = ''; $('#pickResults').innerHTML = ''; show('scrPick'); $('#pickQ').focus(); });
                 $('#poClear')?.addEventListener('click', () => { poTag = null; paintTag(); });
             }
@@ -868,7 +868,7 @@
                     const list = await P[S.provider].suggest(q);
                     if (seq !== pickSeq) return;
                     pickList = list;
-                    $('#pickResults').innerHTML = rowsHtml(list, false) || '<div class="empty">Tidak ada saran</div>';
+                    $('#pickResults').innerHTML = rowsHtml(list, false) || '<div class="empty">No suggestions</div>';
                 } catch (e) {
                     if (seq === pickSeq) $('#pickResults').innerHTML = errBox(e);
                 }
@@ -883,7 +883,7 @@
 
             $('#poSubmit').addEventListener('click', () => {
                 const title = $('#poTitle').value.trim();
-                if (!title) return toast('Judul masih kosong');
+                if (!title) return toast('Title is empty');
                 if (poTag) db.places[pkey(poTag)] = db.places[pkey(poTag)] || poTag;
                 db.posts.unshift({
                     title,
@@ -897,18 +897,18 @@
                 show('scrFeed', false);
                 renderFeed();
                 renderCost();
-                toast('Post dipublikasikan');
+                toast('Post published');
             });
 
             function renderFeed() {
                 $('#feedBody').innerHTML = db.posts.map((po, i) => `
                     <div class="card">
                         <h4>${esc(po.title)}</h4>
-                        <span style="color:var(--mut);font-size:11px">${esc(new Date(po.at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }))}</span>
+                        <span style="color:var(--mut);font-size:11px">${esc(new Date(po.at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }))}</span>
                         ${po.text ? `<p>${esc(po.text)}</p>` : ''}
                         ${po.images?.length ? `<div class="thumbs">${po.images.map((s) => `<img src="${esc(s)}" alt="">`).join('')}</div>` : ''}
                         ${po.place ? `<div style="margin-top:8px"><button type="button" class="place-link" data-post="${i}"><i class="bi bi-geo-alt-fill"></i> ${esc(po.place.name)}</button></div>` : ''}
-                    </div>`).join('') || '<div class="empty"><i class="bi bi-people"></i>Belum ada post. Tekan + untuk membuat post dengan tag lokasi.</div>';
+                    </div>`).join('') || '<div class="empty"><i class="bi bi-people"></i>No posts yet. Tap + to create a post with a location tag.</div>';
             }
             $('#feedBody').addEventListener('click', async (ev) => {
                 const b = ev.target.closest('[data-post]');
@@ -918,7 +918,7 @@
                 // AWS: detail diambil ulang per PlaceId. GrabMaps langsung: tidak ada endpoint per poi_id, jadi pakai record tersimpan.
                 if (ref.provider === 'aws') return openPlace({ provider: 'aws', id: ref.id, name: ref.name }, 'id');
                 if (saved) return openPlace(saved, 'saved');
-                toast('Record tempat tidak ditemukan di penyimpanan');
+                toast('Place record not found in storage');
             });
 
             /* =========================================
@@ -926,15 +926,15 @@
                ========================================= */
             const FIELDS = [
                 ['Place ID', { aws: 'PlaceId', grab: 'poi_id' }, (p) => esc(p.id)],
-                ['Nama tempat', { aws: 'Title', grab: 'name' }, (p) => esc(p.name)],
-                ['Alamat, kota, provinsi, kode pos', { aws: 'Address.Label / Street / District / Locality / PostalCode', grab: 'formatted_address / street / administrative_areas / postcode' },
-                    (p) => `${esc(p.label)}<br><small>Kota: ${p.city === undefined ? '<span class="na">hanya di dalam Label</span>' : esc(p.city || '—')} · Provinsi: ${esc(p.province || '—')} · Kode pos: ${esc(p.postcode || '—')}</small>`],
+                ['Place name', { aws: 'Title', grab: 'name' }, (p) => esc(p.name)],
+                ['Address, city, province, postcode', { aws: 'Address.Label / Street / District / Locality / PostalCode', grab: 'formatted_address / street / administrative_areas / postcode' },
+                    (p) => `${esc(p.label)}<br><small>City: ${p.city === undefined ? '<span class="na">only inside Label</span>' : esc(p.city || '—')} · Province: ${esc(p.province || '—')} · Postcode: ${esc(p.postcode || '—')}</small>`],
                 ['Latitude, longitude', { aws: 'Position [lng, lat]', grab: 'location.latitude / longitude' }, (p) => (p.pos ? esc(p.pos[1].toFixed(6) + ', ' + p.pos[0].toFixed(6)) : '—')],
-                ['Tipe / kategori', { aws: 'Categories[]', grab: 'category / business_type' }, (p) => `${esc(p.cat || '—')}<br><small>Kategori SOCO: <b>${esc(socoCat(p.cat))}</b></small>`],
-                ['Status (buka / tutup permanen)', { aws: null, grab: 'status' }, (p) => statusHtml(p.status, p.provider)],
-                ['Deskripsi', { aws: null, grab: null }, () => NA],
-                ['Jam buka', { aws: null, grab: 'opening_hours' }, (p) => hoursHtml(p.hours)],
-                ['Website / media sosial', { aws: null, grab: null }, () => NA],
+                ['Type / category', { aws: 'Categories[]', grab: 'category / business_type' }, (p) => `${esc(p.cat || '—')}<br><small>SOCO category: <b>${esc(socoCat(p.cat))}</b></small>`],
+                ['Status (open / permanently closed)', { aws: null, grab: 'status' }, (p) => statusHtml(p.status, p.provider)],
+                ['Description', { aws: null, grab: null }, () => NA],
+                ['Opening hours', { aws: null, grab: 'opening_hours' }, (p) => hoursHtml(p.hours)],
+                ['Website / social media', { aws: null, grab: null }, () => NA],
             ];
 
             function renderData() {
@@ -942,21 +942,21 @@
                 const prov = p ? p.provider : S.provider;
                 const have = FIELDS.filter(([, src]) => src[prov]).length;
                 $('#pData').innerHTML = `
-                    <div class="sec" style="margin-top:0">9 data yang diminta SOCO — jalur ${prov === 'aws' ? 'AWS Location' : 'GrabMaps langsung'}</div>
-                    <div><span class="tag ok">${have} tersedia</span> <span class="tag no">${FIELDS.length - have} tidak tersedia</span></div>
+                    <div class="sec" style="margin-top:0">9 data fields requested by SOCO — ${prov === 'aws' ? 'AWS Location' : 'GrabMaps Direct'} API</div>
+                    <div><span class="tag ok">${have} available</span> <span class="tag no">${FIELDS.length - have} not available</span></div>
                     <table class="t" style="margin-top:8px">
-                        <thead><tr><th>#</th><th>Data</th><th>${p ? 'Nilai dari API' : 'Field API'}</th></tr></thead>
+                        <thead><tr><th>#</th><th>Data</th><th>${p ? 'Value from API' : 'API field'}</th></tr></thead>
                         <tbody>${FIELDS.map(([label, src, val], i) => `
                             <tr>
                                 <td>${i + 1}</td>
-                                <td><b>${esc(label)}</b><br>${src[prov] ? `<code>${esc(src[prov])}</code>` : '<span class="tag no">tidak ada</span>'}</td>
-                                <td>${p ? (src[prov] ? val(p) : NA) : (src[prov] ? '<span style="color:var(--mut)">pilih tempat</span>' : NA)}</td>
+                                <td><b>${esc(label)}</b><br>${src[prov] ? `<code>${esc(src[prov])}</code>` : '<span class="tag no">none</span>'}</td>
+                                <td>${p ? (src[prov] ? val(p) : NA) : (src[prov] ? '<span style="color:var(--mut)">select a place</span>' : NA)}</td>
                             </tr>`).join('')}
                         </tbody>
                     </table>
                     ${prov === 'aws'
-                        ? '<div class="note">Region <code>' + esc(REGION) + '</code> menolak <code>AdditionalFeatures: Contact</code>, sehingga jam buka dan kontak tidak bisa diminta. Status dan deskripsi tidak ada di skema respons.</div>'
-                        : '<div class="note">Deskripsi dan website tidak muncul di respons. <code>status</code> bernilai 1 di seluruh hasil uji — arti nilai lain perlu dikonfirmasi ke Grab. Saran (autocomplete) tidak membawa <code>status</code>; hasil pencarian penuh membawanya.</div>'}`;
+                        ? '<div class="note">Region <code>' + esc(REGION) + '</code> rejects <code>AdditionalFeatures: Contact</code>, so opening hours and contact details cannot be requested. Status and description are not part of the response schema.</div>'
+                        : '<div class="note">Description and website do not appear in the response. <code>status</code> was 1 in every test result — the meaning of other values needs confirmation from Grab. Suggestions (autocomplete) do not include <code>status</code>; full search results do.</div>'}`;
             }
 
             function renderCalls() {
@@ -965,14 +965,14 @@
                         <summary>
                             <b>${esc(c.op)}</b>
                             <span class="tag ${c.status < 400 ? 'ok' : 'no'}">${c.status}</span>
-                            ${c.bucket ? `<span class="tag ${c.bucket === 'Stored' ? 'warn' : ''}">tier ${esc(c.bucket)}</span>` : ''}
+                            ${c.bucket ? `<span class="tag ${c.bucket === 'Stored' ? 'warn' : ''}">${esc(c.bucket)} tier</span>` : ''}
                             ${c.per1k != null ? `<span class="tag">${usd(c.per1k / 1000)}</span>` : ''}
                             <span class="ms">${c.ms} ms</span>
                         </summary>
                         <div class="up">${c.method} ${esc(c.upstream)}</div>
                         <h5>Request</h5><pre>${esc(JSON.stringify(c.req, null, 2))}</pre>
                         <h5>Response</h5><pre>${esc(JSON.stringify(c.res, null, 2))}</pre>
-                    </details>`).join('') || '<div class="empty"><i class="bi bi-broadcast"></i>Belum ada panggilan. Coba cari tempat di aplikasi.</div>';
+                    </details>`).join('') || '<div class="empty"><i class="bi bi-broadcast"></i>No calls yet. Try searching for a place in the app.</div>';
             }
 
             function renderCost() {
@@ -984,37 +984,37 @@
                     byOp[k].usd += (c.per1k || 0) / 1000;
                 });
                 const rows = Object.entries(byOp).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="num">${v.n}</td><td class="num">${v.priced ? usd(v.usd) : '—'}</td></tr>`).join('');
-                const proj = [['Suggest / autocomplete', PRICE.Suggest], ['Core (sekali pakai)', PRICE.Core], ['Stored (boleh disimpan)', PRICE.Stored]]
+                const proj = [['Suggest / autocomplete', PRICE.Suggest], ['Core (single use)', PRICE.Core], ['Stored (may be stored)', PRICE.Stored]]
                     .filter(([, p]) => p != null)
-                    .map(([l, p]) => `<tr><td>${esc(l)}<br><small>${usd(p)} / 1.000</small></td><td class="num">${usd(p * 50)}${RATE ? '<br><small>' + rp(p * 50 * RATE) + '</small>' : ''}</td><td class="num">${usd(p * 100)}${RATE ? '<br><small>' + rp(p * 100 * RATE) + '</small>' : ''}</td></tr>`).join('');
+                    .map(([l, p]) => `<tr><td>${esc(l)}<br><small>${usd(p)} / 1,000</small></td><td class="num">${usd(p * 50)}${RATE ? '<br><small>' + rp(p * 50 * RATE) + '</small>' : ''}</td><td class="num">${usd(p * 100)}${RATE ? '<br><small>' + rp(p * 100 * RATE) + '</small>' : ''}</td></tr>`).join('');
                 const saved = Object.values(db.places);
                 const unsafe = saved.filter((p) => p.provider === 'aws' && !p.storable).length;
 
                 $('#pCost').innerHTML = `
-                    <div class="sec" style="margin-top:0">Panggilan sesi ini</div>
-                    <table class="t"><thead><tr><th>Operasi</th><th style="text-align:right">Jumlah</th><th style="text-align:right">Biaya</th></tr></thead>
-                        <tbody>${rows || '<tr><td colspan="3" style="color:var(--mut)">Belum ada</td></tr>'}</tbody></table>
-                    ${meter.unpriced ? '<p class="hint">Panggilan GrabMaps langsung dihitung jumlahnya saja — harganya belum ada di katalog, harus dari penawaran Grab.</p>' : ''}
+                    <div class="sec" style="margin-top:0">Calls this session</div>
+                    <table class="t"><thead><tr><th>Operation</th><th style="text-align:right">Count</th><th style="text-align:right">Cost</th></tr></thead>
+                        <tbody>${rows || '<tr><td colspan="3" style="color:var(--mut)">None yet</td></tr>'}</tbody></table>
+                    ${meter.unpriced ? '<p class="hint">GrabMaps Direct calls are counted only — their price is not in the catalog yet and must come from a Grab quote.</p>' : ''}
 
-                    <div class="sec">Proyeksi AWS per bulan (sebelum PPN &amp; service charge)</div>
-                    <table class="t"><thead><tr><th>Jika semua panggilan</th><th style="text-align:right">50.000</th><th style="text-align:right">100.000</th></tr></thead>
+                    <div class="sec">Monthly AWS projection (before VAT &amp; service charge)</div>
+                    <table class="t"><thead><tr><th>If every call is</th><th style="text-align:right">50,000</th><th style="text-align:right">100,000</th></tr></thead>
                         <tbody>${proj}</tbody></table>
-                    ${RATE ? `<p class="hint">Kurs ${rp(RATE)} per USD. Harga dari katalog <a href="/pricing" target="_blank" rel="noopener">/pricing</a>.</p>` : ''}
+                    ${RATE ? `<p class="hint">Exchange rate ${rp(RATE)} per USD. Prices from the <a href="/pricing" target="_blank" rel="noopener">/pricing</a> catalog.</p>` : ''}
 
-                    <div class="sec">Record tersimpan di “database” SOCO</div>
-                    <div><span class="tag">${saved.length} tempat</span> <span class="tag">${db.reviews.length} review</span> <span class="tag">${db.posts.length} post</span>
-                        ${unsafe ? `<span class="tag warn">${unsafe} dari hasil sekali pakai</span>` : ''}</div>
+                    <div class="sec">Records stored in the SOCO “database”</div>
+                    <div><span class="tag">${saved.length} place${saved.length === 1 ? '' : 's'}</span> <span class="tag">${db.reviews.length} review${db.reviews.length === 1 ? '' : 's'}</span> <span class="tag">${db.posts.length} post${db.posts.length === 1 ? '' : 's'}</span>
+                        ${unsafe ? `<span class="tag warn">${unsafe} from single-use results</span>` : ''}</div>
                     <div class="note">
-                        <b>AWS:</b> hanya SearchText dengan <code>IntendedUse: "Storage"</code> (tier Stored) yang hasilnya boleh disimpan permanen. Suggest dan GetPlace menolak <code>Storage</code> di region ini, jadi detail yang diambil lewat keduanya bersifat sekali pakai.
-                        Review dan tag lokasi menempel ke record tersimpan, maka alur produksi sebaiknya mengambil record lewat SearchText mode simpan.
+                        <b>AWS:</b> only SearchText with <code>IntendedUse: "Storage"</code> (Stored tier) returns results that may be stored permanently. Suggest and GetPlace reject <code>Storage</code> in this region, so details fetched through them are single use.
+                        Reviews and location tags attach to stored records, so the production flow should fetch records through SearchText in storage mode.
                     </div>
                     <div class="note">
-                        <b>GrabMaps langsung:</b> ketentuan penyimpanan dan harga belum ada — perlu jawaban resmi Grab. Endpoint detail per <code>poi_id</code> juga tidak ditemukan, sehingga tag lokasi di post dibuka dari record tersimpan.
+                        <b>GrabMaps Direct:</b> storage terms and pricing are not available yet — an official answer from Grab is needed. No details endpoint by <code>poi_id</code> was found either, so location tags in posts open from the stored record.
                     </div>
-                    <div class="note g">Review, rating, foto, dan kategori internal adalah data SOCO sendiri.</div>
-                    <button type="button" class="btn ghost" id="wipe"><i class="bi bi-trash"></i> Kosongkan data demo</button>`;
+                    <div class="note g">Reviews, ratings, photos and internal categories are SOCO's own data.</div>
+                    <button type="button" class="btn ghost" id="wipe"><i class="bi bi-trash"></i> Clear demo data</button>`;
                 $('#wipe').addEventListener('click', () => {
-                    if (!confirm('Hapus semua review, post, dan record tempat demo di browser ini?')) return;
+                    if (!confirm('Delete all demo reviews, posts and place records in this browser?')) return;
                     db = { places: {}, reviews: [], posts: [] };
                     persist();
                     renderCost();
@@ -1057,7 +1057,7 @@
             });
             $('#storeChk').addEventListener('change', (ev) => {
                 S.storage = ev.target.checked;
-                toast(S.storage ? 'SearchText memakai IntendedUse=Storage (tier Stored)' : 'SearchText memakai SingleUse (tier Core, tidak boleh disimpan)');
+                toast(S.storage ? 'SearchText uses IntendedUse=Storage (Stored tier)' : 'SearchText uses SingleUse (Core tier, may not be stored)');
             });
 
             setProvider(new URLSearchParams(location.search).get('jalur') || 'aws');

@@ -70,7 +70,7 @@ class SocoDemoController extends Controller
 
         $key = config('services.grabmaps.api_key');
         if (blank($key)) {
-            return response()->json(['error' => 'GRABMAPS_API_KEY belum diisi di .env'], 503);
+            return response()->json(['error' => 'GRABMAPS_API_KEY is not set in .env'], 503);
         }
 
         try {
