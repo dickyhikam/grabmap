@@ -103,6 +103,8 @@ return [
     'ops_sub'        => 'Usage × official AWS price',
     'op'             => 'Operation',
     'requests'       => 'Requests',
+    'routes_unit'    => 'routes',
+    'matrix_from_requests' => 'from :n requests',
     'subtotal'       => 'Subtotal',
     'vat'            => 'VAT :pct%',
     'total_vat'      => 'Total + VAT',

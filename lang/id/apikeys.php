@@ -103,6 +103,8 @@ return [
     'ops_sub'        => 'Pemakaian × harga resmi AWS',
     'op'             => 'Operasi',
     'requests'       => 'Request',
+    'routes_unit'    => 'route',
+    'matrix_from_requests' => 'dari :n request',
     'subtotal'       => 'Subtotal',
     'vat'            => 'PPN :pct%',
     'total_vat'      => 'Total + PPN',

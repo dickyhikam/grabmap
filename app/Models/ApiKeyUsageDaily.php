@@ -84,6 +84,7 @@ class ApiKeyUsageDaily extends Model
     {
         $total = 0;
         $operations = [];
+        $matrixRequests = 0;
         $daily = [];
         $perKey = [];
         $missing = 0;
@@ -121,10 +122,18 @@ class ApiKeyUsageDaily extends Model
                 $count = (int) $row->request_count;
 
                 $keyOps[$row->operation] = ($keyOps[$row->operation] ?? 0) + $count;
-                $operations[$row->operation] = ($operations[$row->operation] ?? 0) + $count;
                 $daily[$date] = ($daily[$date] ?? 0) + $count;
                 $keyTotal += $count;
                 $total += $count;
+            }
+
+            // Matrix diubah ke route yang ditagih per key — rasio route/request
+            // tiap akun bisa berbeda, jadi tidak boleh dijumlah dulu baru diubah.
+            $matrixRequests += $keyOps[MatrixRouteDaily::OPERATION] ?? 0;
+            $keyOps = MatrixRouteDaily::billable($keyOps, $key->aws_account_id, $startDate, $endDate);
+
+            foreach ($keyOps as $op => $count) {
+                $operations[$op] = ($operations[$op] ?? 0) + $count;
             }
 
             $perKey[] = [
@@ -142,6 +151,7 @@ class ApiKeyUsageDaily extends Model
 
         return [
             'total' => $total, 'operations' => $operations, 'daily' => $daily,
+            'matrix_requests' => $matrixRequests,
             'per_key' => $perKey, 'missing' => $missing,
             'fetched_at' => $fetchedAt?->toIso8601String(),
         ];
@@ -167,9 +177,15 @@ class ApiKeyUsageDaily extends Model
             $total += $count;
         }
 
+        $matrixRequests = $operations[MatrixRouteDaily::OPERATION] ?? 0;
+        $operations = MatrixRouteDaily::billable($operations, $accountId, $startDate, $endDate);
+
         arsort($operations);
         ksort($daily);
 
-        return ['total' => $total, 'operations' => $operations, 'daily' => $daily, 'error' => null];
+        return [
+            'total' => $total, 'operations' => $operations, 'daily' => $daily,
+            'matrix_requests' => $matrixRequests, 'error' => null,
+        ];
     }
 }

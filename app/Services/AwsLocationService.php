@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\AwsAccount;
+use App\Models\MatrixRouteDaily;
 use Aws\CloudWatch\CloudWatchClient;
+use Aws\CostExplorer\CostExplorerClient;
 use Aws\LocationService\LocationServiceClient;
 use Aws\Exception\AwsException;
 use Illuminate\Support\Facades\Log;
@@ -688,10 +690,19 @@ class AwsLocationService
                 \App\Models\ApiKeyUsageDaily::store($this->account?->id, $keyName, $matrix);
             }
 
+            // Matrix ditagih per route, bukan per request — ubah ke route yang
+            // ditagih supaya biayanya cocok dengan invoice.
+            $matrixRequests = $operations[MatrixRouteDaily::OPERATION] ?? 0;
+            if ($matrixRequests > 0) {
+                $this->syncMatrixRoutes($startDate, $endDate);
+                $operations = MatrixRouteDaily::billable($operations, $this->account?->id, $startDate, $endDate);
+            }
+
             return [
                 'total'      => $total,
                 'daily'      => $daily,
                 'operations' => $operations,
+                'matrix_requests' => $matrixRequests,
                 'error'      => null,
             ];
         } catch (AwsException $e) {
@@ -700,6 +711,104 @@ class AwsLocationService
         } catch (\Exception $e) {
             Log::error("CloudWatch metrics exception for key '{$keyName}': " . $e->getMessage());
             return ['total' => 0, 'daily' => [], 'operations' => [], 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Tarik jumlah route Matrix yang ditagih (Cost Explorer) dan jumlah request
+     * Matrix seluruh akun (CloudWatch tanpa dimensi ApiKeyName) per hari, lalu
+     * simpan ke matrix_route_daily.
+     *
+     * Cost Explorer berbayar $0,01 per panggilan dan datanya hanya diperbarui
+     * beberapa kali sehari, jadi satu rentang cukup ditarik sekali per 6 jam —
+     * refresh semua key di dashboard tidak memicu puluhan panggilan. Butuh izin
+     * IAM ce:GetCostAndUsage; tanpa itu biaya Matrix tetap dihitung per request.
+     */
+    public function syncMatrixRoutes(string $startDate, string $endDate): void
+    {
+        $lock = "matrix_routes_sync:{$this->cacheScope()}:{$startDate}:{$endDate}";
+        if (Cache::has($lock)) {
+            return;
+        }
+
+        try {
+            $start = \Carbon\Carbon::parse($startDate)->startOfDay();
+            $end = \Carbon\Carbon::parse($endDate)->endOfDay();
+            $days = [];
+
+            // Request Matrix seluruh akun, termasuk rangkaian OperationVersion=V2.
+            $queries = [];
+            foreach (self::OPERATION_VERSIONS as $v => $version) {
+                $dimensions = [['Name' => 'OperationName', 'Value' => MatrixRouteDaily::OPERATION]];
+                if ($version !== null) {
+                    $dimensions[] = ['Name' => 'OperationVersion', 'Value' => $version];
+                }
+                $queries[] = [
+                    'Id' => 'mx_' . $v,
+                    'MetricStat' => [
+                        'Metric' => ['Namespace' => 'AWS/Location', 'MetricName' => 'CallCount', 'Dimensions' => $dimensions],
+                        'Period' => 86400,
+                        'Stat'   => 'Sum',
+                    ],
+                ];
+            }
+
+            $cw = (new CloudWatchClient($this->clientConfig()))->getMetricData([
+                'MetricDataQueries' => $queries,
+                'StartTime' => $start->toIso8601String(),
+                'EndTime'   => $end->toIso8601String(),
+            ]);
+
+            foreach ($cw['MetricDataResults'] ?? [] as $result) {
+                foreach ($result['Timestamps'] ?? [] as $i => $ts) {
+                    $date = $ts->format('Y-m-d');
+                    $days[$date]['requests'] = ($days[$date]['requests'] ?? 0) + (int) ($result['Values'][$i] ?? 0);
+                }
+            }
+
+            // Cost Explorer hanya ada di us-east-1; tanggal akhirnya eksklusif.
+            // Usage type-nya (APS1-Usage-Default-Routes-Core) menggabung Matrix
+            // dengan CalculateRoutes, jadi yang dipilah dimensi OPERATION.
+            $ce = new CostExplorerClient(['region' => 'us-east-1'] + $this->clientConfig());
+            $token = null;
+            do {
+                $res = $ce->getCostAndUsage(array_filter([
+                    'TimePeriod'  => ['Start' => $start->format('Y-m-d'), 'End' => $end->copy()->addDay()->format('Y-m-d')],
+                    'Granularity' => 'DAILY',
+                    'Metrics'     => ['UsageQuantity'],
+                    'Filter'      => ['Dimensions' => ['Key' => 'OPERATION', 'Values' => [MatrixRouteDaily::OPERATION]]],
+                    'GroupBy'     => [['Type' => 'DIMENSION', 'Key' => 'OPERATION']],
+                    'NextPageToken' => $token,
+                ]));
+
+                foreach ($res['ResultsByTime'] ?? [] as $period) {
+                    $date = $period['TimePeriod']['Start'];
+                    foreach ($period['Groups'] ?? [] as $group) {
+                        if (($group['Keys'][0] ?? '') !== MatrixRouteDaily::OPERATION) {
+                            continue;
+                        }
+                        $days[$date]['routes'] = ($days[$date]['routes'] ?? 0)
+                            + (float) ($group['Metrics']['UsageQuantity']['Amount'] ?? 0);
+                    }
+                }
+
+                $token = $res['NextPageToken'] ?? null;
+            } while ($token);
+
+            $rows = [];
+            foreach ($days as $date => $v) {
+                $rows[$date] = ['routes' => $v['routes'] ?? 0, 'requests' => $v['requests'] ?? 0];
+            }
+            MatrixRouteDaily::store($this->account?->id, $rows);
+
+            Cache::put($lock, true, now()->addHours(6));
+        } catch (AwsException $e) {
+            // Dicoba lagi 30 menit kemudian, misalnya setelah izin IAM ditambahkan.
+            Log::warning('Matrix route sync gagal: ' . ($e->getAwsErrorMessage() ?: $e->getMessage()));
+            Cache::put($lock, true, now()->addMinutes(30));
+        } catch (\Throwable $e) {
+            Log::warning('Matrix route sync gagal: ' . $e->getMessage());
+            Cache::put($lock, true, now()->addMinutes(30));
         }
     }
 

@@ -6,6 +6,11 @@
     // yang membuat tabel melebar.
     $rate = AwsLocationService::PRICING[$op] ?? 0;
     $cost = ($count / 1000) * $rate;
+
+    // Matrix ditagih per route (origin × destination): angkanya sudah route,
+    // jumlah request aslinya ditulis di bawah supaya tidak tertukar.
+    $isMatrix = $op === \App\Models\MatrixRouteDaily::OPERATION;
+    $matrixReq = $isMatrix ? ($metrics['matrix_requests'] ?? null) : null;
 @endphp
 
 <tr @class(['cat-item' => $child])>
@@ -13,11 +18,16 @@
         <div class="op-name">
             <span class="q-dot"></span>
             <span class="fw-semibold">{{ $op }}</span>
-            <span class="op-rate">${{ number_format($rate, 2) }} / 1k</span>
+            <span class="op-rate">${{ number_format($rate, 2) }} / 1k{{ $isMatrix ? ' ' . __('apikeys.routes_unit') : '' }}</span>
         </div>
         <div class="op-track"><div class="op-fill" style="width: {{ ($count / $opMax) * 100 }}%;"></div></div>
     </td>
-    <td class="num" data-label="{{ __('apikeys.requests') }}">{{ number_format($count) }}</td>
+    <td class="num" data-label="{{ __('apikeys.requests') }}">
+        {{ number_format($count) }}
+        @if($matrixReq && $matrixReq != $count)
+            <div class="op-rate">{{ __('apikeys.matrix_from_requests', ['n' => number_format($matrixReq)]) }}</div>
+        @endif
+    </td>
     <td class="num" data-label="{{ __('apikeys.est_cost') }}">{{ $usd($cost) }}</td>
     <td class="num idr-cell" data-label="{{ __('apikeys.cost_idr') }}"
         data-idr="{{ $cost }}" data-idr-prefix="Rp ">{{ $rp($cost) }}</td>

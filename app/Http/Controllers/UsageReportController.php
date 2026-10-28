@@ -225,6 +225,7 @@ class UsageReportController extends Controller
                 'metrics'   => [
                     'total'      => $usage['total'],
                     'operations' => $usage['operations'],
+                    'matrix_requests' => $usage['matrix_requests'],
                     'daily'      => $usage['daily'],
                     'error'      => null,
                 ],

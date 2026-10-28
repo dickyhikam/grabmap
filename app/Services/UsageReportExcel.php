@@ -184,7 +184,9 @@ class UsageReportExcel
             $r++;
             $price = AwsLocationService::PRICING[$op] ?? 0;
             $cost = ($count / 1000) * $price;
-            $sheet->fromArray([$op, $count, $price, $cost, $cost * $d['idrRate']], null, "A{$r}", true);
+            // Matrix ditagih per route, jadi angkanya route — satuannya ditulis.
+            $label = $op === \App\Models\MatrixRouteDaily::OPERATION ? $op . ' (' . __('apikeys.routes_unit') . ')' : $op;
+            $sheet->fromArray([$label, $count, $price, $cost, $cost * $d['idrRate']], null, "A{$r}", true);
             $this->formats($sheet, $r, ['B' => self::INT, 'C' => self::USD, 'D' => self::USD, 'E' => self::IDR]);
         }
 
