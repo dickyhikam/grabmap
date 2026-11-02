@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AwsAccount;
 use App\Models\ApiKeyUsageShare;
+use App\Models\AwsConnectInvite;
 use App\Models\Company;
 use App\Models\ServiceCharge;
 use App\Models\CompanyApiKey;
@@ -12,11 +13,16 @@ use App\Models\UsageShareVisit;
 use App\Models\ExchangeRate;
 use App\Models\Setting;
 use App\Services\AwsLocationService;
+use App\Services\AwsRoleConnector;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class CompanyController extends Controller
 {
+    /** Nilai key_ref untuk "buat API key baru" di formulir tambah perusahaan. */
+    public const NEW_KEY = '__new';
+
     private const FEATURES = ['search', 'route', 'reverse_geocode', 'route_matrix'];
 
     private const DEFAULT_FEATURE_SETTINGS = [
@@ -45,11 +51,14 @@ class CompanyController extends Controller
     {
         return view('admin.companies.form', [
             'availableKeys' => $this->availableKeys(),
+            'inviteSources' => AwsAccount::assumeRoleSources(),
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, AwsRoleConnector $connector)
     {
+        ApiKeyController::normalizeExpireDate($request);
+
         $validated = $request->validate([
             'name'         => 'required|string|max:255',
             'slug'         => 'required|string|max:100|unique:companies,slug|regex:/^[a-z0-9\-]+$/',
@@ -59,7 +68,24 @@ class CompanyController extends Controller
             'aws_key_active' => 'nullable|boolean',
             // "akunId|namaKey", bentuk yang sama dengan dropdown di halaman detail.
             'key_ref'      => 'nullable|string|max:160',
-        ] + ServiceCharge::validationRules(true), ServiceCharge::validationMessages());
+            // Undangan akun AWS klien (opsional): klien menghubungkan akunnya sendiri.
+            'connect_aws'       => 'nullable|boolean',
+            'connect_source_id' => ['required_if:connect_aws,1', 'required_if:key_ref,' . self::NEW_KEY, 'nullable', 'integer', Rule::in(AwsAccount::assumeRoleSources()->pluck('id')->all())],
+        ] + ServiceCharge::validationRules(true) + $this->newKeyRules(), ServiceCharge::validationMessages() + [
+            'connect_source_id.in' => __('awsconnect.err_source'),
+        ] + ApiKeyController::newKeyMessages());
+
+        // Key baru dibuat lebih dulu: kalau AWS menolak, belum ada yang tersimpan
+        // dan formulir kembali utuh untuk diperbaiki.
+        $newKey = null;
+        if (($validated['key_ref'] ?? null) === self::NEW_KEY) {
+            abort_unless($request->user()?->can('api_keys.create'), 403);
+
+            $newKey = $this->createKeyFromForm($validated, AwsAccount::findOrFail($validated['connect_source_id']), $request->user()?->name);
+            if (is_string($newKey)) {
+                return back()->withInput()->with('error', $newKey);
+            }
+        }
 
         $logoPath = null;
         if ($request->hasFile('logo')) {
@@ -82,7 +108,9 @@ class CompanyController extends Controller
 
         // Key ditempel lebih dulu: akun perusahaan ikut akun key itu, dan tarif
         // "ikut akun" di bawah ini perlu akunnya sudah terisi.
-        $keyWarning = $this->attachChosenKey($company, $validated['key_ref'] ?? null);
+        $keyWarning = $newKey
+            ? $this->attachNewKey($company, $newKey)
+            : $this->attachChosenKey($company, $validated['key_ref'] ?? null);
 
         ServiceCharge::saveFromRequest($request, $company->fresh()->aws_account_id, $company->id);
 
@@ -97,9 +125,107 @@ class CompanyController extends Controller
             ]);
         }
 
+        if ($request->boolean('connect_aws')) {
+            $inviteWarning = $this->issueInvite($request, $company, $connector);
+
+            // Halaman detail menampilkan link undangannya untuk disalin.
+            return redirect()->route('admin.companies.show', $company)
+                ->with('success', "Company \"{$company->name}\" berhasil dibuat.")
+                ->with('warning', $inviteWarning ?? $keyWarning);
+        }
+
         return redirect()->route('admin.companies.index')
             ->with('success', "Company \"{$company->name}\" berhasil dibuat.")
             ->with('warning', $keyWarning);
+    }
+
+    /**
+     * Aturan isian key baru, sama dengan halaman tambah API key, tapi hanya
+     * berlaku saat "buat API key baru" dipilih.
+     */
+    private function newKeyRules(): array
+    {
+        return collect(ApiKeyController::newKeyRules())
+            ->map(fn ($rules) => array_merge(['exclude_unless:key_ref,' . self::NEW_KEY], (array) $rules))
+            ->all();
+    }
+
+    /**
+     * Buat API key baru di akun sumber dari isian formulir perusahaan.
+     *
+     * @return array{account: AwsAccount, name: string, value: ?string, warning: ?string}|string
+     *         string = pesan galat; key tidak terbuat.
+     */
+    private function createKeyFromForm(array $validated, AwsAccount $account, ?string $by): array|string
+    {
+        $region = $account->region ?: config('aws.region', 'ap-southeast-1');
+        $params = ApiKeyController::newKeyParams($validated, $region);
+
+        $result = AwsLocationService::forAccount($account)->createKey($params);
+
+        if (!($result['created'] ?? false)) {
+            return 'Gagal membuat API Key: ' . (ApiKeyController::friendlyAwsError($result['error']) ?? 'Unknown error');
+        }
+
+        // Batas biaya disimpan lokal (bukan ke AWS) — key sudah pasti ada di titik ini.
+        \App\Models\ApiKeyBudget::set($account->id, $params['key_name'], $validated['budget_usd'] ?? null, $by);
+
+        return [
+            'account' => $account,
+            'name'    => $params['key_name'],
+            'value'   => $result['key']['key'] ?? null,
+            // Key sudah ada di AWS; DescribeKey yang gagal hanya membuat nilai key kosong.
+            'warning' => $result['error'] ? __('companies.new_key_no_value', ['error' => $result['error']]) : null,
+        ];
+    }
+
+    /** Tempelkan key yang baru dibuat sebagai key utama, sekaligus jadi key peta kalau belum diisi. */
+    private function attachNewKey(Company $company, array $newKey): ?string
+    {
+        $company->apiKeys()->create([
+            'aws_account_id' => $newKey['account']->id,
+            'key_name'       => $newKey['name'],
+            'is_primary'     => true,
+        ]);
+        $company->syncPrimaryKeyName();
+
+        if ($newKey['value'] && !$company->aws_api_key) {
+            $company->update(['aws_api_key' => $newKey['value']]);
+        }
+
+        return $newKey['warning'];
+    }
+
+    /**
+     * Buat undangan akun AWS klien untuk perusahaan yang baru dibuat. Perusahaannya
+     * sudah tersimpan, jadi kegagalan di sini hanya peringatan.
+     *
+     * @return string|null Pesan peringatan kalau undangannya tidak jadi dibuat.
+     */
+    private function issueInvite(Request $request, Company $company, AwsRoleConnector $connector): ?string
+    {
+        $source = AwsAccount::find($request->integer('connect_source_id'));
+
+        try {
+            $trusted = $connector->callerAccountId($source);
+        } catch (\Throwable $e) {
+            return __('awsconnect.err_identity', [
+                'name'  => $source->name,
+                'error' => $e instanceof \Aws\Exception\AwsException ? ($e->getAwsErrorMessage() ?: $e->getMessage()) : $e->getMessage(),
+            ]);
+        }
+
+        AwsConnectInvite::issue(
+            $source,
+            $trusted,
+            $company->name,
+            $company->id,
+            (string) $request->input('connect_region'),
+            $request->integer('connect_days'),
+            $request->user()?->id,
+        );
+
+        return null;
     }
 
     /**
@@ -162,6 +288,8 @@ class CompanyController extends Controller
     {
         $company->load([
             'apiKeys.awsAccount',
+            'awsInvites.awsAccount',
+            'awsInvites.usageShare',
             'usageShares.keys',
             // Riwayat akses ditampilkan ringkas — 8 kunjungan terakhir per link.
             'usageShares.visits' => fn ($q) => $q->limit(8),
@@ -171,6 +299,7 @@ class CompanyController extends Controller
         return view('admin.companies.show', [
             'company'       => $company,
             'availableKeys' => $this->availableKeys(),
+            'inviteSources' => AwsAccount::assumeRoleSources(),
         ]);
     }
 
@@ -393,22 +522,7 @@ class CompanyController extends Controller
         $startDate = $request->input('start', now()->subDays(91)->format('Y-m-d'));
         $endDate   = $request->input('end', now()->format('Y-m-d'));
 
-        $done = 0;
-        $failed = 0;
-
-        foreach ($company->apiKeys()->with('awsAccount')->get() as $key) {
-            if (!AwsLocationService::hasCredentials($key->awsAccount)) {
-                $failed++;
-                continue;
-            }
-
-            // getCachedUsage(force) menembak CloudWatch dan sekaligus menuliskan
-            // pemakaian hariannya ke tabel api_key_usage_daily.
-            $snapshot = AwsLocationService::forAccount($key->awsAccount)
-                ->getCachedUsage($key->key_name, $startDate, $endDate, null, true);
-
-            empty($snapshot['metrics']['error']) ? $done++ : $failed++;
-        }
+        ['done' => $done, 'failed' => $failed] = $company->refreshUsage($startDate, $endDate);
 
         return back()->with(
             $failed ? 'error' : 'success',

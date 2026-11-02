@@ -105,7 +105,8 @@ class ApiKeyUsageDaily extends Model
                 $missing++;
                 $perKey[] = [
                     'name' => $key->key_name, 'label' => $key->label,
-                    'account' => $key->awsAccount?->name, 'total' => 0, 'cost' => 0.0, 'has_data' => false,
+                    'account' => $key->awsAccount?->name, 'account_id' => $key->aws_account_id,
+                    'total' => 0, 'cost' => 0.0, 'has_data' => false,
                 ];
                 continue;
             }
@@ -139,6 +140,7 @@ class ApiKeyUsageDaily extends Model
             $perKey[] = [
                 'name' => $key->key_name, 'label' => $key->label,
                 'account' => $key->awsAccount?->name,
+                'account_id' => $key->aws_account_id,
                 'total' => $keyTotal,
                 'cost' => AwsLocationService::estimateCost($keyOps),
                 'has_data' => true,

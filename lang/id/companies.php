@@ -138,4 +138,13 @@ return [
     'stat_keys'   => 'API key',
     'stat_links'  => 'Link aktif',
     'stat_visits' => 'Kunjungan',
+    'card_grab_key'     => 'API key di akun Grab',
+    'card_grab_key_sub' => 'Key dibuat dan dikelola Grab, dipakai klien',
+    'card_source'          => 'Akun AWS sumber',
+    'card_source_sub'      => 'Dipakai untuk memilih API key dan sebagai sumber undangan role',
+    'card_source_hint'     => 'API key di bawah hanya menampilkan key dari akun ini. Undangan role juga di-assume memakai akun ini.',
+    'card_source_no_keys'  => 'Tidak ada key bebas di akun ini.',
+    'new_key_option'    => '+ Buat API key baru',
+    'new_key_hint'      => 'Key dibuat di AWS saat perusahaan disimpan, lalu dipasang sebagai key utama dan key peta.',
+    'new_key_no_value'  => 'Key berhasil dibuat, tetapi nilainya belum terbaca (:error). Isi key peta dari halaman API key.',
 ];

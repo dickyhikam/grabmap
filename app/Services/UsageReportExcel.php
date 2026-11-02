@@ -44,6 +44,10 @@ class UsageReportExcel
             $this->perKey($book->createSheet(), $data);
         }
 
+        if (!empty($data['billing']['summary']['rows'])) {
+            $this->billing($book->createSheet(), $data);
+        }
+
         $book->setActiveSheetIndex(0);
 
         (new Xlsx($book))->save('php://output');
@@ -55,7 +59,9 @@ class UsageReportExcel
 
         $ops = $d['metrics']['operations'] ?? [];
         $total = $d['metrics']['total'] ?? 0;
-        $cost = AwsLocationService::estimateCost($ops);
+        $opsCost = AwsLocationService::estimateCost($ops);
+        // Akun milik klien: total tagihan AWS (Cost Explorer), sama dengan kartu biaya di halaman.
+        $cost = $d['awsCost'] ?? $opsCost;
         $sc = $d['charge'];
 
         $start = Carbon::parse($d['startDate']);
@@ -133,7 +139,7 @@ class UsageReportExcel
             $counts = array_map(fn ($op) => $ops[$op] ?? 0, array_combine($catOps, $catOps));
             $catCost = AwsLocationService::estimateCost($counts);
 
-            $sheet->fromArray([__($label), array_sum($counts), $catCost, $catCost * $d['idrRate'], $cost > 0 ? $catCost / $cost : 0], null, "A{$r}", true);
+            $sheet->fromArray([__($label), array_sum($counts), $catCost, $catCost * $d['idrRate'], $opsCost > 0 ? $catCost / $opsCost : 0], null, "A{$r}", true);
             $this->formats($sheet, $r, ['B' => self::INT, 'C' => self::USD, 'D' => self::IDR, 'E' => '0.0%']);
         }
 
@@ -195,10 +201,15 @@ class UsageReportExcel
         // Lanjutan tagihan di bawah total operasi: PPN, service charge, total.
         $sc = $d['charge'];
         // Service charge hanya dalam Rupiah (kolom E), kolom dolarnya kosong.
-        $lines = [
+        $lines = [];
+        if (($d['costSource'] ?? 'keys') === 'billing') {
+            // PPN di bawah dihitung dari tagihan, bukan dari total operasi API key di atas.
+            $lines[] = [__('awsconnect.cost_from_bill'), $d['awsCost'], $d['awsCost'] * $d['idrRate'], false];
+        }
+        $lines = array_merge($lines, [
             [__('apikeys.vat', ['pct' => round($d['taxRate'] * 100, 2)]), $sc['tax'], $sc['tax'] * $d['idrRate'], false],
             [__('apikeys.total_vat'), $sc['total_vat'], $sc['total_vat_idr'], !$sc['active']],
-        ];
+        ]);
         if ($sc['active']) {
             $lines[] = [__('servicecharge.line') . ' (' . ServiceCharge::basisLabel($sc) . ')', null, $sc['charge_idr'], false];
             $lines[] = [__('apikeys.grand_total'), null, $sc['grand_idr'], true];
@@ -247,6 +258,33 @@ class UsageReportExcel
         }
 
         $this->totalRow($sheet, $r + 1, 'A', ['C' => self::INT, 'D' => self::USD, 'E' => self::IDR], 2, $r);
+        $this->autosize($sheet, 'G');
+        $sheet->freezePane('A2');
+    }
+
+    /** Tagihan Amazon Location per usage type (akun AWS milik klien). */
+    private function billing(Worksheet $sheet, array $d): void
+    {
+        $sheet->setTitle($this->title(__('awsconnect.bill_title')));
+        $this->header($sheet, 1, [__('awsconnect.bill_col_item'), 'Usage type', __('awsconnect.bill_col_provider'), __('awsconnect.bill_col_qty'), 'Unit', 'USD', __('apikeys.cost_idr')]);
+
+        $products = __('awsconnect.products');
+        $r = 1;
+        foreach ($d['billing']['summary']['rows'] as $row) {
+            $r++;
+            $sheet->fromArray([
+                $products[$row['product']] ?? $row['product'],
+                $row['usage_type'],
+                $row['provider'] ? (\App\Models\AwsUsageTypeDaily::PROVIDERS[$row['provider']] ?? $row['provider']) : '',
+                $row['quantity'],
+                $row['unit'] && $row['unit'] !== 'N/A' ? $row['unit'] : '',
+                $row['cost'],
+                $row['cost'] * $d['idrRate'],
+            ], null, "A{$r}", true);
+            $this->formats($sheet, $r, ['D' => '#,##0.###', 'F' => self::USD, 'G' => self::IDR]);
+        }
+
+        $this->totalRow($sheet, $r + 1, 'A', ['F' => self::USD, 'G' => self::IDR], 2, $r);
         $this->autosize($sheet, 'G');
         $sheet->freezePane('A2');
     }

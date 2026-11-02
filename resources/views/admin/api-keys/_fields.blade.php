@@ -1,0 +1,321 @@
+{{--
+    Isian API key: nama, deskripsi, layanan, domain, batas biaya, masa berlaku.
+    Dipakai halaman tambah/ubah API key dan formulir tambah perusahaan (key baru).
+    Butuh: $key (null = key baru), $keyName, $budget.
+--}}
+@php
+    $isNew = $key === null;
+
+    // Layanan yang aktif pada key dibaca dari AllowActions-nya (mode ubah).
+    $actions = collect($key['restrictions']['AllowActions'] ?? []);
+    $current = [
+        'maps'   => $actions->contains(fn ($a) => str_starts_with($a, 'geo-maps')),
+        'places' => $actions->contains(fn ($a) => str_starts_with($a, 'geo-places')),
+        'routes' => $actions->contains(fn ($a) => str_starts_with($a, 'geo-routes')),
+    ];
+    $referers = $key['restrictions']['AllowReferers'] ?? [];
+
+    $catalog = config('geo_actions');
+    $labels  = __('geo_actions.keys');
+
+    // Aksi yang sudah menempel di key (mode ubah).
+    $keyActions = collect($key['restrictions']['AllowActions'] ?? []);
+
+    // Nilai terpilih: dari input lama (validasi gagal) atau dari key itu sendiri.
+    $chosen = old('actions', $keyActions->all());
+
+    $presets = [30, 90, 180, 365];
+
+    // Key baru dibuka dengan nilai awal sebesar kredit percobaan AWS (config/aws.php):
+    // batas biaya dan masa berlaku sudah terisi, tapi cuma sebagai titik mulai —
+    // keduanya tetap bisa diubah atau dikosongkan sebelum disimpan.
+    $defaults    = config('aws.new_key_defaults');
+    $defaultDays = (int) ($defaults['expiry_days'] ?? 0);
+    // Hari di luar daftar preset tidak punya chip — jatuhkan ke "selamanya"
+    // daripada mengirim mode preset tanpa jumlah hari yang sah.
+    $defaultMode = $isNew && in_array($defaultDays, $presets, true) ? 'preset' : 'never';
+
+    // Mode masa berlaku: nilai awal untuk key baru, ikut keadaan key saat mengubah.
+    $mode = old('expiry_mode', $isNew ? $defaultMode : ($key['expire_time'] ? 'date' : 'never'));
+    $pickedDays = (int) old('preset_days', $mode === 'preset' ? $defaultDays : 0);
+    // Pemilih tanggal bekerja dengan waktu Jakarta: nilai dari AWS (UTC) diubah
+    // dulu, dan controller menafsirkan kiriman baliknya sebagai WIB juga —
+    // supaya jam yang diketik sama dengan jam yang tersimpan.
+    $expireValue = old('expire_date', isset($key['expire_time'])
+        ? \Carbon\Carbon::parse($key['expire_time'])->wib()->format('Y-m-d H:i')
+        : now()->wib()->addDays(90)->format('Y-m-d H:i'));
+@endphp
+
+            <div class="form-field">
+                <label class="form-label-sm">
+                    {{ __('apikeys.name') }}@if($isNew)<span class="req">*</span>@endif
+                </label>
+                <input type="text" name="key_name" class="form-input @error('key_name') is-invalid @enderror"
+                       maxlength="100"
+                       @if($isNew) data-v-pattern="^[A-Za-z0-9_.\-]+$" data-v-msg="{{ __('apikeys.err_name') }}" @endif
+                       placeholder="{{ __('apikeys.name_ph') }}"
+                       value="{{ old('key_name', $keyName ?? '') }}"
+                       {{ $isNew ? 'required' : 'readonly' }}
+                       style="{{ $isNew ? '' : 'font-family:ui-monospace,monospace;' }}">
+                @if($isNew)<div class="form-hint">{{ __('apikeys.name_hint') }}</div>@endif
+                @error('key_name')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
+            </div>
+
+            <div class="form-field">
+                <label class="form-label-sm">{{ __('apikeys.description_lbl') }}</label>
+                <textarea name="description" class="form-input" rows="2" maxlength="1000"
+                          style="font-family:inherit;font-size:0.85rem;"
+                          placeholder="{{ __('apikeys.description_ph') }}">{{ old('description', $key['description'] ?? '') }}</textarea>
+                @error('description')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
+            </div>
+
+            <div class="form-field">
+                <label class="form-label-sm">
+                    {{ __('apikeys.services') }}@if($isNew)<span class="req">*</span>@endif
+                </label>
+
+                <div class="svc-list" @if($isNew) data-v-group data-v-msg="{{ __('apikeys.err_actions') }}" @endif>
+                    @foreach($catalog as $groupKey => $group)
+                        @php
+                            $groupAll   = in_array($group['wildcard'], $chosen, true);
+                            $groupPicks = array_values(array_intersect($group['actions'], $chosen));
+                            $groupOn    = $groupAll || count($groupPicks) > 0;
+                        @endphp
+                        <div class="svc-group {{ $groupOn ? 'on' : '' }}" data-group="{{ $groupKey }}">
+                            <div class="svc-head">
+                                <span class="ic"><i class="bi {{ $group['icon'] }}"></i></span>
+                                <span style="flex:1;min-width:0;">
+                                    <span class="nm d-block">{{ __('geo_actions.groups.' . $groupKey) }}</span>
+                                    <span class="ds">{{ __('geo_actions.group_desc.' . $groupKey) }}</span>
+                                </span>
+                                <span class="picked" data-picked>
+                                    {{ $groupAll ? __('geo_actions.all.' . $groupKey) : ($groupPicks ? count($groupPicks) . '/' . count($group['actions']) : '—') }}
+                                </span>
+                            </div>
+
+                            <div class="svc-actions">
+                                {{-- "Semua" mengirim wildcard; aksi satuan grup ini jadi tidak perlu ikut. --}}
+                                <label class="act {{ $isNew ? '' : 'locked' }}">
+                                    <input type="checkbox" name="actions[]" value="{{ $group['wildcard'] }}"
+                                           data-all @checked($groupAll) {{ $isNew ? '' : 'disabled' }}>
+                                    <span class="txt"><b>{{ __('geo_actions.all.' . $groupKey) }}</b></span>
+                                </label>
+
+                                @foreach($group['actions'] as $action)
+                                    <label class="act {{ $isNew ? '' : 'locked' }}">
+                                        <input type="checkbox" name="actions[]" value="{{ $action }}"
+                                               @checked(in_array($action, $chosen, true)) {{ $isNew ? '' : 'disabled' }}>
+                                        <span class="txt">{{ $labels[$action] ?? $action }}</span>
+                                        <span class="code">{{ \Illuminate\Support\Str::after($action, ':') }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                @if($isNew)<div class="form-hint">{{ __('apikeys.services_hint') }}</div>@endif
+                @error('actions')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
+                @error('actions.*')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
+            </div>
+
+            <div class="form-field">
+                <label class="form-label-sm">{{ __('apikeys.referers') }}</label>
+                @if($isNew)
+                    <textarea name="allow_referers" class="form-input" rows="3" maxlength="2000"
+                              placeholder="{{ __('apikeys.referers_ph') }}">{{ old('allow_referers') }}</textarea>
+                    <div class="form-hint">{{ __('apikeys.referers_hint') }}</div>
+                    @error('allow_referers')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
+                @else
+                    <textarea class="form-input" rows="{{ max(count($referers), 1) }}" readonly>{{ $referers ? implode("\n", $referers) : '—' }}</textarea>
+                @endif
+            </div>
+
+            <div class="form-field">
+                <label class="form-label-sm">
+                    {{ __('apikeys.budget') }} <span style="font-weight:600;color:var(--faint);">{{ __('apikeys.budget_month') }}</span>
+                </label>
+                @include('admin.partials.amount-slider', [
+                    'name'    => 'budget_usd',
+                    'value'   => $budget?->limit_usd ?? ($isNew ? ($defaults['budget_usd'] ?? null) : null),
+                    'max'     => 300,
+                    'step'    => 5,
+                    'prefix'  => '$',
+                    'suffix'  => __('ui.per_month'),
+                    'zero'    => __('ui.no_limit'),
+                    'presets' => [25, 50, 100, 170, 200],
+                ])
+                <div class="form-hint">{{ __('apikeys.budget_hint') }}</div>
+                @if($isNew && ($defaults['budget_usd'] ?? 0) > 0)
+                    <div class="form-hint">{{ __('apikeys.budget_default_hint', ['amount' => (int) $defaults['budget_usd']]) }}</div>
+                @endif
+                @error('budget_usd')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
+            </div>
+
+            <div class="form-field">
+                <label class="form-label-sm">{{ __('apikeys.expiry') }}<span class="req">*</span></label>
+                <div class="exp-row" id="expRow">
+                    <label style="cursor:pointer;">
+                        <input type="radio" name="expiry_mode" value="never" class="d-none" @checked($mode === 'never')>
+                        <span class="exp-chip">{{ __('apikeys.exp_never') }}</span>
+                    </label>
+
+                    @foreach($presets as $days)
+                        <label style="cursor:pointer;">
+                            <input type="radio" name="expiry_mode" value="preset" class="d-none"
+                                   data-preset="{{ $days }}"
+                                   @checked($mode === 'preset' && $pickedDays === $days)>
+                            <span class="exp-chip">{{ __('apikeys.exp_days', ['count' => $days]) }}</span>
+                        </label>
+                    @endforeach
+
+                    <label style="cursor:pointer;">
+                        <input type="radio" name="expiry_mode" value="date" class="d-none" @checked($mode === 'date')>
+                        <span class="exp-chip"><i class="bi bi-calendar3"></i> {{ __('apikeys.exp_custom') }}</span>
+                    </label>
+                </div>
+
+                <input type="hidden" name="preset_days" id="presetDays" value="{{ $pickedDays ?: '' }}">
+
+                <div class="exp-date" id="expDate" @unless($mode === 'date') hidden @endunless>
+                    @include('admin.partials.date-picker', [
+                        'name'  => 'expire_date',
+                        'value' => $expireValue,
+                        'min'   => now()->addDay(),
+                    ])
+                    <div class="form-hint">{{ __('apikeys.exp_hint') }}</div>
+                </div>
+
+                @if($isNew && $defaultMode === 'preset')
+                    <div class="form-hint">{{ __('apikeys.exp_default_hint', ['days' => $defaultDays]) }}</div>
+                @endif
+
+                @error('expiry_mode')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
+                @error('expire_date')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
+                @error('preset_days')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
+            </div>
+
+@once
+@push('styles')
+    /* ---------- Pilihan aksi per layanan ---------- */
+    .svc-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .svc-group {
+        border: 1.5px solid var(--line); border-radius: 18px;
+        overflow: hidden; transition: border-color 0.18s, background 0.18s;
+    }
+    .svc-group.on { border-color: var(--green); }
+
+    .svc-head {
+        display: flex; align-items: center; gap: 11px;
+        padding: 13px 14px;
+        background: var(--surface);
+        transition: background 0.18s;
+    }
+    .svc-group.on .svc-head { background: var(--green-soft); }
+    .svc-head .ic {
+        width: 36px; height: 36px; border-radius: 11px;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--card); color: var(--muted); font-size: 0.95rem; flex-shrink: 0;
+        transition: background 0.18s, color 0.18s;
+    }
+    .svc-group.on .svc-head .ic { background: var(--green); color: #fff; }
+    .svc-head .nm { font-weight: 700; font-size: 0.85rem; }
+    .svc-head .ds { font-size: 0.68rem; color: var(--muted); }
+    .svc-head .picked {
+        font-size: 0.68rem; font-weight: 700; color: var(--muted);
+        background: var(--card); border-radius: 999px; padding: 4px 10px; white-space: nowrap;
+    }
+    .svc-group.on .svc-head .picked { color: var(--green-text); }
+
+    .svc-actions {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 2px 10px; padding: 10px 14px 14px;
+    }
+
+    .act {
+        display: flex; align-items: center; gap: 9px;
+        padding: 7px 0; font-size: 0.79rem; cursor: pointer;
+    }
+    .act input { accent-color: var(--green); width: 16px; height: 16px; flex-shrink: 0; }
+    .act .txt { flex: 1; min-width: 0; }
+    .act .code { font-size: 0.63rem; color: var(--faint); font-family: ui-monospace, monospace; }
+    .act.locked { cursor: default; opacity: 0.65; }
+
+    /* Input dengan awalan mata uang di dalamnya. */
+    .with-prefix { position: relative; }
+    .with-prefix .pfx {
+        position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+        font-size: 0.82rem; font-weight: 700; color: var(--muted); pointer-events: none; z-index: 2;
+    }
+    .with-prefix .form-input { padding-left: 34px; font-family: ui-monospace, monospace; }
+
+    /* ---------- Masa berlaku ---------- */
+    .exp-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .exp-chip {
+        padding: 9px 16px; border-radius: 999px;
+        border: 1.5px solid var(--line); background: var(--surface);
+        font-size: 0.79rem; font-weight: 600; color: var(--muted);
+        cursor: pointer; transition: all 0.18s;
+    }
+    .exp-chip:hover { border-color: var(--green); color: var(--ink); }
+    input:checked + .exp-chip { background: var(--green); border-color: var(--green); color: #fff; box-shadow: 0 4px 12px rgba(0, 177, 79, 0.3); }
+    .exp-date { margin-top: 12px; }
+    .exp-date[hidden] { display: none; }
+@endpush
+
+@push('scripts')
+<script>
+    (function () {
+        const row = document.getElementById('expRow');
+        if (!row) return;
+
+        const dateBox = document.getElementById('expDate');
+        const presetInput = document.getElementById('presetDays');
+
+        function sync() {
+            const picked = row.querySelector('input[name="expiry_mode"]:checked');
+            if (!picked) return;
+
+            dateBox.hidden = picked.value !== 'date';
+            // preset_days dikirim lewat hidden input — tiap chip preset punya jumlah harinya sendiri.
+            presetInput.value = picked.value === 'preset' ? (picked.dataset.preset ?? '') : '';
+        }
+
+        row.addEventListener('change', sync);
+        sync();
+    })();
+
+    // ---------- Pilihan aksi ----------
+    (function () {
+        const groups = document.querySelectorAll('.svc-group');
+        if (!groups.length) return;
+
+        groups.forEach((group) => {
+            const all = group.querySelector('input[data-all]');
+            const singles = [...group.querySelectorAll('input[type="checkbox"]:not([data-all])')];
+            if (!all || all.disabled) return;
+
+            const label = group.querySelector('[data-picked]');
+            const allLabel = all.parentElement.textContent.trim();
+
+            function paint() {
+                // Saat "Semua" dipilih, aksi satuan tidak perlu ikut dikirim.
+                singles.forEach((box) => {
+                    box.disabled = all.checked;
+                    box.parentElement.classList.toggle('locked', all.checked);
+                    if (all.checked) box.checked = false;
+                });
+
+                const picked = singles.filter((b) => b.checked).length;
+                group.classList.toggle('on', all.checked || picked > 0);
+                label.textContent = all.checked ? allLabel : (picked ? picked + '/' + singles.length : '—');
+            }
+
+            group.addEventListener('change', paint);
+            paint();
+        });
+    })();
+</script>
+@endpush
+@endonce

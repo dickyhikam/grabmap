@@ -18,7 +18,7 @@ class AwsAccountController extends Controller
 {
     public function index()
     {
-        $accounts = AwsAccount::withCount('companies')
+        $accounts = AwsAccount::with('sourceAccount')->withCount(['companies', 'roleAccounts'])
             ->orderByDesc('is_default')
             ->orderBy('id')
             ->get();
@@ -110,14 +110,18 @@ class AwsAccountController extends Controller
         $data = [
             'name'           => $validated['name'],
             'account_number' => $validated['account_number'] ?? null,
-            'access_key_id'  => $validated['access_key_id'],
             'region'         => $validated['region'],
             'is_active'      => $request->boolean('is_active', true),
             'notes'          => $validated['notes'] ?? null,
         ];
 
+        // Akun role tidak punya access key; ARN & External ID-nya hanya lewat undangan.
+        if (!$awsAccount->usesRole()) {
+            $data['access_key_id'] = $validated['access_key_id'];
+        }
+
         // Secret hanya ditimpa kalau diisi ulang — form menampilkannya kosong.
-        if (!empty($validated['secret_access_key'])) {
+        if (!$awsAccount->usesRole() && !empty($validated['secret_access_key'])) {
             $data['secret_access_key'] = $validated['secret_access_key'];
             $data['last_verified_at']  = null;
         }
@@ -139,6 +143,11 @@ class AwsAccountController extends Controller
         $companyCount = $awsAccount->companies()->count();
         if ($companyCount > 0) {
             return back()->with('error', "Akun \"{$awsAccount->name}\" masih dipakai {$companyCount} company. Pindahkan dulu company-nya sebelum menghapus.");
+        }
+
+        $roleCount = $awsAccount->roleAccounts()->count();
+        if ($roleCount > 0) {
+            return back()->with('error', __('awsaccounts.in_use_source', ['name' => $awsAccount->name, 'count' => $roleCount]));
         }
 
         $wasDefault = $awsAccount->is_default;
@@ -200,7 +209,7 @@ class AwsAccountController extends Controller
                 Rule::unique('aws_accounts', 'name')->ignore($account?->id),
             ],
             'account_number'    => ['nullable', 'string', 'regex:/^\d{12}$/'],
-            'access_key_id'     => ['required', 'string', 'max:128'],
+            'access_key_id'     => [$account?->usesRole() ? 'nullable' : 'required', 'string', 'max:128'],
             'secret_access_key' => [$secretRequired ? 'required' : 'nullable', 'string', 'max:255'],
             'region'            => ['required', 'string', 'max:32', 'regex:/^[a-z0-9\-]+$/'],
             'notes'             => ['nullable', 'string', 'max:1000'],

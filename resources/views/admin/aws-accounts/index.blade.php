@@ -145,9 +145,14 @@
 <div class="q-page-head">
     <h1 class="q-title">{{ __('awsaccounts.title') }} <span class="soft">{{ $accounts->count() }}</span></h1>
     @can('aws_accounts.create')
-        <a href="{{ route('admin.aws-accounts.create') }}" class="q-pill q-pill-green">
-            <i class="bi bi-plus-lg"></i> {{ __('awsaccounts.add') }}
-        </a>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ route('admin.aws-invites.index') }}" class="q-pill">
+                <i class="bi bi-envelope-plus"></i> {{ __('awsconnect.invite_btn') }}
+            </a>
+            <a href="{{ route('admin.aws-accounts.create') }}" class="q-pill q-pill-green">
+                <i class="bi bi-plus-lg"></i> {{ __('awsaccounts.add') }}
+            </a>
+        </div>
     @endcan
 </div>
 
@@ -195,17 +200,19 @@
 
                 <div class="acc-meta">
                     <div>
-                        <div class="lb">{{ __('awsaccounts.access_key') }}</div>
-                        <div class="vl">{{ $account->maskedAccessKey() }}</div>
+                        <div class="lb">{{ $account->usesRole() ? __('awsaccounts.auth') : __('awsaccounts.access_key') }}</div>
+                        <div class="vl">{{ $account->usesRole() ? 'AssumeRole' : $account->maskedAccessKey() }}</div>
                     </div>
                     <div>
                         <div class="lb">{{ __('awsaccounts.region') }}</div>
                         <div class="vl">{{ $account->region }}</div>
                     </div>
                     <div>
-                        <div class="lb">{{ __('awsaccounts.secret') }}</div>
+                        <div class="lb">{{ $account->usesRole() ? __('awsaccounts.source') : __('awsaccounts.secret') }}</div>
                         <div class="vl plain">
-                            @if($account->secret_access_key)
+                            @if($account->usesRole())
+                                {{ $account->sourceAccount?->name ?? '—' }}
+                            @elseif($account->secret_access_key)
                                 <span style="color:var(--green-text);">
                                     <i class="bi bi-lock-fill"></i> {{ __('awsaccounts.secret_saved') }}
                                 </span>

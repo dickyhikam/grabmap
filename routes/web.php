@@ -5,6 +5,8 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Admin\ApiKeyController;
 use App\Http\Controllers\UsageReportController;
 use App\Http\Controllers\Admin\AwsAccountController;
+use App\Http\Controllers\Admin\AwsConnectInviteController;
+use App\Http\Controllers\AwsConnectController;
 use App\Http\Controllers\Admin\CostSettingController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -149,6 +151,10 @@ Route::middleware('throttle:120,1')->group(function () {
     Route::get('/api/soco/grab/{op}', [SocoDemoController::class, 'grab']);
 });
 
+// Demo SiCepat (akurasi geocoding vs titik POD), untuk internal. Harus di atas catch-all /{slug}.
+Route::get('/sicepat', [\App\Http\Controllers\SicepatDemoController::class, 'index'])->name('sicepat.demo');
+Route::get('/api/sicepat/search', [\App\Http\Controllers\SicepatDemoController::class, 'search'])->middleware('throttle:60,1');
+
 // === Tools: transfers.txt (GTFS) generator ===
 Route::get('/tools/transfers', [TransfersToolController::class, 'index'])->name('tools.transfers');
 Route::post('/tools/transfers/preview', [TransfersToolController::class, 'preview']);
@@ -254,6 +260,11 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
         Route::middleware('permission:aws_accounts.create')->group(function () {
             Route::get('/create', [AwsAccountController::class, 'create'])->name('admin.aws-accounts.create');
             Route::post('/', [AwsAccountController::class, 'store'])->name('admin.aws-accounts.store');
+
+            // Undangan klien menghubungkan akun AWS-nya sendiri lewat AssumeRole.
+            Route::get('/invites', [AwsConnectInviteController::class, 'index'])->name('admin.aws-invites.index');
+            Route::post('/invites', [AwsConnectInviteController::class, 'store'])->name('admin.aws-invites.store');
+            Route::delete('/invites/{invite}', [AwsConnectInviteController::class, 'destroy'])->name('admin.aws-invites.destroy');
         });
 
         Route::middleware('permission:aws_accounts.update')->group(function () {
@@ -389,6 +400,17 @@ Route::get('/usage-report/{token}', [UsageReportController::class, 'show'])
 Route::get('/usage-report/{token}/export', [UsageReportController::class, 'export'])
     ->middleware('throttle:10,1')
     ->name('usage-report.export');
+
+// Klien menghubungkan akun AWS-nya lewat AssumeRole (token rahasia, sekali pakai).
+Route::get('/aws-connect/{token}', [AwsConnectController::class, 'show'])
+    ->middleware('throttle:30,1')
+    ->name('aws-connect.show');
+Route::get('/aws-connect/{token}/template.yaml', [AwsConnectController::class, 'template'])
+    ->middleware('throttle:20,1')
+    ->name('aws-connect.template');
+Route::post('/aws-connect/{token}', [AwsConnectController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('aws-connect.store');
 
 // Shareable A→B route links (coordinate link + short links). Must stay above the catch-all.
 Route::get('/route', [RouteLinkController::class, 'show'])->name('route.show');

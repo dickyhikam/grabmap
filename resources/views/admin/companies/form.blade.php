@@ -7,7 +7,30 @@
 @section('title', $isEdit ? __('companies.form_edit') : __('companies.form_add'))
 
 @push('styles')
-    .co-single { max-width: 720px; }
+    .co-single { max-width: 1240px; }
+    .co-single .co-card { margin-bottom: 16px; }
+    /* Kiri: identitas & tagihan. Kanan: dari mana API key-nya datang. */
+    .co-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 16px; align-items: start; }
+    @media (max-width: 1100px) { .co-cols { grid-template-columns: 1fr; } }
+    .co-cols > .co-col { min-width: 0; }
+
+    /* Isian key baru */
+    .new-key {
+        margin-top: 12px; padding: 16px; border-radius: 16px;
+        background: var(--surface); border: 1px dashed var(--line);
+        animation: nkIn 0.28s cubic-bezier(0.34, 1.4, 0.5, 1);
+    }
+    .new-key[hidden] { display: none; }
+    .new-key .form-input, .new-key .exp-chip { background: var(--card); }
+    @keyframes nkIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+    .new-key-head {
+        display: flex; gap: 9px; align-items: flex-start;
+        font-size: 0.74rem; line-height: 1.5; color: var(--muted);
+        padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--line);
+    }
+    .new-key-head i { color: var(--green-text); }
+    /* Dua jalur API key dibedakan warnanya: key di akun Grab vs akun milik klien. */
+    .co-card-role .q-icon-box { background: var(--tone-indigo-bg); color: var(--tone-indigo-fg); }
 
     .back-pill {
         display: inline-flex; align-items: center; gap: 8px;
@@ -183,7 +206,9 @@
             @csrf
             @if($isEdit) @method('PUT') @endif
 
-            <div class="q-card" style="padding:24px;">
+            <div class="co-cols">
+            <div class="co-col">
+            <div class="q-card co-card" style="padding:24px;">
                 <div class="q-card-head">
                     <div class="d-flex align-items-center gap-2">
                         <div class="q-icon-box"><i class="bi bi-buildings"></i></div>
@@ -245,8 +270,124 @@
                     @error('logo')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
                 </div>
 
+                <label class="sw-row">
+                    <input type="hidden" name="is_active" value="0">
+                    <input type="checkbox" name="is_active" value="1"
+                           @checked(old('is_active', $company->is_active ?? true))>
+                    <span class="tx">
+                        <span class="nm d-block">{{ __('companies.is_active') }}</span>
+                        <span class="ds">{{ __('companies.is_active_d') }}</span>
+                    </span>
+                    <span class="sw"></span>
+                </label>
 
-                @if(!$isEdit && !empty($availableKeys))
+                @include('admin.partials.service-charge-fields', [
+                    'scCompany'     => true,
+                    'scCurrent'     => $scCurrent ?? null,
+                    'scAccountRule' => $scAccountRule ?? null,
+                    'scHasAccount'  => (bool) ($company->aws_account_id ?? null),
+                    'scHistory'     => $scHistory ?? collect(),
+                ])
+            </div>
+
+            @if(!$isEdit && !empty($inviteSources) && $inviteSources->isNotEmpty())
+                @can('aws_accounts.create')
+                    {{-- ===================== Jalur 2: akun AWS milik klien (undangan role) ===================== --}}
+                <div class="q-card co-card co-card-role" style="padding:24px;">
+                    <div class="q-card-head">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="q-icon-box"><i class="bi bi-cloud-check-fill"></i></div>
+                            <div>
+                                <div class="q-card-title">{{ __('awsconnect.co_card') }}</div>
+                                <div class="q-card-sub">{{ __('awsconnect.co_card_form_sub') }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Klien yang memakai akun AWS sendiri: undangan AssumeRole dibuat
+                         bersamaan, link-nya tampil di halaman detail perusahaan. --}}
+                    <label class="sw-row">
+                        <input type="hidden" name="connect_aws" value="0">
+                        <input type="checkbox" name="connect_aws" value="1" id="connectAws" @checked(old('connect_aws'))>
+                        <span class="tx">
+                            <span class="nm d-block">{{ __('awsconnect.co_toggle') }}</span>
+                            <span class="ds">{{ __('awsconnect.co_toggle_d') }}</span>
+                        </span>
+                        <span class="sw"></span>
+                    </label>
+
+                    <div class="f-row" id="connectFields" style="margin-top:8px;" hidden>
+                        <div class="form-field">
+                            <label class="form-label-sm">{{ __('awsaccounts.region') }}</label>
+                            <select name="connect_region" class="form-input">
+                                @foreach(['ap-southeast-1', 'ap-southeast-3', 'ap-southeast-5', 'us-east-1'] as $r)
+                                    <option value="{{ $r }}" @selected(old('connect_region', 'ap-southeast-1') === $r)>{{ $r }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label-sm">{{ __('awsconnect.days') }}</label>
+                            <select name="connect_days" class="form-input">
+                                @foreach([3, 7, 14, 30] as $d)
+                                    <option value="{{ $d }}" @selected((int) old('connect_days', 7) === $d)>{{ __('awsconnect.days_n', ['n' => $d]) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                @endcan
+            @endif
+            </div>
+
+            <div class="co-col">
+
+            @if(!$isEdit && !empty($inviteSources) && $inviteSources->isNotEmpty())
+                {{-- ===================== Akun sumber: dipakai kedua jalur di bawah ===================== --}}
+                <div class="q-card co-card" style="padding:24px;">
+                    <div class="q-card-head">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="q-icon-box"><i class="bi bi-cloud-fill"></i></div>
+                            <div>
+                                <div class="q-card-title">{{ __('companies.card_source') }}</div>
+                                <div class="q-card-sub">{{ __('companies.card_source_sub') }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-field" style="margin-bottom:0;">
+                        <select name="connect_source_id" id="srcAccount" class="form-input">
+                            @foreach($inviteSources as $source)
+                                <option value="{{ $source->id }}" @selected(old('connect_source_id', $inviteSources->firstWhere('is_default', true)?->id ?? $inviteSources->first()->id) == $source->id)>
+                                    {{ $source->name }}{{ $source->account_number ? ' · ' . $source->account_number : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('connect_source_id')
+                            <div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>
+                        @else
+                            <div class="form-hint">{{ __('companies.card_source_hint') }}</div>
+                        @enderror
+                    </div>
+                </div>
+            @endif
+
+            {{-- ===================== Jalur 1: API key di akun Grab ===================== --}}
+            <div class="q-card co-card" style="padding:24px;">
+                <div class="q-card-head">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="q-icon-box"><i class="bi bi-key-fill"></i></div>
+                        <div>
+                            <div class="q-card-title">{{ __('companies.card_grab_key') }}</div>
+                            <div class="q-card-sub">{{ __('companies.card_grab_key_sub') }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                @php
+                    $canCreateKey = !$isEdit && !empty($inviteSources) && $inviteSources->isNotEmpty()
+                        && auth()->user()?->can('api_keys.create');
+                @endphp
+                @if(!$isEdit && (!empty($availableKeys) || $canCreateKey))
                     @php
                         // Keterangan key dirangkum di sini supaya JS tinggal menampilkan —
                         // tidak ada panggilan AWS lagi saat pilihannya diganti-ganti.
@@ -272,8 +413,11 @@
                         </label>
                         <select name="key_ref" id="keyRef" class="form-input">
                             <option value="">{{ __('companies.pick_key_none') }}</option>
+                            @if($canCreateKey)
+                                <option value="{{ \App\Http\Controllers\Admin\CompanyController::NEW_KEY }}" @selected(old('key_ref') === \App\Http\Controllers\Admin\CompanyController::NEW_KEY)>{{ __('companies.new_key_option') }}</option>
+                            @endif
                             @foreach($availableKeys as $group)
-                                <optgroup label="{{ $group['name'] }}">
+                                <optgroup label="{{ $group['name'] }}" data-account="{{ $group['id'] }}">
                                     @foreach($group['keys'] as $key)
                                         <option value="{{ $group['id'] }}|{{ $key['name'] }}"
                                             @selected(old('key_ref') === $group['id'] . '|' . $key['name'])>
@@ -286,6 +430,17 @@
                         <div class="form-hint">{{ __('companies.pick_key_hint') }}</div>
 
                         <div class="key-detail" id="keyDetail" hidden></div>
+
+                        @if($canCreateKey)
+                            {{-- Key baru dibuat di akun sumber saat perusahaan disimpan. --}}
+                            <div class="new-key" id="newKeyFields" hidden>
+                                <div class="new-key-head">
+                                    <i class="bi bi-plus-circle-fill"></i>
+                                    <span>{{ __('companies.new_key_hint') }}</span>
+                                </div>
+                                @include('admin.api-keys._fields', ['key' => null, 'keyName' => null, 'budget' => null])
+                            </div>
+                        @endif
                     </div>
                 @endif
 
@@ -302,17 +457,6 @@
                 </div>
 
                 <label class="sw-row">
-                    <input type="hidden" name="is_active" value="0">
-                    <input type="checkbox" name="is_active" value="1"
-                           @checked(old('is_active', $company->is_active ?? true))>
-                    <span class="tx">
-                        <span class="nm d-block">{{ __('companies.is_active') }}</span>
-                        <span class="ds">{{ __('companies.is_active_d') }}</span>
-                    </span>
-                    <span class="sw"></span>
-                </label>
-
-                <label class="sw-row">
                     <input type="hidden" name="aws_key_active" value="0">
                     <input type="checkbox" name="aws_key_active" value="1"
                            @checked(old('aws_key_active', $company->aws_key_active ?? true))>
@@ -321,23 +465,18 @@
                     </span>
                     <span class="sw"></span>
                 </label>
+            </div>
 
-                @include('admin.partials.service-charge-fields', [
-                    'scCompany'     => true,
-                    'scCurrent'     => $scCurrent ?? null,
-                    'scAccountRule' => $scAccountRule ?? null,
-                    'scHasAccount'  => (bool) ($company->aws_account_id ?? null),
-                    'scHistory'     => $scHistory ?? collect(),
-                ])
+            </div>
+            </div>
 
-                <div class="btn-row end" style="margin-top:18px;">
+            <div class="btn-row end" style="margin-top:4px;">
                     <a href="{{ route('admin.companies.index') }}" class="btn-soft"><i class="bi bi-x-lg"></i> {{ __('ui.cancel') }}</a>
                     <button type="submit" class="btn-solid">
                         <i class="bi bi-{{ $isEdit ? 'check-lg' : 'plus-lg' }}"></i>
                         {{ $isEdit ? __('companies.save') : __('companies.create') }}
                     </button>
                 </div>
-            </div>
         </form>
 </div>
 
@@ -503,6 +642,89 @@
                 setTimeout(() => { btn.querySelector('i').className = 'bi bi-clipboard'; }, 1600);
             }, () => window.gmToast?.(@json(__('ui.copy_failed')), 'bad'));
         });
+    })();
+
+    // ---------- Undangan akun AWS klien: rincian muncul saat sakelar dinyalakan ----------
+    (function () {
+        const toggle = document.getElementById('connectAws');
+        const fields = document.getElementById('connectFields');
+        if (!toggle || !fields) return;
+
+        const sync = () => { fields.hidden = !toggle.checked; };
+        toggle.addEventListener('change', sync);
+        sync();
+    })();
+
+    // ---------- Daftar API key mengikuti akun sumber yang dipilih di atas ----------
+    (function () {
+        const src  = document.getElementById('srcAccount');
+        const pick = document.getElementById('keyRef');
+        if (!src || !pick) return;
+
+        // Salinan semua grup akun; daftar dibangun ulang dari sini tiap kali ganti akun.
+        const groups = [...pick.querySelectorAll('optgroup')].map((g) => g.cloneNode(true));
+        const none = pick.querySelector('option[value=""]').cloneNode(true);
+        const fresh = pick.querySelector('option[value="{{ \App\Http\Controllers\Admin\CompanyController::NEW_KEY }}"]')?.cloneNode(true);
+        const emptyHint = @json(__('companies.card_source_no_keys'));
+        const hint = pick.closest('.form-field').querySelector('.form-hint');
+        const hintText = hint?.textContent;
+
+        function rebuild() {
+            const keep = pick.value;
+            const wrap = pick.closest('.gm-select');
+
+            // Lepas dropdown pengganti supaya bisa dibuat ulang dengan isi baru;
+            // elemen <select>-nya tetap sama, jadi pendengar 'change' tidak hilang.
+            if (wrap) {
+                wrap.parentNode.insertBefore(pick, wrap);
+                wrap.remove();
+                delete pick.dataset.gmSelect;
+                pick.classList.remove('gm-select-native');
+                pick.removeAttribute('tabindex');
+            }
+
+            pick.replaceChildren(none.cloneNode(true));
+            if (fresh) pick.appendChild(fresh.cloneNode(true));
+            const group = groups.find((g) => g.dataset.account === src.value);
+            if (group) pick.appendChild(group.cloneNode(true));
+            pick.value = [...pick.options].some((o) => o.value === keep) ? keep : '';
+
+            if (hint) hint.textContent = group || fresh ? hintText : emptyHint;
+
+            window.gmEnhanceSelects?.(pick.parentNode);
+            pick.dispatchEvent(new Event('change'));
+        }
+
+        src.addEventListener('change', rebuild);
+        rebuild();
+    })();
+
+    // ---------- Isian API key baru ----------
+    (function () {
+        const pick   = document.getElementById('keyRef');
+        const fields = document.getElementById('newKeyFields');
+        const name   = fields?.querySelector('[name="key_name"]');
+        const slug   = document.getElementById('coSlug');
+        if (!pick || !fields || !name) return;
+
+        const NEW = @json(\App\Http\Controllers\Admin\CompanyController::NEW_KEY);
+        // Nama key mengikuti slug sampai diketik sendiri.
+        let touched = !!name.value;
+        name.addEventListener('input', () => { touched = true; });
+
+        function suggest() {
+            if (!touched && slug?.value) name.value = slug.value + '-prod';
+        }
+
+        function sync() {
+            const on = pick.value === NEW;
+            fields.hidden = !on;
+            if (on) suggest();
+        }
+
+        slug?.addEventListener('input', suggest);
+        pick.addEventListener('change', sync);
+        sync();
     })();
 </script>
 @endpush

@@ -20,7 +20,8 @@ class AwsLocationService
 
     private string $region;
 
-    private array $credentials;
+    /** @var array|callable Array key/secret, atau provider AssumeRole untuk akun role. */
+    private $credentials;
 
     public function __construct(?AwsAccount $account = null)
     {
@@ -61,7 +62,8 @@ class AwsLocationService
             'version' => config('aws.version', 'latest'),
         ];
 
-        if (!empty($this->credentials['key']) && !empty($this->credentials['secret'])) {
+        if (is_callable($this->credentials)
+            || (!empty($this->credentials['key']) && !empty($this->credentials['secret']))) {
             $config['credentials'] = $this->credentials;
         }
 
@@ -712,6 +714,118 @@ class AwsLocationService
             Log::error("CloudWatch metrics exception for key '{$keyName}': " . $e->getMessage());
             return ['total' => 0, 'daily' => [], 'operations' => [], 'error' => $e->getMessage()];
         }
+    }
+
+    /**
+     * Tarik pemakaian Amazon Location per usage type per hari dari Cost Explorer
+     * ke aws_usage_type_daily — sama dengan baris tagihan AWS, termasuk provider
+     * datanya (Usage-Grab-*, Usage-Default-*). Butuh ce:GetCostAndUsage dan
+     * Cost Explorer yang sudah diaktifkan di akun itu.
+     *
+     * @return array{ok: bool, error: ?string, rows: int}
+     */
+    public function syncUsageTypes(string $startDate, string $endDate): array
+    {
+        if (!$this->account?->id) {
+            return ['ok' => false, 'error' => 'no account', 'rows' => 0];
+        }
+
+        try {
+            $start = \Carbon\Carbon::parse($startDate)->startOfDay();
+            $end = \Carbon\Carbon::parse($endDate)->startOfDay();
+            $rows = [];
+
+            $ce = new CostExplorerClient(['region' => 'us-east-1'] + $this->clientConfig());
+            $token = null;
+            do {
+                // Tanggal akhir Cost Explorer eksklusif.
+                $res = $ce->getCostAndUsage(array_filter([
+                    'TimePeriod'  => ['Start' => $start->format('Y-m-d'), 'End' => $end->copy()->addDay()->format('Y-m-d')],
+                    'Granularity' => 'DAILY',
+                    'Metrics'     => ['UsageQuantity', 'UnblendedCost'],
+                    'Filter'      => ['Dimensions' => ['Key' => 'SERVICE', 'Values' => ['Amazon Location Service']]],
+                    'GroupBy'     => [['Type' => 'DIMENSION', 'Key' => 'USAGE_TYPE']],
+                    'NextPageToken' => $token,
+                ]));
+
+                foreach ($res['ResultsByTime'] ?? [] as $period) {
+                    foreach ($period['Groups'] ?? [] as $group) {
+                        $qty  = (float) ($group['Metrics']['UsageQuantity']['Amount'] ?? 0);
+                        $cost = (float) ($group['Metrics']['UnblendedCost']['Amount'] ?? 0);
+                        if ($qty == 0.0 && $cost == 0.0) {
+                            continue;
+                        }
+
+                        $rows[] = [
+                            'date'       => $period['TimePeriod']['Start'],
+                            'usage_type' => (string) ($group['Keys'][0] ?? ''),
+                            'unit'       => $group['Metrics']['UsageQuantity']['Unit'] ?? null,
+                            'quantity'   => $qty,
+                            'cost'       => $cost,
+                        ];
+                    }
+                }
+
+                $token = $res['NextPageToken'] ?? null;
+            } while ($token);
+
+            \App\Models\AwsUsageTypeDaily::store($this->account->id, $start->format('Y-m-d'), $end->format('Y-m-d'), $rows);
+            $this->account->forceFill(['usage_types_synced_at' => now(), 'usage_types_error' => null])->save();
+
+            return ['ok' => true, 'error' => null, 'rows' => count($rows)];
+        } catch (\Throwable $e) {
+            $error = $e instanceof AwsException ? ($e->getAwsErrorMessage() ?: $e->getMessage()) : $e->getMessage();
+            Log::warning('Usage type sync gagal: ' . $error, ['account' => $this->account->name]);
+            $this->account->forceFill(['usage_types_error' => mb_substr($error, 0, 250)])->save();
+
+            return ['ok' => false, 'error' => $error, 'rows' => 0];
+        }
+    }
+
+    /**
+     * Daftar resource Amazon Location di akun beserta data source-nya — inilah
+     * yang menjawab "provider apa yang dipakai". Izin yang belum diberikan
+     * dicatat di 'denied', bukan dianggap kosong.
+     *
+     * @return array{place_indexes: array, maps: array, route_calculators: array, geofence_collections: array, denied: array<int, string>}
+     */
+    public function discoverResources(): array
+    {
+        $calls = [
+            'place_indexes'        => ['listPlaceIndexes', 'geo:ListPlaceIndexes', 'IndexName'],
+            'maps'                 => ['listMaps', 'geo:ListMaps', 'MapName'],
+            'route_calculators'    => ['listRouteCalculators', 'geo:ListRouteCalculators', 'CalculatorName'],
+            'geofence_collections' => ['listGeofenceCollections', 'geo:ListGeofenceCollections', 'CollectionName'],
+        ];
+
+        $out = ['denied' => []];
+
+        foreach ($calls as $key => [$method, $action, $nameField]) {
+            $out[$key] = [];
+            try {
+                $res = $this->client->{$method}(['MaxResults' => 100]);
+                foreach ($res['Entries'] ?? [] as $entry) {
+                    $out[$key][] = array_filter([
+                        'name'        => $entry[$nameField] ?? '',
+                        'data_source' => $entry['DataSource'] ?? null,
+                    ], fn ($v) => $v !== null);
+                }
+            } catch (AwsException $e) {
+                if (in_array($e->getAwsErrorCode(), ['AccessDeniedException', 'UnauthorizedOperation'], true)) {
+                    $out['denied'][] = $action;
+                } else {
+                    Log::warning("Location {$method} gagal: " . ($e->getAwsErrorMessage() ?: $e->getMessage()));
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Location {$method} gagal: " . $e->getMessage());
+            }
+        }
+
+        if ($this->account?->exists) {
+            $this->account->forceFill(['resources' => $out, 'resources_checked_at' => now()])->save();
+        }
+
+        return $out;
     }
 
     /**

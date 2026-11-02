@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\AwsAccount;
 use App\Models\CompanyApiKey;
 use App\Services\AwsLocationService;
 use Illuminate\Console\Command;
@@ -26,6 +27,20 @@ class RefreshUsage extends Command
 
         $done = 0;
         $failed = 0;
+
+        // Key yang dibuat klien di akunnya sendiri sejak refresh terakhir ikut dicatat.
+        foreach (AwsAccount::query()->active()->whereNotNull('owner_company_id')->get() as $account) {
+            if ($added = $account->syncOwnerKeys()) {
+                $this->info("{$account->name}: {$added} key baru dicatat");
+            }
+
+            $service = AwsLocationService::forAccount($account);
+            $sync = $service->syncUsageTypes($startDate, $endDate);
+            $sync['ok']
+                ? $this->info("{$account->name}: {$sync['rows']} baris tagihan per usage type")
+                : $this->warn("{$account->name}: Cost Explorer gagal — {$sync['error']}");
+            $service->discoverResources();
+        }
 
         foreach (CompanyApiKey::with('awsAccount')->get() as $key) {
             if (!AwsLocationService::hasCredentials($key->awsAccount)) {

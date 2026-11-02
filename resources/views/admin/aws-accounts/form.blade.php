@@ -254,54 +254,62 @@
                     </span>
                 </div>
 
-                <div class="f-row">
-                    <div class="form-field">
-                        <label class="form-label-sm">{{ __('awsaccounts.access_key') }}<span class="req">*</span></label>
-                        <input type="text" name="access_key_id" autocomplete="off" maxlength="128"
-                               class="form-input mono @error('access_key_id') is-invalid @enderror"
-                               value="{{ old('access_key_id', $account->access_key_id ?? '') }}"
-                               placeholder="{{ __('awsaccounts.access_key_ph') }}" required>
-                        @error('access_key_id')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
-                    </div>
-
-                    <div class="form-field">
-                        <label class="form-label-sm">
-                            {{ __('awsaccounts.secret') }}@unless($editing)<span class="req">*</span>@endunless
-                        </label>
-                        <div style="position:relative;">
-                            <input type="password" name="secret_access_key" id="accSecret" autocomplete="new-password"
-                                   class="form-input mono has-eye @error('secret_access_key') is-invalid @enderror"
-                                   placeholder="{{ $editing ? '••••••••••••••••' : __('awsaccounts.secret_ph') }}"
-                                   {{ $editing ? '' : 'required' }}>
-                            <button type="button" class="pw-eye" data-toggle-pw="accSecret" tabindex="-1" aria-label="{{ __('awsaccounts.secret') }}">
-                                <i class="bi bi-eye"></i>
-                            </button>
+                @if($editing && $account->usesRole())
+                    {{-- Akun role terbentuk dari undangan; ARN & External ID tidak diubah di sini. --}}
+                    <div class="kv"><span class="k">{{ __('awsaccounts.auth') }}</span><span class="v">AssumeRole</span></div>
+                    <div class="kv"><span class="k">Role ARN</span><span class="v" style="font-family:ui-monospace,monospace;font-size:0.74rem;">{{ $account->role_arn }}</span></div>
+                    <div class="kv"><span class="k">External ID</span><span class="v" style="font-family:ui-monospace,monospace;font-size:0.74rem;">{{ $account->external_id }}</span></div>
+                    <div class="kv" style="margin-bottom:18px;"><span class="k">{{ __('awsaccounts.source') }}</span><span class="v">{{ $account->sourceAccount?->name ?? '—' }}</span></div>
+                @else
+                    <div class="f-row">
+                        <div class="form-field">
+                            <label class="form-label-sm">{{ __('awsaccounts.access_key') }}<span class="req">*</span></label>
+                            <input type="text" name="access_key_id" autocomplete="off" maxlength="128"
+                                   class="form-input mono @error('access_key_id') is-invalid @enderror"
+                                   value="{{ old('access_key_id', $account->access_key_id ?? '') }}"
+                                   placeholder="{{ __('awsaccounts.access_key_ph') }}" required>
+                            @error('access_key_id')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
                         </div>
-                        @error('secret_access_key')
-                            <div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>
-                        @elseif($editing)
-                            <div class="form-hint">{{ __('awsaccounts.secret_keep') }}</div>
-                        @enderror
 
-                        @if($editing && $account->secret_access_key)
-                            {{-- Secret tersimpan ditarik saat diminta saja, bukan ikut
-                                 dirender tiap halaman dibuka. --}}
-                            <div class="stored" data-secret-box>
-                                <span class="lb">{{ __('awsaccounts.secret_stored_label') }}</span>
-                                <code class="val" data-secret-val>••••••••••••••••••••</code>
-
-                                <button type="button" class="mini" data-secret-show
-                                        data-url="{{ route('admin.aws-accounts.secret', $account) }}">
-                                    <i class="bi bi-eye"></i> <span>{{ __('awsaccounts.secret_show') }}</span>
-                                </button>
-
-                                <button type="button" class="mini" data-secret-copy hidden>
-                                    <i class="bi bi-clipboard"></i> <span>{{ __('awsaccounts.secret_copy') }}</span>
+                        <div class="form-field">
+                            <label class="form-label-sm">
+                                {{ __('awsaccounts.secret') }}@unless($editing)<span class="req">*</span>@endunless
+                            </label>
+                            <div style="position:relative;">
+                                <input type="password" name="secret_access_key" id="accSecret" autocomplete="new-password"
+                                       class="form-input mono has-eye @error('secret_access_key') is-invalid @enderror"
+                                       placeholder="{{ $editing ? '••••••••••••••••' : __('awsaccounts.secret_ph') }}"
+                                       {{ $editing ? '' : 'required' }}>
+                                <button type="button" class="pw-eye" data-toggle-pw="accSecret" tabindex="-1" aria-label="{{ __('awsaccounts.secret') }}">
+                                    <i class="bi bi-eye"></i>
                                 </button>
                             </div>
-                        @endif
+                            @error('secret_access_key')
+                                <div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>
+                            @elseif($editing)
+                                <div class="form-hint">{{ __('awsaccounts.secret_keep') }}</div>
+                            @enderror
+
+                            @if($editing && $account->secret_access_key)
+                                {{-- Secret tersimpan ditarik saat diminta saja, bukan ikut
+                                     dirender tiap halaman dibuka. --}}
+                                <div class="stored" data-secret-box>
+                                    <span class="lb">{{ __('awsaccounts.secret_stored_label') }}</span>
+                                    <code class="val" data-secret-val>••••••••••••••••••••</code>
+
+                                    <button type="button" class="mini" data-secret-show
+                                            data-url="{{ route('admin.aws-accounts.secret', $account) }}">
+                                        <i class="bi bi-eye"></i> <span>{{ __('awsaccounts.secret_show') }}</span>
+                                    </button>
+
+                                    <button type="button" class="mini" data-secret-copy hidden>
+                                        <i class="bi bi-clipboard"></i> <span>{{ __('awsaccounts.secret_copy') }}</span>
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
                     </div>
-                </div>
+                @endif
 
                 <div class="form-field">
                     <label class="form-label-sm">{{ __('awsaccounts.region') }}<span class="req">*</span></label>
@@ -432,8 +440,13 @@
                         <span class="v">{{ $account->is_default ? __('awsaccounts.yes') : __('awsaccounts.no') }}</span>
                     </div>
                     <div class="kv">
-                        <span class="k">{{ __('awsaccounts.secret') }}</span>
-                        <span class="v">{{ $account->secret_access_key ? __('awsaccounts.secret_saved') : __('awsaccounts.secret_missing') }}</span>
+                        @if($account->usesRole())
+                            <span class="k">{{ __('awsaccounts.auth') }}</span>
+                            <span class="v">AssumeRole</span>
+                        @else
+                            <span class="k">{{ __('awsaccounts.secret') }}</span>
+                            <span class="v">{{ $account->secret_access_key ? __('awsaccounts.secret_saved') : __('awsaccounts.secret_missing') }}</span>
+                        @endif
                     </div>
                     <div class="kv">
                         <span class="k">{{ __('awsaccounts.verified') }}</span>

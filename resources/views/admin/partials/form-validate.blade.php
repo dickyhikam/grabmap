@@ -171,7 +171,10 @@
 
             form.addEventListener('submit', (e) => {
                 // Semua dicek dulu supaya seluruh error tampil sekaligus, bukan satu per satu.
-                const ok = [...fields.map(check), ...groups.map(checkGroup)].every(Boolean);
+                // Isian di bagian yang sedang disembunyikan (mis. key baru yang tidak dipilih)
+                // tidak ikut dicek — server juga mengabaikannya.
+                const live = (el) => !el.disabled && !el.closest('[hidden]');
+                const ok = [...fields.filter(live).map(check), ...groups.filter(live).map(checkGroup)].every(Boolean);
                 if (ok) return;
 
                 e.preventDefault();

@@ -138,4 +138,13 @@ return [
     'stat_keys'   => 'API keys',
     'stat_links'  => 'Active links',
     'stat_visits' => 'Visits',
+    'card_grab_key'     => 'API key in the Grab account',
+    'card_grab_key_sub' => 'Key created and managed by Grab, used by the client',
+    'card_source'          => 'Source AWS account',
+    'card_source_sub'      => 'Used to pick the API key and as the source of the role invite',
+    'card_source_hint'     => 'The API key list below only shows keys from this account. The role invite is also assumed from this account.',
+    'card_source_no_keys'  => 'No unclaimed keys in this account.',
+    'new_key_option'    => '+ Create a new API key',
+    'new_key_hint'      => 'The key is created in AWS when the company is saved, then set as the primary key and the map key.',
+    'new_key_no_value'  => 'The key was created but its value could not be read yet (:error). Set the map key from the API key page.',
 ];

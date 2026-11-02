@@ -36,6 +36,97 @@ class Company extends Model
         return $this->hasMany(ApiKeyUsageShare::class)->latest('id');
     }
 
+    /** Akun AWS klien yang seluruh key-nya milik perusahaan ini. */
+    public function ownedAwsAccounts(): HasMany
+    {
+        return $this->hasMany(AwsAccount::class, 'owner_company_id');
+    }
+
+    /** Undangan menghubungkan akun AWS klien untuk perusahaan ini. */
+    public function awsInvites(): HasMany
+    {
+        return $this->hasMany(AwsConnectInvite::class)->latest('id');
+    }
+
+    /**
+     * Pemakaian menurut tagihan AWS (Cost Explorer per usage type) dari akun milik
+     * perusahaan ini, beserta resource dan provider datanya. Null kalau perusahaan
+     * tidak punya akun AWS sendiri — key di akun Grab sudah terwakili CloudWatch.
+     *
+     * @return array{summary: array, resources: array, providers: array<int, string>, synced_at: ?\Carbon\Carbon, error: ?string, denied: array<int, string>}|null
+     */
+    public function billingSummary(string $startDate, string $endDate): ?array
+    {
+        $accounts = $this->ownedAwsAccounts()->get();
+        if ($accounts->isEmpty()) {
+            return null;
+        }
+
+        $summary = AwsUsageTypeDaily::summaryFor($accounts->pluck('id')->all(), $startDate, $endDate);
+
+        $resources = [];
+        $denied = [];
+        foreach ($accounts as $account) {
+            foreach (['place_indexes', 'maps', 'route_calculators', 'geofence_collections'] as $type) {
+                foreach ($account->resources[$type] ?? [] as $item) {
+                    $resources[] = ['type' => $type] + $item;
+                }
+            }
+            $denied = array_merge($denied, $account->resources['denied'] ?? []);
+        }
+
+        // Provider dari dua sumber: nama usage type di tagihan dan data source resource.
+        $providers = collect(array_keys($summary['by_provider']))
+            ->merge(collect($resources)->pluck('data_source')->filter())
+            ->unique()->values()->all();
+
+        return [
+            'summary'   => $summary,
+            'resources' => $resources,
+            'providers' => $providers,
+            'synced_at' => $accounts->max('usage_types_synced_at') ?? $summary['synced_at'],
+            'error'     => $accounts->pluck('usage_types_error')->filter()->first(),
+            'denied'    => array_values(array_unique($denied)),
+        ];
+    }
+
+    /**
+     * Tarik ulang pemakaian CloudWatch semua key perusahaan ke api_key_usage_daily.
+     * Key baru di akun milik perusahaan ini dicatat dulu supaya ikut tertarik.
+     *
+     * @return array{done: int, failed: int}
+     */
+    public function refreshUsage(string $startDate, string $endDate): array
+    {
+        // Akun milik klien: key baru dicatat, lalu tagihan per usage type dan daftar
+        // resource-nya ikut diperbarui — pemakaian tanpa API key hanya terlihat di sana.
+        foreach ($this->ownedAwsAccounts()->active()->get() as $account) {
+            $account->syncOwnerKeys();
+            $service = \App\Services\AwsLocationService::forAccount($account);
+            $service->syncUsageTypes($startDate, $endDate);
+            $service->discoverResources();
+        }
+
+        $done = 0;
+        $failed = 0;
+
+        foreach ($this->apiKeys()->with('awsAccount')->get() as $key) {
+            if (!\App\Services\AwsLocationService::hasCredentials($key->awsAccount)) {
+                $failed++;
+                continue;
+            }
+
+            // getCachedUsage(force) menembak CloudWatch dan sekaligus menuliskan
+            // pemakaian hariannya ke tabel api_key_usage_daily.
+            $snapshot = \App\Services\AwsLocationService::forAccount($key->awsAccount)
+                ->getCachedUsage($key->key_name, $startDate, $endDate, null, true);
+
+            empty($snapshot['metrics']['error']) ? $done++ : $failed++;
+        }
+
+        return ['done' => $done, 'failed' => $failed];
+    }
+
     /**
      * Nama key utama disimpan juga di kolom lama karena halaman peta klien masih
      * membacanya. Dipanggil tiap kali daftar key berubah.

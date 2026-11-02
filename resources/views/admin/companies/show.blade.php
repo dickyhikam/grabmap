@@ -120,6 +120,10 @@
     }
 
     /* Daftar key */
+    .kv-mini { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 0.76rem; }
+    .kv-mini .k { color: var(--muted); }
+    .kv-mini .v { font-weight: 600; text-align: right; word-break: break-all; }
+    .kv-mini code { font-size: 0.72rem; color: var(--ink); background: none; padding: 0; }
     .key-row { display: flex; align-items: center; gap: 11px; padding: 11px 0; border-bottom: 1px solid var(--line); }
     .key-row:last-of-type { border-bottom: none; }
     .key-ic {
@@ -416,6 +420,109 @@
                 @endif
             @endcan
         </div>
+
+        {{-- ===================== Akun AWS klien (AssumeRole) ===================== --}}
+        @php
+            $invite = $company->awsInvites->first();
+            $owned  = $company->ownedAwsAccounts()->first();
+        @endphp
+        @if($invite || $owned || (auth()->user()?->can('aws_accounts.create') && $inviteSources->isNotEmpty()))
+            <div class="q-card" style="--d:160ms">
+                <div class="q-card-head">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="q-icon-box"><i class="bi bi-cloud-check-fill"></i></div>
+                        <div>
+                            <div class="q-card-title">{{ __('awsconnect.co_card') }}</div>
+                            <div class="q-card-sub">{{ __('awsconnect.co_card_sub') }}</div>
+                        </div>
+                    </div>
+                    @if($owned)
+                        <span class="pill-badge ok"><i class="bi bi-check-circle-fill"></i> {{ __('awsconnect.st_used') }}</span>
+                    @elseif($invite && !$invite->isUsed() && !$invite->isExpired())
+                        <span class="pill-badge plain"><i class="bi bi-hourglass-split"></i> {{ __('awsconnect.st_pending') }}</span>
+                    @endif
+                </div>
+
+                @if($owned)
+                    <div class="key-row">
+                        <span class="key-ic"><i class="bi bi-cloud-fill"></i></span>
+                        <span style="flex:1;min-width:0;">
+                            <span class="key-nm">{{ $owned->name }}</span>
+                            <span class="key-lb">AssumeRole · {{ $owned->account_number }} · {{ $owned->region }}</span>
+                        </span>
+                    </div>
+                    @php
+                        $bill = $company->billingSummary(now()->subDays(30)->format('Y-m-d'), now()->format('Y-m-d'));
+                        $provLabel = fn ($p) => \App\Models\AwsUsageTypeDaily::PROVIDERS[$p] ?? $p;
+                    @endphp
+                    @if($bill)
+                        <div class="kv-mini">
+                            <span class="k">{{ __('awsconnect.co_bill_30d') }}</span>
+                            <span class="v">${{ number_format($bill['summary']['total_cost'], 2) }}</span>
+                        </div>
+                        <div class="kv-mini">
+                            <span class="k">{{ __('awsconnect.bill_provider') }}</span>
+                            <span class="v">{{ $bill['providers'] ? collect($bill['providers'])->map($provLabel)->implode(', ') : '—' }}</span>
+                        </div>
+                        @foreach($bill['resources'] as $res)
+                            <div class="kv-mini">
+                                <span class="k">{{ __('awsconnect.resource_types.' . $res['type']) }}</span>
+                                <span class="v"><code>{{ $res['name'] }}</code>@if(!empty($res['data_source'])) · {{ $provLabel($res['data_source']) }}@endif</span>
+                            </div>
+                        @endforeach
+                        @if($bill['error'])
+                            <div class="form-hint" style="margin-top:8px;color:var(--warn-fg);">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Cost Explorer: {{ $bill['error'] }}
+                            </div>
+                        @endif
+                        @if($bill['denied'])
+                            <div class="form-hint" style="margin-top:8px;color:var(--warn-fg);">
+                                <i class="bi bi-shield-exclamation"></i> {{ __('awsconnect.co_denied', ['actions' => implode(', ', $bill['denied'])]) }}
+                            </div>
+                        @endif
+                    @endif
+                    <div class="form-hint" style="margin-top:10px;">{{ __('awsconnect.co_owned_hint') }}</div>
+                @elseif($invite && !$invite->isUsed() && !$invite->isExpired())
+                    <div class="link-box">
+                        <input type="text" id="inviteUrl" value="{{ $invite->url() }}" readonly>
+                        <button type="button" class="q-ghost-btn" data-copy="inviteUrl" title="{{ __('companies.copy') }}">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                        <a href="{{ $invite->url() }}" target="_blank" class="q-ghost-btn" data-no-loader title="{{ __('companies.open') }}">
+                            <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
+                    </div>
+                    <div class="form-hint" style="margin-top:10px;">
+                        {{ __('awsconnect.co_pending_hint', ['date' => $invite->expires_at->wib()->translatedFormat('d M Y H:i')]) }}
+                    </div>
+                @else
+                    @if($invite?->isExpired())
+                        <div class="form-hint" style="margin-bottom:10px;">{{ __('awsconnect.co_expired_hint') }}</div>
+                    @endif
+                    @can('aws_accounts.create')
+                        <form method="POST" action="{{ route('admin.aws-invites.store') }}">
+                            @csrf
+                            <input type="hidden" name="from_company" value="1">
+                            <input type="hidden" name="company_id" value="{{ $company->id }}">
+                            <input type="hidden" name="label" value="{{ $company->name }}">
+                            <input type="hidden" name="region" value="ap-southeast-1">
+                            <input type="hidden" name="days" value="7">
+                            <div class="form-field" style="margin-bottom:10px;">
+                                <select name="source_account_id" class="form-input">
+                                    @foreach($inviteSources as $source)
+                                        <option value="{{ $source->id }}" @selected($source->is_default)>{{ __('awsconnect.source') }}: {{ $source->name }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="form-hint">{{ __('awsconnect.co_new_hint') }}</div>
+                            </div>
+                            <button type="submit" class="btn-soft" style="width:100%;">
+                                <i class="bi bi-envelope-plus"></i> {{ __('awsconnect.create_btn') }}
+                            </button>
+                        </form>
+                    @endcan
+                @endif
+            </div>
+        @endif
     </div>
 
     {{-- ===================== Link laporan baru ===================== --}}

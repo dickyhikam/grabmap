@@ -111,9 +111,39 @@ class UsageReportController extends Controller
             'taxRate'    => (float) Setting::get('tax_rate', config('aws.tax_rate', 0.11)),
         ]);
 
+        [$data['awsCost'], $data['costSource']] = $this->awsCost($data);
         $data['charge'] = $this->charge($share, $data);
 
         return $data;
+    }
+
+    /**
+     * Biaya AWS yang jadi dasar PPN dan service charge.
+     *
+     * Akun AWS milik klien memakai total tagihan Cost Explorer: di sana pemakaian
+     * tanpa API key (mis. Place Index v1 lewat IAM) ikut terhitung, sedangkan
+     * CloudWatch per key tidak melihatnya. Key perusahaan yang berada di akun lain
+     * (akun Grab) tetap memakai estimasi per key, tanpa menghitung dobel key yang
+     * sudah tercakup tagihan.
+     *
+     * @return array{0: float, 1: string} [biaya USD, 'billing'|'keys']
+     */
+    private function awsCost(array $data): array
+    {
+        $keysCost = AwsLocationService::estimateCost($data['metrics']['operations'] ?? []);
+        $billing = $data['billing'] ?? null;
+
+        // Belum pernah tersinkron: jangan anggap tagihannya nol.
+        if (!$billing || !$billing['synced_at']) {
+            return [$keysCost, 'keys'];
+        }
+
+        $owned = $data['assignedCompany']?->ownedAwsAccounts()->pluck('id')->all() ?? [];
+        $outside = collect($data['usage']['per_key'] ?? [])
+            ->reject(fn ($row) => in_array($row['account_id'] ?? null, $owned, true))
+            ->sum('cost');
+
+        return [$billing['summary']['total_cost'] + $outside, 'billing'];
     }
 
     /**
@@ -134,7 +164,7 @@ class UsageReportController extends Controller
         return ServiceCharge::calculate(
             $accountId,
             $companyId,
-            AwsLocationService::estimateCost($data['metrics']['operations'] ?? []),
+            $data['awsCost'],
             $data['startDate'],
             $data['endDate'],
             $data['idrRate'],
@@ -230,6 +260,8 @@ class UsageReportController extends Controller
                     'error'      => null,
                 ],
                 'fetchedAt' => !empty($usage['fetched_at']) ? \Carbon\Carbon::parse($usage['fetched_at']) : null,
+                // Akun AWS milik klien: tagihan per usage type, termasuk pemakaian tanpa API key.
+                'billing'   => $active ? null : $company->billingSummary($startDate, $endDate),
             ],
         ];
     }

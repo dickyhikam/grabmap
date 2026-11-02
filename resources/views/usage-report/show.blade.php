@@ -95,6 +95,7 @@
     .cc-val .cents { color: rgba(255, 255, 255, 0.62); }
     .cc-idr { font-size: 0.85rem; font-weight: 700; }
     .cc-note { font-size: 0.66rem; color: rgba(255, 255, 255, 0.72); margin-top: 2px; }
+    .cc-note.cc-src { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 3px 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.14); color: #fff; font-weight: 600; }
     /* Rincian dolar dan rupiahnya sejajar per baris supaya mudah dibandingkan. */
     .cc-break {
         flex: 0 0 auto;
@@ -404,7 +405,11 @@
 
     $ops       = $metrics['operations'] ?? [];
     $totalReq  = $metrics['total'] ?? 0;
-    $totalCost = AwsLocationService::estimateCost($ops);
+    // Biaya per operasi (dari API key) untuk tabel rincian; kartu biaya memakai
+    // $awsCost dari controller — untuk akun milik klien itu total tagihan AWS.
+    $opsCost   = AwsLocationService::estimateCost($ops);
+    $totalCost = $awsCost ?? $opsCost;
+    $fromBill  = ($costSource ?? 'keys') === 'billing';
 
     // Service charge + PPN dihitung di controller (App\Models\ServiceCharge).
     // Service charge jasa PT Alfa di luar AWS, jadi hanya dalam Rupiah: persen
@@ -476,12 +481,17 @@
             'rows'  => $rows,
             'count' => array_sum($rows),
             'cost'  => $catCost,
-            'share' => $totalCost > 0 ? ($catCost / $totalCost) * 100 : 0,
+            'share' => $opsCost > 0 ? ($catCost / $opsCost) * 100 : 0,
         ];
     }
 
     $ungrouped = array_diff_key($ops, $claimed);
 @endphp
+
+{{-- Akun AWS milik klien: biayanya dari tagihan, jadi tampilannya disusun di sekitar tagihan itu. --}}
+@if($fromBill && !empty($billing))
+    @include('usage-report._client-account')
+@else
 
 {{-- Laporan ini dibaca klien, jadi yang dibesarkan namanya sendiri — bukan
      judul generik. Logo dipakai kalau perusahaannya punya. --}}
@@ -576,6 +586,10 @@
     </div>
 @endif
 
+@if(!empty($billing))
+    @include('usage-report._billing', ['part' => 'alert'])
+@endif
+
 <div class="stat-row">
     <div class="q-card stat-tile">
         <div class="ic tone-violet"><i class="bi bi-lightning-charge-fill"></i></div>
@@ -624,12 +638,15 @@
                     ? __('servicecharge.incl', ['pct' => round($taxRate * 100, 2)])
                     : __('apikeys.incl_tax', ['pct' => round($taxRate * 100, 2)]) }}
             </div>
+            @if($fromBill)
+                <div class="cc-note cc-src"><i class="bi bi-receipt"></i> {{ __('awsconnect.cost_from_bill') }}</div>
+            @endif
         </div>
 
         {{-- Rincian singkat supaya tiap komponen terlihat langsung dalam dolar
              dan rupiah, tidak hanya terselip di tabel rincian bawah. --}}
         <div class="cc-break">
-            <span>AWS</span>
+            <span>AWS{{ $fromBill ? ' · ' . __('awsconnect.cost_bill_short') : '' }}</span>
             <span class="num">{{ $usd($totalCost) }}</span>
             <span class="num idr" data-idr="{{ $totalCost }}" data-idr-prefix="Rp ">{{ $rp($totalCost) }}</span>
 
@@ -720,8 +737,8 @@
                             <tr>
                                 <td style="color:var(--muted);">{{ __('apikeys.subtotal') }}</td>
                                 <td class="num fw-semibold" data-label="{{ __('apikeys.requests') }}">{{ number_format(array_sum($ops)) }}</td>
-                                <td class="num fw-semibold" data-label="{{ __('apikeys.est_cost') }}">{{ $usd($totalCost) }}</td>
-                                <td class="num fw-semibold idr-cell" data-label="{{ __('apikeys.cost_idr') }}" data-idr="{{ $totalCost }}" data-idr-prefix="Rp ">{{ $rp($totalCost) }}</td>
+                                <td class="num fw-semibold" data-label="{{ __('apikeys.est_cost') }}">{{ $usd($opsCost) }}</td>
+                                <td class="num fw-semibold idr-cell" data-label="{{ __('apikeys.cost_idr') }}" data-idr="{{ $opsCost }}" data-idr-prefix="Rp ">{{ $rp($opsCost) }}</td>
                             </tr>
                             <tr>
                                 <td colspan="2" style="color:var(--muted);">{{ __('apikeys.vat', ['pct' => round($taxRate * 100, 2)]) }}</td>
@@ -781,67 +798,7 @@
     </div>
 
     <div class="detail-side">
-        {{-- Kurs bawaan diambil dari menu Kurs & Pajak. Pembaca boleh menggesernya
-             untuk hitungan kasar sendiri; angka rupiah di halaman ini ikut berubah,
-             sementara angka dolarnya tidak tersentuh. --}}
-        <div class="q-card rate-card {{ $rateOffPeriod ? 'off' : '' }}" data-rate-card
-             data-default="{{ $idrRate }}"
-             data-min="{{ (int) round($idrRate * 0.8) }}"
-             data-max="{{ (int) round($idrRate * 1.2) }}"
-             data-total-vat="{{ $totalVat }}"
-             data-sc-pct="{{ $sc['percent'] }}"
-             data-sc-min-idr="{{ $scMinIdr }}">
-            <div class="rate-head">
-                <div>
-                    <div class="rate-lbl">{{ __('apikeys.rate_title') }}</div>
-                    <div class="rate-val">
-                        <span class="pfx">Rp</span>
-                        <input type="text" inputmode="decimal" data-rate-num value="{{ number_format($idrRate, 0, ',', '.') }}">
-                        <span class="sfx">/ USD</span>
-                    </div>
-                    @if($rateDate)
-                        <div class="rate-meta">
-                            {{ __('apikeys.rate_date', ['date' => $rateDate->translatedFormat('d M Y')]) }}
-                            @if($activeRate->source) · {{ $activeRate->source }} @endif
-                        </div>
-                    @endif
-                </div>
-
-                <button type="button" class="rate-reset" data-rate-reset hidden>
-                    <i class="bi bi-arrow-counterclockwise"></i> {{ __('apikeys.rate_reset') }}
-                </button>
-
-                <span class="rate-tag" data-rate-tag
-                      data-official="{{ __('apikeys.rate_official') }}"
-                      data-custom="{{ __('apikeys.rate_custom') }}">{{ __('apikeys.rate_official') }}</span>
-            </div>
-
-            @if($rateOffPeriod)
-                <div class="rate-warn">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    <span>{{ __('apikeys.rate_off_period', [
-                        'date'   => $rateDate->translatedFormat('d M Y'),
-                        'period' => $rangeEnd->translatedFormat('F Y'),
-                    ]) }}</span>
-                </div>
-            @endif
-
-            <div class="rate-track">
-                <input type="range" data-rate-range
-                       min="{{ (int) round($idrRate * 0.8) }}"
-                       max="{{ (int) round($idrRate * 1.2) }}"
-                       step="10" value="{{ (int) $idrRate }}">
-                {{-- Penanda kurs resmi: posisinya tetap, jadi kelihatan seberapa jauh
-                     geserannya dari angka yang dipakai sistem. --}}
-                <span class="rate-mark" data-rate-mark><span class="dot"></span><span class="tx">{{ __('apikeys.rate_official') }}</span></span>
-            </div>
-
-            <div class="rate-foot">
-                <span>Rp {{ number_format(round($idrRate * 0.8), 0, ',', '.') }}</span>
-                <span class="hint">{{ __('apikeys.rate_hint') }}</span>
-                <span>Rp {{ number_format(round($idrRate * 1.2), 0, ',', '.') }}</span>
-            </div>
-        </div>
+        @include('usage-report._rate-card')
         @isset($usage)
             <div class="q-card">
                 <div class="q-card-head">
@@ -881,9 +838,9 @@
                                         {{-- Porsi menempel pada nama key, bukan kolom sendiri:
                                              kolomnya habis dipakai angka yang tidak boleh terpotong. --}}
                                         <div class="op-track" title="{{ __('apikeys.share_portion') }}">
-                                            <div class="op-fill" style="width: {{ $totalCost > 0 ? ($row['cost'] / $totalCost) * 100 : 0 }}%;"></div>
+                                            <div class="op-fill" style="width: {{ $opsCost > 0 ? ($row['cost'] / $opsCost) * 100 : 0 }}%;"></div>
                                         </div>
-                                        <span class="op-rate">{{ __('apikeys.share_portion') }} {{ $totalCost > 0 ? number_format(($row['cost'] / $totalCost) * 100, 1) : '0,0' }}%</span>
+                                        <span class="op-rate">{{ __('apikeys.share_portion') }} {{ $opsCost > 0 ? number_format(($row['cost'] / $opsCost) * 100, 1) : '0,0' }}%</span>
                                     </td>
                                     <td class="num" data-label="{{ __('apikeys.requests') }}">{{ number_format($row['total']) }}</td>
                                     <td class="num" data-label="{{ __('apikeys.est_cost') }}">{{ $usd($row['cost']) }}</td>
@@ -897,6 +854,11 @@
         @endisset
     </div>
 </div>
+
+@if(!empty($billing))
+    @include('usage-report._billing', ['part' => 'card'])
+@endif
+@endif
 @endsection
 
 @section('footer-note')
