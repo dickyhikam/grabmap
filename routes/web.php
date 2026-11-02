@@ -62,7 +62,7 @@ Route::get('/scrap', function () {
 
 Route::get('/tests', function () {
     return view('scraping/test');
-})->name('pageScrap');
+})->name('pageTests');
 
 Route::get('/map', [MapController::class, 'showMap']);
 Route::get('/api/map-style', [MapController::class, 'getMapStyle']);
