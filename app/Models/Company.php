@@ -5,18 +5,107 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class Company extends Model
 {
     use \App\Models\Concerns\HasUuidRouteKey;
 
-    protected $fillable = ['name', 'slug', 'logo_path', 'is_active', 'aws_account_id', 'aws_api_key', 'aws_api_key_name', 'aws_key_active'];
+    protected $fillable = [
+        'name', 'slug', 'logo_path', 'is_active', 'aws_account_id', 'aws_api_key', 'aws_api_key_name', 'aws_key_active',
+        'pipeline_stage_id', 'pipeline_position', 'stage_changed_at', 'owner_id', 'next_action', 'next_action_due',
+        'website', 'needs', 'pic_external', 'mom_links', 'closed_from',
+    ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'aws_key_active' => 'boolean',
         'aws_api_key' => 'encrypted',
+        'stage_changed_at' => 'datetime',
+        'next_action_due' => 'date',
+        'mom_links' => 'array',
     ];
+
+    /** Fitur peta bawaan untuk halaman /{slug}; pembatas sebenarnya ada di izin API key. */
+    private const DEFAULT_FEATURES = [
+        'search'          => ['language' => 'id'],
+        'route'           => ['modes' => ['Car', 'Motorcycle']],
+        'reverse_geocode' => ['language' => 'id'],
+        'route_matrix'    => ['modes' => ['Car', 'Motorcycle']],
+    ];
+
+    protected static function booted(): void
+    {
+        // Perusahaan dari jalur mana pun (formulir lengkap atau tambah cepat di
+        // board) selalu punya tempat di board: kolom pertama, paling bawah.
+        static::creating(function (Company $company) {
+            $company->pipeline_stage_id ??= PipelineStage::firstStage()?->id;
+            $company->stage_changed_at ??= now();
+
+            if ($company->pipeline_stage_id && !$company->pipeline_position) {
+                $company->pipeline_position = (int) static::where('pipeline_stage_id', $company->pipeline_stage_id)
+                    ->max('pipeline_position') + 1;
+            }
+        });
+
+        static::created(function (Company $company) {
+            CompanyActivity::log($company, 'created', null, ['stage' => $company->stage?->name]);
+        });
+    }
+
+    public function stage(): BelongsTo
+    {
+        return $this->belongsTo(PipelineStage::class, 'pipeline_stage_id');
+    }
+
+    /** PIC dari sisi kita. */
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    public function activities(): HasMany
+    {
+        return $this->hasMany(CompanyActivity::class)->latest('id');
+    }
+
+    /**
+     * Pindahkan perusahaan ke tahap lain dan catat riwayatnya. Saat masuk kategori
+     * "berhenti" dari tahap aktif, nama tahap itu diingat di `closed_from` — tim
+     * perlu tahu klien berhenti di Meeting atau di POC. Keluar lagi = dilupakan.
+     *
+     * @return bool true kalau tahapnya memang berubah.
+     */
+    public function moveToStage(PipelineStage $stage, array $meta = []): bool
+    {
+        if ((int) $this->pipeline_stage_id === $stage->id) {
+            return false;
+        }
+
+        $from = $this->stage;
+
+        $this->update([
+            'pipeline_stage_id' => $stage->id,
+            'stage_changed_at'  => now(),
+            'closed_from'       => $stage->category !== 'closed'
+                ? null
+                : ($from && $from->category !== 'closed' ? $from->name : $this->closed_from),
+        ]);
+        $this->setRelation('stage', $stage);
+
+        CompanyActivity::log($this, 'moved', null, ['from' => $from?->name, 'to' => $stage->name] + $meta);
+
+        return true;
+    }
+
+    /** Pertanyaan klien: yang belum selesai di atas, lalu urut waktu dibuat. */
+    public function clarifications(): HasMany
+    {
+        return $this->hasMany(CompanyClarification::class)
+            ->orderByRaw("CASE status WHEN 'open' THEN 0 WHEN 'waiting' THEN 1 ELSE 2 END")
+            ->orderBy('id');
+    }
 
     /** Akun AWS tempat API key company ini berada (menentukan kredensial CloudWatch). */
     public function awsAccount(): BelongsTo
@@ -165,6 +254,53 @@ class Company extends Model
             return $this->aws_api_key;
         }
         return null;
+    }
+
+    /** Lengkapi baris fitur peta yang belum ada, tanpa mengubah yang sudah diatur. */
+    public function ensureDefaultFeatures(): void
+    {
+        foreach (self::DEFAULT_FEATURES as $key => $settings) {
+            $this->features()->firstOrCreate(
+                ['feature_key' => $key],
+                ['is_enabled' => true, 'settings' => $settings],
+            );
+        }
+    }
+
+    /** Slug unik dari nama; dipakai saat perusahaan dibuat tanpa formulir lengkap. */
+    public static function uniqueSlug(string $name): string
+    {
+        $base = Str::slug($name) ?: 'perusahaan';
+        $slug = $base;
+
+        for ($i = 2; static::where('slug', $slug)->exists(); $i++) {
+            $slug = "{$base}-{$i}";
+        }
+
+        return $slug;
+    }
+
+    /**
+     * Total request semua key tiap perusahaan sejak tanggal tertentu, dibaca dari
+     * api_key_usage_daily — tidak menembak CloudWatch. Akun null = kredensial .env,
+     * jadi pencocokan akunnya harus aman terhadap NULL.
+     *
+     * @return array<int, int> [company_id => jumlah request]
+     */
+    public static function requestsSince(string $date): array
+    {
+        return DB::table('company_api_keys as k')
+            ->join('api_key_usage_daily as u', function ($join) {
+                $join->on('u.key_name', '=', 'k.key_name')
+                    ->where(fn ($q) => $q->whereColumn('u.aws_account_id', 'k.aws_account_id')
+                        ->orWhere(fn ($q) => $q->whereNull('u.aws_account_id')->whereNull('k.aws_account_id')));
+            })
+            ->where('u.usage_date', '>=', $date)
+            ->groupBy('k.company_id')
+            ->selectRaw('k.company_id, SUM(u.request_count) as total')
+            ->pluck('total', 'company_id')
+            ->map(fn ($total) => (int) $total)
+            ->all();
     }
 
     public function isFeatureEnabled(string $key): bool

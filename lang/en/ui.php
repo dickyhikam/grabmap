@@ -9,6 +9,7 @@ return [
     // Rail & topbar
     'aws_accounts'      => 'AWS Accounts',
     'cost_settings'     => 'Rates & Tax',
+    'pipeline'          => 'Pipeline',
     'simulator'         => 'Simulator',
     'roles'             => 'Roles & Access',
     'users'             => 'Users',

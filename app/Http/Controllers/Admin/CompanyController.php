@@ -11,6 +11,7 @@ use App\Models\ServiceCharge;
 use App\Models\CompanyApiKey;
 use App\Models\UsageShareVisit;
 use App\Models\ExchangeRate;
+use App\Models\PipelineStage;
 use App\Models\Setting;
 use App\Services\AwsLocationService;
 use App\Services\AwsRoleConnector;
@@ -22,15 +23,6 @@ class CompanyController extends Controller
 {
     /** Nilai key_ref untuk "buat API key baru" di formulir tambah perusahaan. */
     public const NEW_KEY = '__new';
-
-    private const FEATURES = ['search', 'route', 'reverse_geocode', 'route_matrix'];
-
-    private const DEFAULT_FEATURE_SETTINGS = [
-        'search'          => ['language' => 'id'],
-        'route'           => ['modes' => ['Car', 'Motorcycle']],
-        'reverse_geocode' => ['language' => 'id'],
-        'route_matrix'    => ['modes' => ['Car', 'Motorcycle']],
-    ];
 
     public function index()
     {
@@ -50,8 +42,9 @@ class CompanyController extends Controller
     public function create()
     {
         return view('admin.companies.form', [
-            'availableKeys' => $this->availableKeys(),
-            'inviteSources' => AwsAccount::assumeRoleSources(),
+            'availableKeys'  => $this->availableKeys(),
+            'inviteSources'  => AwsAccount::assumeRoleSources(),
+            'pipelineStages' => PipelineStage::ordered(),
         ]);
     }
 
@@ -70,6 +63,8 @@ class CompanyController extends Controller
             'key_ref'      => 'nullable|string|max:160',
             // Undangan akun AWS klien (opsional): klien menghubungkan akunnya sendiri.
             'connect_aws'       => 'nullable|boolean',
+            // Kolom board pipeline (uuid); kosong = kolom pertama.
+            'pipeline_stage'    => ['nullable', 'uuid', 'exists:pipeline_stages,uuid'],
             'connect_source_id' => ['required_if:connect_aws,1', 'required_if:key_ref,' . self::NEW_KEY, 'nullable', 'integer', Rule::in(AwsAccount::assumeRoleSources()->pluck('id')->all())],
         ] + ServiceCharge::validationRules(true) + $this->newKeyRules(), ServiceCharge::validationMessages() + [
             'connect_source_id.in' => __('awsconnect.err_source'),
@@ -104,6 +99,9 @@ class CompanyController extends Controller
             'is_active'      => $request->boolean('is_active', true),
             'aws_api_key'    => $apiKey && $apiKey !== '********' ? $apiKey : null,
             'aws_key_active' => $request->boolean('aws_key_active', true),
+            'pipeline_stage_id' => !empty($validated['pipeline_stage'])
+                ? PipelineStage::where('uuid', $validated['pipeline_stage'])->value('id')
+                : null,
         ]);
 
         // Key ditempel lebih dulu: akun perusahaan ikut akun key itu, dan tarif
@@ -117,13 +115,7 @@ class CompanyController extends Controller
         // Fitur peta tidak lagi diatur dari formulir perusahaan — pembatas yang
         // sebenarnya ada di izin API key-nya. Barisnya tetap dibuat aktif supaya
         // halaman peta klien punya nilai bawaan yang masuk akal.
-        foreach (self::FEATURES as $key) {
-            $company->features()->create([
-                'feature_key' => $key,
-                'is_enabled'  => true,
-                'settings'    => self::DEFAULT_FEATURE_SETTINGS[$key] ?? null,
-            ]);
-        }
+        $company->ensureDefaultFeatures();
 
         if ($request->boolean('connect_aws')) {
             $inviteWarning = $this->issueInvite($request, $company, $connector);
@@ -134,7 +126,12 @@ class CompanyController extends Controller
                 ->with('warning', $inviteWarning ?? $keyWarning);
         }
 
-        return redirect()->route('admin.companies.index')
+        // Dari board: kembali ke board dengan panel perusahaan baru terbuka.
+        $to = $request->input('from') === 'pipeline'
+            ? route('admin.pipeline.index', ['c' => $company->getRouteKey()])
+            : route('admin.companies.index');
+
+        return redirect($to)
             ->with('success', "Company \"{$company->name}\" berhasil dibuat.")
             ->with('warning', $keyWarning);
     }
@@ -573,12 +570,7 @@ class CompanyController extends Controller
 
         // Perusahaan lama bisa saja belum punya baris fitur — lengkapi seperlunya,
         // tapi jangan mengubah yang sudah ada.
-        foreach (self::FEATURES as $key) {
-            $company->features()->firstOrCreate(
-                ['feature_key' => $key],
-                ['is_enabled' => true, 'settings' => self::DEFAULT_FEATURE_SETTINGS[$key] ?? null],
-            );
-        }
+        $company->ensureDefaultFeatures();
 
         return redirect()->route('admin.companies.index')
             ->with('success', "Company \"{$company->name}\" berhasil diperbarui.");

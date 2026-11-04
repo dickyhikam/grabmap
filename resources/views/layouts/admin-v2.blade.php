@@ -1018,6 +1018,7 @@
         $menu = collect([
             ['route' => 'admin.dashboard',           'match' => 'admin.dashboard*',      'icon' => 'bi-grid-1x2-fill', 'label' => __('admin.dashboard'),    'can' => 'dashboard.view'],
             ['route' => 'admin.companies.index',     'match' => 'admin.companies.*',     'icon' => 'bi-building',      'label' => __('admin.companies'),    'can' => 'companies.view'],
+            ['route' => 'admin.pipeline.index',      'match' => 'admin.pipeline.*',      'icon' => 'bi-kanban',        'label' => __('ui.pipeline'),        'can' => 'companies.view'],
             ['route' => 'admin.api-keys.index',      'match' => 'admin.api-keys.*',      'icon' => 'bi-key-fill',      'label' => __('admin.api_keys'),     'can' => 'api_keys.view'],
             ['route' => 'admin.aws-accounts.index',  'match' => 'admin.aws-accounts.*',  'icon' => 'bi-cloud-fill',    'label' => __('ui.aws_accounts'),    'can' => 'aws_accounts.view'],
             ['route' => 'admin.cost-settings.index', 'match' => 'admin.cost-settings.*', 'icon' => 'bi-cash-coin',     'label' => __('ui.cost_settings'),   'can' => 'cost_settings.view'],

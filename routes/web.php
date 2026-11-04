@@ -373,6 +373,30 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
         });
     });
 
+    // Board pipeline perusahaan (ala Trello). Izinnya menumpang izin perusahaan:
+    // menggeser kartu dan mengatur kolom = mengubah data perusahaan.
+    Route::prefix('admin/pipeline')->group(function () {
+        Route::middleware('permission:companies.view')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\PipelineController::class, 'index'])->name('admin.pipeline.index');
+            Route::get('/companies/{company}', [\App\Http\Controllers\Admin\PipelineController::class, 'show'])->name('admin.pipeline.show');
+        });
+
+        Route::middleware('permission:companies.update')->group(function () {
+            Route::post('/move', [\App\Http\Controllers\Admin\PipelineController::class, 'move'])->name('admin.pipeline.move');
+            Route::put('/companies/{company}', [\App\Http\Controllers\Admin\PipelineController::class, 'update'])->name('admin.pipeline.update');
+            Route::post('/companies/{company}/notes', [\App\Http\Controllers\Admin\PipelineController::class, 'note'])->name('admin.pipeline.note');
+            Route::put('/companies/{company}/profile', [\App\Http\Controllers\Admin\PipelineController::class, 'updateProfile'])->name('admin.pipeline.profile');
+            Route::post('/companies/{company}/clarifications', [\App\Http\Controllers\Admin\PipelineController::class, 'storeClarification'])->name('admin.pipeline.clarifications.store');
+            Route::put('/companies/{company}/clarifications/{clarification}', [\App\Http\Controllers\Admin\PipelineController::class, 'updateClarification'])->name('admin.pipeline.clarifications.update');
+            Route::delete('/companies/{company}/clarifications/{clarification}', [\App\Http\Controllers\Admin\PipelineController::class, 'destroyClarification'])->name('admin.pipeline.clarifications.destroy');
+
+            Route::post('/stages', [\App\Http\Controllers\Admin\PipelineController::class, 'storeStage'])->name('admin.pipeline.stages.store');
+            Route::post('/stages/order', [\App\Http\Controllers\Admin\PipelineController::class, 'orderStages'])->name('admin.pipeline.stages.order');
+            Route::put('/stages/{stage}', [\App\Http\Controllers\Admin\PipelineController::class, 'updateStage'])->name('admin.pipeline.stages.update');
+            Route::delete('/stages/{stage}', [\App\Http\Controllers\Admin\PipelineController::class, 'destroyStage'])->name('admin.pipeline.stages.destroy');
+        });
+    });
+
     // Simulator biaya — pakai API key yang diketik user, hitung request langsung di browser
     Route::get('/admin/simulator', [SimulatorController::class, 'index'])
         ->middleware('permission:simulator.use')

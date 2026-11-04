@@ -183,14 +183,22 @@
 @section('content')
 @php
     $action = $isEdit ? route('admin.companies.update', $company) : route('admin.companies.store');
+    // Dibuka dari tombol "Tambah perusahaan" di board: kembali ke board setelah simpan.
+    $fromPipeline = !$isEdit && old('from', request('from')) === 'pipeline';
 
 @endphp
 
 <div class="q-page-head">
     <div>
-        <a href="{{ route('admin.companies.index') }}" class="back-pill">
-            <i class="bi bi-arrow-left"></i> {{ __('companies.back') }}
-        </a>
+        @if($fromPipeline)
+            <a href="{{ route('admin.pipeline.index') }}" class="back-pill">
+                <i class="bi bi-arrow-left"></i> {{ __('pipeline.back_to_board') }}
+            </a>
+        @else
+            <a href="{{ route('admin.companies.index') }}" class="back-pill">
+                <i class="bi bi-arrow-left"></i> {{ __('companies.back') }}
+            </a>
+        @endif
         <h1 class="q-title">
             @if($isEdit)
                 {{ __('companies.form_edit') }} <span class="soft">{{ $company->name }}</span>
@@ -205,6 +213,7 @@
         <form method="POST" action="{{ $action }}" enctype="multipart/form-data" data-validate id="coForm">
             @csrf
             @if($isEdit) @method('PUT') @endif
+            @if($fromPipeline) <input type="hidden" name="from" value="pipeline"> @endif
 
             <div class="co-cols">
             <div class="co-col">
@@ -269,6 +278,23 @@
                     </label>
                     @error('logo')<div class="form-error"><i class="bi bi-exclamation-circle-fill"></i><span>{{ $message }}</span></div>@enderror
                 </div>
+
+                {{-- Tahap di board pipeline. Saat mengubah perusahaan, tahap digeser dari board. --}}
+                @if(!$isEdit && !empty($pipelineStages) && $pipelineStages->isNotEmpty())
+                    <div class="form-field">
+                        <label class="form-label-sm" for="coStage">{{ __('pipeline.form_stage') }}</label>
+                        <select name="pipeline_stage" id="coStage" class="form-input">
+                            @foreach($pipelineStages->groupBy('category') as $category => $group)
+                                <optgroup label="{{ __('pipeline.categories.' . $category) }}">
+                                    @foreach($group as $st)
+                                        <option value="{{ $st->getRouteKey() }}" @selected(old('pipeline_stage', request('stage')) === $st->getRouteKey())>{{ $st->name }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </select>
+                        <div class="form-hint">{{ __('pipeline.form_stage_hint') }}</div>
+                    </div>
+                @endif
 
                 <label class="sw-row">
                     <input type="hidden" name="is_active" value="0">
