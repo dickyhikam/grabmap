@@ -5,6 +5,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Admin\ApiKeyController;
 use App\Http\Controllers\UsageReportController;
 use App\Http\Controllers\Admin\AwsAccountController;
+use App\Http\Controllers\Admin\AwsBillingController;
 use App\Http\Controllers\Admin\AwsConnectInviteController;
 use App\Http\Controllers\AwsConnectController;
 use App\Http\Controllers\Admin\CostSettingController;
@@ -155,6 +156,10 @@ Route::middleware('throttle:120,1')->group(function () {
 Route::get('/sicepat', [\App\Http\Controllers\SicepatDemoController::class, 'index'])->name('sicepat.demo');
 Route::get('/api/sicepat/search', [\App\Http\Controllers\SicepatDemoController::class, 'search'])->middleware('throttle:60,1');
 
+// Studi kasus KFC, layanan HMD (pencarian alamat dipengaruhi posisi user). Harus di atas catch-all /{slug}.
+Route::get('/kfc', [\App\Http\Controllers\KfcDemoController::class, 'index'])->name('kfc.demo');
+Route::post('/api/kfc/search', [\App\Http\Controllers\KfcDemoController::class, 'search'])->middleware('throttle:90,1');
+
 // === Tools: transfers.txt (GTFS) generator ===
 Route::get('/tools/transfers', [TransfersToolController::class, 'index'])->name('tools.transfers');
 Route::post('/tools/transfers/preview', [TransfersToolController::class, 'preview']);
@@ -255,6 +260,8 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
     Route::prefix('admin/aws-accounts')->group(function () {
         Route::middleware('permission:aws_accounts.view')->group(function () {
             Route::get('/', [AwsAccountController::class, 'index'])->name('admin.aws-accounts.index');
+            // Tagihan per bulan, disusun seperti invoice AWS.
+            Route::get('/{awsAccount}/billing', [AwsBillingController::class, 'show'])->name('admin.aws-accounts.billing');
         });
 
         Route::middleware('permission:aws_accounts.create')->group(function () {
@@ -274,6 +281,12 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
             Route::post('/{awsAccount}/test', [AwsAccountController::class, 'test'])->name('admin.aws-accounts.test');
             // Secret hanya dikirim saat diminta, tidak ikut dirender di formulir.
             Route::post('/{awsAccount}/secret', [AwsAccountController::class, 'revealSecret'])->name('admin.aws-accounts.secret');
+            Route::post('/{awsAccount}/billing/refresh', [AwsBillingController::class, 'refresh'])->name('admin.aws-accounts.billing.refresh');
+            Route::post('/{awsAccount}/billing/invoice', [AwsBillingController::class, 'storeInvoice'])->name('admin.aws-accounts.billing.invoice');
+            Route::post('/{awsAccount}/billing/periods', [AwsBillingController::class, 'storePeriods'])->name('admin.aws-accounts.billing.periods');
+            Route::post('/{awsAccount}/billing/share', [AwsBillingController::class, 'shareEnable'])->name('admin.aws-accounts.billing.share');
+            Route::post('/{awsAccount}/billing/share/disable', [AwsBillingController::class, 'shareDisable'])->name('admin.aws-accounts.billing.share.disable');
+            Route::post('/{awsAccount}/billing/share/regenerate', [AwsBillingController::class, 'shareRegenerate'])->name('admin.aws-accounts.billing.share.regenerate');
         });
 
         Route::middleware('permission:aws_accounts.delete')->group(function () {
@@ -418,6 +431,10 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
 });
 
 // Laporan pemakaian publik (read-only, token rahasia). Harus di atas catch-all /{slug}.
+// Tagihan satu akun AWS, publik & hanya-baca (link dari halaman Tagihan admin).
+Route::get('/billing/{token}', [AwsBillingController::class, 'publicShow'])
+    ->middleware('throttle:30,1')
+    ->name('aws-billing.public');
 Route::get('/usage-report/{token}', [UsageReportController::class, 'show'])
     ->middleware('throttle:30,1')
     ->name('usage-report.show');

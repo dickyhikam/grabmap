@@ -234,6 +234,10 @@
                 @endif
 
                 <div class="acc-actions">
+                    <a href="{{ route('admin.aws-accounts.billing', $account) }}" class="acc-btn">
+                        <i class="bi bi-receipt"></i> {{ __('awsbilling.btn') }}
+                    </a>
+
                     @can('api_keys.view')
                         <a href="{{ route('admin.api-keys.index', ['account' => $account->getRouteKey()]) }}" class="acc-btn">
                             <i class="bi bi-key"></i> {{ __('awsaccounts.api_keys') }}

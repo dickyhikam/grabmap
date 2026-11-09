@@ -12,6 +12,10 @@ return [
     // Bisa di-override lewat input di halaman usage (tersimpan), atau ubah default di sini.
     'usd_to_idr' => (float) env('AWS_USD_TO_IDR', 16500),
 
+    // Jam (WIB) scheduler usage:refresh menarik CloudWatch & Cost Explorer setiap
+    // hari. Dipakai routes/console.php dan ditampilkan di halaman Tagihan.
+    'usage_refresh_time' => env('AWS_USAGE_REFRESH_TIME', '08:00'),
+
     // Nilai awal formulir "API key baru", mengikuti kredit percobaan AWS:
     // USD 200 dan masa berlaku 3 bulan. Hanya titik mulai — keduanya tetap bisa
     // diubah di formulir, dan angka hari harus salah satu preset (30/90/180/365)

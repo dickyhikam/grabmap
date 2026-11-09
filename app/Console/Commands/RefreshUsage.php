@@ -28,18 +28,34 @@ class RefreshUsage extends Command
         $done = 0;
         $failed = 0;
 
-        // Key yang dibuat klien di akunnya sendiri sejak refresh terakhir ikut dicatat.
-        foreach (AwsAccount::query()->active()->whereNotNull('owner_company_id')->get() as $account) {
-            if ($added = $account->syncOwnerKeys()) {
-                $this->info("{$account->name}: {$added} key baru dicatat");
+        foreach (AwsAccount::query()->active()->get() as $account) {
+            if (!$account->hasCredentials()) {
+                continue;
             }
 
             $service = AwsLocationService::forAccount($account);
+
+            // Key yang dibuat klien di akunnya sendiri sejak refresh terakhir ikut dicatat.
+            if ($account->owner_company_id) {
+                if ($added = $account->syncOwnerKeys()) {
+                    $this->info("{$account->name}: {$added} key baru dicatat");
+                }
+                $service->discoverResources();
+            }
+
+            // Tagihan per usage type dan per service berlaku untuk semua akun, termasuk
+            // akun internal (Akun Grab, Tim Alfa) — halaman Tagihan akun membacanya.
             $sync = $service->syncUsageTypes($startDate, $endDate);
             $sync['ok']
                 ? $this->info("{$account->name}: {$sync['rows']} baris tagihan per usage type")
                 : $this->warn("{$account->name}: Cost Explorer gagal — {$sync['error']}");
-            $service->discoverResources();
+
+            // Bulan lalu ikut ditarik: pajak dan koreksi akhir bulan baru masuk
+            // beberapa hari setelah bulan tutup.
+            $costs = $service->syncServiceCosts(now()->subMonthNoOverflow()->format('Y-m-01'), now()->format('Y-m-01'));
+            $costs['ok']
+                ? $this->info("{$account->name}: biaya per service {$costs['months']} bulan")
+                : $this->warn("{$account->name}: biaya per service gagal — {$costs['error']}");
         }
 
         foreach (CompanyApiKey::with('awsAccount')->get() as $key) {

@@ -783,6 +783,73 @@ class AwsLocationService
     }
 
     /**
+     * Tarik biaya per service per bulan dari Cost Explorer ke
+     * aws_service_cost_monthly — semua service di akun, termasuk "Tax" (PPN),
+     * supaya totalnya bisa disandingkan dengan "Total in USD" di invoice AWS.
+     * Satu panggilan Cost Explorer ($0,01) untuk seluruh rentang bulan.
+     *
+     * @return array{ok: bool, error: ?string, months: int}
+     */
+    public function syncServiceCosts(string $fromMonth, string $toMonth): array
+    {
+        if (!$this->account?->id) {
+            return ['ok' => false, 'error' => 'no account', 'months' => 0];
+        }
+
+        try {
+            $start = \Carbon\Carbon::parse($fromMonth)->startOfMonth();
+            // Tanggal akhir Cost Explorer eksklusif dan tidak boleh lewat besok.
+            $end = \Carbon\Carbon::parse($toMonth)->startOfMonth()->addMonth();
+            $tomorrow = now()->utc()->startOfDay()->addDay();
+            if ($end->gt($tomorrow)) {
+                $end = $tomorrow;
+            }
+
+            $months = [];
+            for ($m = $start->copy(); $m->lt($end); $m->addMonth()) {
+                $months[$m->format('Y-m-d')] = [];
+            }
+
+            $ce = new CostExplorerClient(['region' => 'us-east-1'] + $this->clientConfig());
+            $token = null;
+            do {
+                $res = $ce->getCostAndUsage(array_filter([
+                    'TimePeriod'  => ['Start' => $start->format('Y-m-d'), 'End' => $end->format('Y-m-d')],
+                    'Granularity' => 'MONTHLY',
+                    'Metrics'     => ['UnblendedCost'],
+                    'GroupBy'     => [['Type' => 'DIMENSION', 'Key' => 'SERVICE']],
+                    'NextPageToken' => $token,
+                ]));
+
+                foreach ($res['ResultsByTime'] ?? [] as $period) {
+                    $month = \Carbon\Carbon::parse($period['TimePeriod']['Start'])->startOfMonth()->format('Y-m-d');
+                    foreach ($period['Groups'] ?? [] as $group) {
+                        $cost = (float) ($group['Metrics']['UnblendedCost']['Amount'] ?? 0);
+                        if (abs($cost) < 0.000001) {
+                            continue;
+                        }
+                        $service = (string) ($group['Keys'][0] ?? '');
+                        $months[$month][$service] = ($months[$month][$service] ?? 0) + $cost;
+                    }
+                }
+
+                $token = $res['NextPageToken'] ?? null;
+            } while ($token);
+
+            \App\Models\AwsServiceCostMonthly::store($this->account->id, $months);
+            $this->account->forceFill(['service_costs_synced_at' => now(), 'service_costs_error' => null])->save();
+
+            return ['ok' => true, 'error' => null, 'months' => count($months)];
+        } catch (\Throwable $e) {
+            $error = $e instanceof AwsException ? ($e->getAwsErrorMessage() ?: $e->getMessage()) : $e->getMessage();
+            Log::warning('Service cost sync gagal: ' . $error, ['account' => $this->account->name]);
+            $this->account->forceFill(['service_costs_error' => mb_substr($error, 0, 250)])->save();
+
+            return ['ok' => false, 'error' => $error, 'months' => 0];
+        }
+    }
+
+    /**
      * Daftar resource Amazon Location di akun beserta data source-nya — inilah
      * yang menjawab "provider apa yang dipakai". Izin yang belum diberikan
      * dicatat di 'denied', bukan dianggap kosong.

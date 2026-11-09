@@ -10,6 +10,6 @@ Artisan::command('inspire', function () {
 
 // CloudWatch memotong hari per UTC; jam 08:00 WIB (01:00 UTC) hari kemarin sudah utuh.
 Schedule::command('usage:refresh')
-    ->dailyAt('08:00')
+    ->dailyAt(config('aws.usage_refresh_time', '08:00'))
     ->timezone('Asia/Jakarta')
     ->withoutOverlapping();

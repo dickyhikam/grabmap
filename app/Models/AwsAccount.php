@@ -27,6 +27,7 @@ class AwsAccount extends Model
         'name', 'account_number', 'access_key_id', 'secret_access_key',
         'role_arn', 'external_id', 'source_account_id', 'owner_company_id',
         'resources', 'resources_checked_at', 'usage_types_synced_at', 'usage_types_error',
+        'service_costs_synced_at', 'service_costs_error',
         'region', 'is_active', 'is_default', 'notes', 'last_verified_at',
     ];
 
@@ -38,7 +39,13 @@ class AwsAccount extends Model
         'resources'         => 'array',
         'resources_checked_at'  => 'datetime',
         'usage_types_synced_at' => 'datetime',
+        'service_costs_synced_at' => 'datetime',
     ];
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(AwsInvoice::class);
+    }
 
     /**
      * Provider kredensial AssumeRole per role, dibuat sekali per proses. Memoize
