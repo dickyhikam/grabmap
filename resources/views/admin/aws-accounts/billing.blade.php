@@ -150,7 +150,12 @@
     .fx { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.16); }
     .fx-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
     .fx-lbl { font-size: 0.72rem; font-weight: 700; color: rgba(255,255,255,0.78); display: inline-flex; gap: 6px; align-items: center; }
-    .fx-val { font-weight: 800; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+    .fx-val { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; border-radius: 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.22); cursor: text; transition: background 0.12s, border-color 0.12s; }
+    .fx-val:hover { background: rgba(255,255,255,0.16); }
+    .fx-val:focus-within { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.55); }
+    .fx-val > span { font-weight: 800; font-size: 0.92rem; }
+    .fx-val input { width: 9ch; border: none; outline: none; background: transparent; color: #fff; font: inherit; font-weight: 800; font-size: 0.92rem; font-variant-numeric: tabular-nums; padding: 2px 4px; }
+    .fx-val.bad { border-color: #fca5a5; }
     .fx-tag { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; background: #fbbf24; color: #3b2a02; border-radius: 999px; padding: 3px 9px; }
     .fx-reset { margin-left: auto; border: none; background: rgba(255,255,255,0.16); color: #fff; border-radius: 999px; padding: 5px 12px; font-size: 0.7rem; font-weight: 700; cursor: pointer; }
     .fx-reset:hover { background: rgba(255,255,255,0.26); }
@@ -516,11 +521,15 @@
             <div class="fx" data-base="{{ $baseRate }}">
                 <div class="fx-head">
                     <span class="fx-lbl"><i class="bi bi-currency-exchange"></i> {{ __('awsbilling.fx_label') }}</span>
-                    <span class="fx-val" id="fxVal">Rp {{ number_format($baseRate, 2, ',', '.') }}</span>
+                    <label class="fx-val" title="{{ __('awsbilling.fx_type') }}">
+                        <span>Rp</span>
+                        <input type="text" id="fxVal" inputmode="decimal" autocomplete="off" spellcheck="false"
+                               value="{{ number_format($baseRate, 2, ',', '.') }}" aria-label="{{ __('awsbilling.fx_label') }}">
+                    </label>
                     <span class="fx-tag" id="fxTag" hidden>{{ __('awsbilling.fx_sim') }}</span>
                     <button type="button" class="fx-reset" id="fxReset" hidden><i class="bi bi-arrow-counterclockwise"></i> {{ __('awsbilling.fx_reset') }}</button>
                 </div>
-                <input type="range" id="fxRange" min="{{ $rMin }}" max="{{ $rMax }}" step="10" value="{{ round($baseRate, 2) }}"
+                <input type="range" id="fxRange" min="{{ $rMin }}" max="{{ $rMax }}" step="1" value="{{ round($baseRate) }}"
                        aria-label="{{ __('awsbilling.fx_label') }}">
                 <div class="fx-scale">
                     <span>Rp {{ number_format($rMin, 0, ',', '.') }}</span>
@@ -1094,11 +1103,38 @@
             const baseLine = compute(base);
             const sim = (on) => document.querySelectorAll('.hero, .co, .pd').forEach((el) => el.classList.toggle('is-sim', on));
 
-            range.addEventListener('input', () => {
-                const rate = parseFloat(range.value);
-                const t = compute(rate);
-                const on = Math.abs(rate - base) >= 0.5;
-                document.getElementById('fxVal').textContent = 'Rp ' + rate.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const valEl = document.getElementById('fxVal');
+            const valBox = valEl.closest('.fx-val');
+            const show2 = (r) => r.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            // Terima "18.228,69", "18228,69", "18228.69", "Rp18.228". Titik dianggap
+            // pemisah ribuan bila ada koma, ada >1 titik, atau tepat 3 digit di belakangnya.
+            const parseRate = (txt) => {
+                let t = String(txt).replace(/[^\d.,]/g, '');
+                if (!t) return null;
+                if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+                else if ((t.match(/\./g) || []).length > 1 || /\.\d{3}$/.test(t)) t = t.replace(/\./g, '');
+                const v = parseFloat(t);
+                return Number.isFinite(v) && v > 0 ? Math.round(v * 100) / 100 : null;
+            };
+            let rate = base;
+            // Kurs simulasi diingat per browser, per akun + bulan. Kalau kurs invoice
+            // berubah sejak disimpan, simpanan lama dibuang.
+            const fxKey = 'gm-fx:' + @json($account->getRouteKey() . ':' . $start->format('Y-m'));
+            const store = (r) => {
+                try {
+                    if (Math.abs(r - base) < 0.005) localStorage.removeItem(fxKey);
+                    else localStorage.setItem(fxKey, JSON.stringify({ rate: r, base }));
+                } catch (e) {}
+            };
+            // Kurs aktif disimpan terpisah dari slider: slider per Rp 1, ketikan boleh
+            // sampai 2 desimal dan boleh di luar rentang slider.
+            const apply = (r, from) => {
+                rate = r;
+                store(r);
+                const t = compute(r);
+                const on = Math.abs(r - base) >= 0.005;
+                if (from !== 'range') range.value = Math.round(r);
+                if (from !== 'text') valEl.value = show2(r);
                 document.getElementById('fxTag').hidden = !on;
                 document.getElementById('fxReset').hidden = !on;
                 const d = t && baseLine ? t.total - baseLine.total : 0;
@@ -1106,11 +1142,34 @@
                     ? @json(__('awsbilling.fx_delta')).replace(':diff', (d >= 0 ? '+' : '−') + fmt(Math.abs(d)).replace('−', ''))
                     : @json(__('awsbilling.fx_hint'));
                 sim(on);
+            };
+
+            range.addEventListener('input', () => apply(parseFloat(range.value), 'range'));
+            valEl.addEventListener('input', () => {
+                const r = parseRate(valEl.value);
+                valBox.classList.toggle('bad', r === null);
+                if (r !== null) apply(r, 'text');
             });
-            document.getElementById('fxReset').addEventListener('click', () => {
-                range.value = base;
-                range.dispatchEvent(new Event('input'));
+            const commit = () => { valBox.classList.remove('bad'); valEl.value = show2(rate); };
+            valEl.addEventListener('blur', commit);
+            let before = base;
+            valEl.addEventListener('focus', () => { before = rate; valEl.select(); });
+            valEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { commit(); valEl.blur(); }
+                else if (e.key === 'Escape') { apply(before); valEl.blur(); }
+                else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const step = e.shiftKey ? 100 : 1;
+                    apply(Math.max(1, Math.round((rate + (e.key === 'ArrowUp' ? step : -step)) * 100) / 100));
+                }
             });
+            document.getElementById('fxReset').addEventListener('click', () => apply(base));
+
+            try {
+                const saved = JSON.parse(localStorage.getItem(fxKey) || 'null');
+                if (saved && Math.abs(saved.base - base) < 0.005 && saved.rate > 0) apply(saved.rate);
+                else localStorage.removeItem(fxKey);
+            } catch (e) {}
         }
 
         // Tampilan rincian per key: urut biaya atau per kategori. Satu pilihan

@@ -37,7 +37,8 @@ return [
     'fx_label' => 'USD rate',
     'fx_sim'   => 'Simulation',
     'fx_reset' => 'Invoice rate',
-    'fx_hint'  => 'Drag to simulate the rate',
+    'fx_type'  => 'Type a rate, e.g. 18.228,69 (↑/↓ = ±Rp 1, Shift = ±Rp 100)',
+    'fx_hint'  => 'Drag or type a rate to simulate',
     'fx_delta' => 'Total :diff vs the invoice rate',
 
     'chk_none'        => 'Invoice not entered',

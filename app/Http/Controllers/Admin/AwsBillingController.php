@@ -46,6 +46,13 @@ class AwsBillingController extends Controller
     /** Selisih invoice yang masih dianggap cocok (pembulatan sen). */
     private const MATCH_TOLERANCE = 0.05;
 
+    /**
+     * Berapa bulan ke belakang biaya per layanan ikut ditarik saat "Tarik ulang".
+     * Cost Explorer menyimpan riwayat ~13 bulan dan menagih per request, bukan per
+     * bulan, jadi rentang ini gratis dibanding menarik satu bulan saja.
+     */
+    private const COST_HISTORY_MONTHS = 12;
+
     public function show(Request $request, AwsAccount $awsAccount)
     {
         return view('admin.aws-accounts.billing', $this->billingData($awsAccount, $request->query('month')) + [
@@ -232,7 +239,14 @@ class AwsBillingController extends Controller
         $service = AwsLocationService::forAccount($awsAccount);
         $errors = [];
 
-        $costs = $service->syncServiceCosts($start->format('Y-m-d'), $start->format('Y-m-d'));
+        // Biaya per layanan diambil bulanan: satu request Cost Explorer ($0,01)
+        // berlaku untuk berapa pun bulannya. Jadi sekalian tarik 12 bulan ke
+        // belakang supaya bulan lama tidak kosong, tanpa tambahan biaya.
+        $floor = now()->utc()->startOfMonth()->subMonths(self::COST_HISTORY_MONTHS);
+        $costFrom = $start->lt($floor) ? $start->copy() : $floor;
+        $costTo = $start->copy()->max(now()->utc()->startOfMonth());
+
+        $costs = $service->syncServiceCosts($costFrom->format('Y-m-d'), $costTo->format('Y-m-d'));
         if (!$costs['ok']) {
             $errors[] = 'Cost Explorer: ' . $costs['error'];
         }

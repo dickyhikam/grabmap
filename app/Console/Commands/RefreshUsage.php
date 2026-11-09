@@ -18,6 +18,9 @@ class RefreshUsage extends Command
 
     protected $description = 'Refresh CloudWatch usage for every company API key';
 
+    /** Rentang biaya per layanan yang ikut ditarik tiap hari (retensi CE ~13 bulan). */
+    private const COST_HISTORY_MONTHS = 12;
+
     public function handle(): int
     {
         // Rentang sama dengan bawaan tombol Refresh, supaya snapshot cache yang
@@ -50,9 +53,13 @@ class RefreshUsage extends Command
                 ? $this->info("{$account->name}: {$sync['rows']} baris tagihan per usage type")
                 : $this->warn("{$account->name}: Cost Explorer gagal — {$sync['error']}");
 
-            // Bulan lalu ikut ditarik: pajak dan koreksi akhir bulan baru masuk
-            // beberapa hari setelah bulan tutup.
-            $costs = $service->syncServiceCosts(now()->subMonthNoOverflow()->format('Y-m-01'), now()->format('Y-m-01'));
+            // Biaya per layanan ditagih per request, bukan per bulan, jadi 12 bulan
+            // ke belakang sama murahnya dengan satu bulan. Bulan lampau ikut segar:
+            // pajak dan koreksi akhir bulan baru masuk beberapa hari setelah tutup.
+            $costs = $service->syncServiceCosts(
+                now()->startOfMonth()->subMonthsNoOverflow(self::COST_HISTORY_MONTHS)->format('Y-m-01'),
+                now()->format('Y-m-01'),
+            );
             $costs['ok']
                 ? $this->info("{$account->name}: biaya per service {$costs['months']} bulan")
                 : $this->warn("{$account->name}: biaya per service gagal — {$costs['error']}");

@@ -40,7 +40,8 @@ return [
     'fx_label' => 'Kurs USD',
     'fx_sim'   => 'Simulasi',
     'fx_reset' => 'Kurs invoice',
-    'fx_hint'  => 'Geser untuk simulasi kurs',
+    'fx_type'  => 'Ketik kurs, mis. 18.228,69 (↑/↓ = ±Rp 1, Shift = ±Rp 100)',
+    'fx_hint'  => 'Geser atau ketik kurs untuk simulasi',
     'fx_delta' => 'Total :diff dibanding kurs invoice',
 
     // Cek invoice
