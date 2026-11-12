@@ -339,6 +339,26 @@
                     'scCurrent' => $scCurrent ?? null,
                     'scHistory' => $scHistory ?? collect(),
                 ])
+
+                {{-- Komponen tagihan ke klien. Dimatikan untuk akun yang ditagih langsung oleh AWS. --}}
+                <label class="sw-row">
+                    <input type="hidden" name="bill_management_fee" value="0">
+                    <input type="checkbox" name="bill_management_fee" value="1" @checked(old('bill_management_fee', $account->bill_management_fee ?? true))>
+                    <span class="tx">
+                        <span class="nm d-block">{{ __('awsaccounts.bill_fee') }}</span>
+                        <span class="ds">{{ __('awsaccounts.bill_fee_d') }}</span>
+                    </span>
+                    <span class="sw"></span>
+                </label>
+                <label class="sw-row">
+                    <input type="hidden" name="bill_vat" value="0">
+                    <input type="checkbox" name="bill_vat" value="1" @checked(old('bill_vat', $account->bill_vat ?? true))>
+                    <span class="tx">
+                        <span class="nm d-block">{{ __('awsaccounts.bill_vat') }}</span>
+                        <span class="ds">{{ __('awsaccounts.bill_vat_d') }}</span>
+                    </span>
+                    <span class="sw"></span>
+                </label>
             </div>
 
             {{-- Status & catatan --}}

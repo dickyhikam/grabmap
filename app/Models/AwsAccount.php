@@ -27,19 +27,23 @@ class AwsAccount extends Model
         'name', 'account_number', 'access_key_id', 'secret_access_key',
         'role_arn', 'external_id', 'source_account_id', 'owner_company_id',
         'resources', 'resources_checked_at', 'usage_types_synced_at', 'usage_types_error',
-        'service_costs_synced_at', 'service_costs_error',
+        'service_costs_synced_at', 'service_costs_error', 'invoices_synced_at', 'invoices_error',
         'region', 'is_active', 'is_default', 'notes', 'last_verified_at',
+        'bill_management_fee', 'bill_vat',
     ];
 
     protected $casts = [
         'secret_access_key' => 'encrypted',
         'is_active'         => 'boolean',
         'is_default'        => 'boolean',
+        'bill_management_fee' => 'boolean',
+        'bill_vat'          => 'boolean',
         'last_verified_at'  => 'datetime',
         'resources'         => 'array',
         'resources_checked_at'  => 'datetime',
         'usage_types_synced_at' => 'datetime',
         'service_costs_synced_at' => 'datetime',
+        'invoices_synced_at'      => 'datetime',
     ];
 
     public function invoices(): HasMany

@@ -154,6 +154,13 @@ class AwsConnectInvite extends Model
                     'Action'   => 'ce:GetCostAndUsage',
                     'Resource' => '*',
                 ],
+                [
+                    // Status invoice resmi (terbit/belum, jatuh tempo) di halaman Tagihan.
+                    'Sid'      => 'ReadInvoiceSummaries',
+                    'Effect'   => 'Allow',
+                    'Action'   => ['invoicing:ListInvoiceSummaries', 'invoicing:GetInvoicePDF'],
+                    'Resource' => '*',
+                ],
             ],
         ];
     }

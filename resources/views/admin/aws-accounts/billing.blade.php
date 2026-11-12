@@ -44,7 +44,24 @@
 
     $feePct = $split && $split['percent'] !== null ? $pct($split['percent']) . '%' : '';
     $vatPct = $split ? $pct($split['vat_rate'] * 100) : $pct($taxRate * 100);
+    // Management fee & VAT bisa dimatikan per akun; barisnya disembunyikan.
+    $hasFee = $split['has_fee'] ?? true;
+    $hasVat = $split['has_vat'] ?? true;
+    $heroSub = match (true) {
+        $hasFee && $hasVat => __('awsbilling.hero_sub'),
+        $hasFee            => __('awsbilling.hero_sub_fee'),
+        $hasVat            => __('awsbilling.hero_sub_vat'),
+        default            => __('awsbilling.hero_sub_aws'),
+    };
     $openInvoice = $errors->hasAny(['total_usd', 'total_idr', 'invoice_number', 'note']);
+
+    // Invoice resmi AWS bulan ini (Invoicing API). Yang utama dipakai mengisi
+    // formulir invoice otomatis kalau admin belum mengisinya.
+    $awsMain = $awsInvoices->first(fn ($i) => !$i->isCreditMemo());
+    // Angka resmi AWS sedang dipakai (belum ada invoice manual): formulir terisi angka itu.
+    $prefill = $invoiceSource === 'aws';
+    // Di link publik hanya status yang pasti yang ditampilkan, bukan petunjuk izin.
+    $showBill = !$public || in_array($billStatus, ['issued', 'pending'], true);
 
     // Export CSV tersedia di admin maupun link publik selama rincian Rupiah ada.
     $canExport = $split && $detail;
@@ -178,6 +195,27 @@
     .chk-list li b { font-variant-numeric: tabular-nums; text-align: right; min-width: 0; overflow-wrap: anywhere; }
     .chk-foot { margin-top: auto; padding-top: 16px; display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
     .chk-by { font-size: 0.68rem; color: var(--faint); }
+
+    /* Status tagihan resmi AWS (Invoicing API) */
+    .bs { margin-top: 16px; border-radius: 16px; background: var(--surface); padding: 12px 14px; font-size: 0.78rem; }
+    .bs-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .bs-k { color: var(--muted); font-weight: 600; margin-right: auto; }
+    .bs-pill { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 3px 10px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.02em; background: var(--card); color: var(--muted); }
+    .bs-pill.issued { background: var(--green-soft); color: var(--green-text); }
+    .bs-pill.pending { background: var(--warn-soft); color: var(--warn-fg); }
+    .bs-pill.denied, .bs-pill.error { background: var(--danger-soft); color: var(--danger-fg); }
+    .bs-note { color: var(--muted); font-size: 0.72rem; line-height: 1.5; margin-top: 8px; }
+    .bs-note code { font-size: 0.7rem; background: var(--card); border-radius: 6px; padding: 1px 5px; color: var(--ink); overflow-wrap: anywhere; }
+    .bs-inv { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; }
+    .bs-inv:first-of-type { border-top: 0; padding-top: 0; }
+    .bs-no { font-weight: 800; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .bs-no small { font-weight: 700; color: var(--danger-fg); margin-left: 4px; }
+    .bs-pdf { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: var(--card); color: var(--green-text); font-size: 0.68rem; font-weight: 700; text-decoration: none; vertical-align: 1px; }
+    .bs-pdf:hover { background: var(--green-soft); }
+    .bs-amt { font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .bs-sub { color: var(--muted); font-size: 0.7rem; }
+    .bs-sub.r { text-align: right; white-space: nowrap; }
+    .bs-due.late { color: var(--warn-fg); font-weight: 700; }
 
     /* ---------- Per perusahaan ---------- */
     .sec-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -601,26 +639,30 @@
 
         @if($split)
             <div class="hero-val" data-f="total">{{ $rp($split['total']['total']) }}</div>
-            <div class="hero-sub">{{ __('awsbilling.hero_sub') }}</div>
+            <div class="hero-sub">{{ $heroSub }}</div>
 
-            <div class="flow">
+            <div class="flow" style="grid-template-columns: {{ implode(' auto ', array_fill(0, 1 + $hasFee + $hasVat, '1fr')) }};">
                 <div class="flow-step">
                     <div class="k">{{ __('awsbilling.flow_aws') }}</div>
                     <div class="v" data-f="idr">{{ $rp($split['total']['idr']) }}</div>
                     <div class="s">{{ $usd($split['total']['usd']) }} · {{ __('awsbilling.incl_aws_vat') }}</div>
                 </div>
-                <div class="flow-op">+</div>
-                <div class="flow-step">
-                    <div class="k">{{ trim(__('awsbilling.flow_fee') . ' ' . $feePct) }}</div>
-                    <div class="v" data-f="fee">{{ $rp($split['total']['fee']) }}</div>
-                    <div class="s">PT. Tim Alfa</div>
-                </div>
-                <div class="flow-op">+</div>
-                <div class="flow-step">
-                    <div class="k">VAT {{ $vatPct }}%</div>
-                    <div class="v" data-f="vat">{{ $rp($split['total']['vat']) }}</div>
-                    <div class="s">{{ __('awsbilling.flow_vat_sub') }}</div>
-                </div>
+                @if($hasFee)
+                    <div class="flow-op">+</div>
+                    <div class="flow-step">
+                        <div class="k">{{ trim(__('awsbilling.flow_fee') . ' ' . $feePct) }}</div>
+                        <div class="v" data-f="fee">{{ $rp($split['total']['fee']) }}</div>
+                        <div class="s">PT. Tim Alfa</div>
+                    </div>
+                @endif
+                @if($hasVat)
+                    <div class="flow-op">+</div>
+                    <div class="flow-step">
+                        <div class="k">VAT {{ $vatPct }}%</div>
+                        <div class="v" data-f="vat">{{ $rp($split['total']['vat']) }}</div>
+                        <div class="s">{{ $hasFee ? __('awsbilling.flow_vat_sub') : __('awsbilling.flow_vat_sub_nofee') }}</div>
+                    </div>
+                @endif
             </div>
 
             @if($hasPeriods)
@@ -701,15 +743,64 @@
                 <b title="{{ $rateSource === 'table' ? $storedRate->source . ', ' . $storedRate->rate_date->translatedFormat('d M Y') : '' }}">
                     {{ $rate ? 'Rp ' . number_format($rate, 2, ',', '.') : '—' }}
                     @if($rateSource === 'table')<small style="color:var(--faint);font-weight:600;">({{ __('awsbilling.rate_from_table') }})</small>@endif
+                    @if($rateSource === 'aws')<small style="color:var(--faint);font-weight:600;">(AWS)</small>@endif
                 </b>
             </li>
         </ul>
+
+        @if($showBill)
+            <div class="bs">
+                <div class="bs-top">
+                    <span class="bs-k">{{ __('awsbilling.bs_title') }}</span>
+                    <span class="bs-pill {{ $billStatus }}">
+                        <i class="bi {{ ['issued' => 'bi-check2-circle', 'pending' => 'bi-hourglass-split', 'denied' => 'bi-shield-lock', 'error' => 'bi-exclamation-triangle', 'none' => 'bi-dash-circle', 'unknown' => 'bi-question-circle'][$billStatus] }}"></i>
+                        {{ __('awsbilling.bs_' . $billStatus) }}
+                    </span>
+                </div>
+
+                @foreach($awsInvoices as $ai)
+                    <div class="bs-inv">
+                        <span class="bs-no">{{ $ai->invoice_id }}@if($ai->isCreditMemo())<small>{{ __('awsbilling.bs_credit_memo') }}</small>@endif
+                            @unless($public)
+                                <a class="bs-pdf" href="{{ route('admin.aws-accounts.billing.invoice-pdf', [$account, $ai->invoice_id]) }}" target="_blank" rel="noopener" title="{{ __('awsbilling.bs_pdf_title') }}"><i class="bi bi-download"></i> PDF</a>
+                            @endunless
+                        </span>
+                        <span class="bs-amt">{{ $ai->base_currency === 'USD' ? $usd($ai->base_amount) : number_format((float) $ai->base_amount, 2, ',', '.') . ' ' . $ai->base_currency }}</span>
+                        <span class="bs-sub">
+                            {{ __('awsbilling.bs_issued_on', ['date' => $ai->issued_at?->wib()->translatedFormat('d M Y') ?? '—']) }}
+                            @if($ai->due_at)
+                                · <span class="bs-due {{ $ai->isPastDue() ? 'late' : '' }}">{{ __('awsbilling.bs_due_on', ['date' => $ai->due_at->wib()->translatedFormat('d M Y')]) }}</span>
+                            @endif
+                        </span>
+                        <span class="bs-sub r">{{ $ai->idrAmount() !== null ? $rp($ai->idrAmount()) : '' }}</span>
+                    </div>
+                @endforeach
+
+                @if($billStatus !== 'issued')
+                    <div class="bs-note">
+                        @if($billStatus === 'denied')
+                            {!! __('awsbilling.bs_denied_sub', ['perm' => '<code>invoicing:ListInvoiceSummaries</code>']) !!}
+                        @elseif($billStatus === 'error')
+                            {{ __('awsbilling.bs_error_sub') }} <code>{{ $account->invoices_error }}</code>
+                        @else
+                            {{ __('awsbilling.bs_' . $billStatus . '_sub') }}
+                        @endif
+                    </div>
+                @elseif($awsMain?->isPastDue())
+                    <div class="bs-note">{{ __('awsbilling.bs_past_due_sub') }}</div>
+                @endif
+            </div>
+        @endif
 
         <div class="chk-foot">
             <span class="chk-by">
                 @if($invoice)
                     {{ $invoice->invoice_number }}{{ $invoice->invoice_number && !$public ? ' · ' : '' }}
-                    @unless($public){{ __('awsbilling.inv_by', ['by' => $invoice->created_by ?? '—', 'ago' => $invoice->updated_at?->diffForHumans()]) }}@endunless
+                    @if($invoiceSource === 'aws')
+                        {{ __('awsbilling.inv_from_aws') }}
+                    @else
+                        @unless($public){{ __('awsbilling.inv_by', ['by' => $invoice->created_by ?? '—', 'ago' => $invoice->updated_at?->diffForHumans()]) }}@endunless
+                    @endif
                 @endif
             </span>
             @if($canEdit)
@@ -743,8 +834,8 @@
                 <div class="pd-sub">{{ $usd($pt['usd']) }} · {{ trans_choice('awsbilling.n_days', $pp['start']->diffInDays($pp['end']) + 1, ['n' => $pp['start']->diffInDays($pp['end']) + 1]) }}</div>
                 <div class="co-lines">
                     <div class="co-line"><span>{{ __('awsbilling.flow_aws') }}</span><b data-f="idr">{{ $rp($pt['idr']) }}</b></div>
-                    <div class="co-line"><span>{{ trim(__('awsbilling.flow_fee') . ' ' . $feePct) }}</span><b data-f="fee">{{ $rp($pt['fee']) }}</b></div>
-                    <div class="co-line"><span>VAT {{ $vatPct }}%</span><b data-f="vat">{{ $rp($pt['vat']) }}</b></div>
+                    @if($hasFee)<div class="co-line"><span>{{ trim(__('awsbilling.flow_fee') . ' ' . $feePct) }}</span><b data-f="fee">{{ $rp($pt['fee']) }}</b></div>@endif
+                    @if($hasVat)<div class="co-line"><span>VAT {{ $vatPct }}%</span><b data-f="vat">{{ $rp($pt['vat']) }}</b></div>@endif
                 </div>
                 @if(count($pp['split']['rows']))
                     <div class="pd-cos">
@@ -802,8 +893,8 @@
 
                 <div class="co-lines">
                     <div class="co-line"><span>{{ __('awsbilling.flow_aws') }} <small>({{ $usd($row['usd']) }})</small></span><b data-f="idr">{{ $rp($row['idr']) }}</b></div>
-                    <div class="co-line"><span>{{ trim(__('awsbilling.flow_fee') . ' ' . ($split['percent'] !== null ? $feePct : $pct($row['percent']) . '%')) }}</span><b data-f="fee">{{ $rp($row['fee']) }}</b></div>
-                    <div class="co-line"><span>VAT {{ $vatPct }}%</span><b data-f="vat">{{ $rp($row['vat']) }}</b></div>
+                    @if($hasFee)<div class="co-line"><span>{{ trim(__('awsbilling.flow_fee') . ' ' . ($split['percent'] !== null ? $feePct : $pct($row['percent']) . '%')) }}</span><b data-f="fee">{{ $rp($row['fee']) }}</b></div>@endif
+                    @if($hasVat)<div class="co-line"><span>VAT {{ $vatPct }}%</span><b data-f="vat">{{ $rp($row['vat']) }}</b></div>@endif
                 </div>
 
                 @if($hasPeriods)
@@ -1014,12 +1105,12 @@
 {{-- Modal export CSV — admin dan link publik sama. --}}
 @if($canExport)
     @php
-        $exCols = ['usd', 'aws', 'fee', 'invoice', 'vat', 'total'];
-        $exPresets = [
+        $exCols = \App\Services\BillingExport::columnsFor(['split' => $split]);
+        $exPresets = array_filter([
             'all' => $exCols,
             'aws' => ['usd', 'aws'],
-            'fee' => ['fee', 'vat'],
-        ];
+            'fee' => array_values(array_intersect(['fee', 'vat'], $exCols)) ?: null,
+        ]);
         // Judul kolom sama persis dengan di file (fee membawa persennya kalau seragam).
         $exColLabel = fn ($c) => $c === 'fee' && $split['percent'] !== null
             ? __('awsbilling.csv_col_fee_pct', ['fee' => $pct($split['percent'])])
@@ -1236,7 +1327,7 @@
     <div class="gm-modal {{ $openInvoice ? 'open' : '' }}" id="invModal" role="dialog" aria-modal="true" aria-labelledby="invTitle">
         <div class="gm-modal-card">
             <div class="gm-modal-title" id="invTitle">{{ __('awsbilling.inv_modal_title', ['month' => $start->translatedFormat('F Y')]) }}</div>
-            <div class="gm-modal-sub">{{ __('awsbilling.inv_modal_sub') }}</div>
+            <div class="gm-modal-sub">{{ __('awsbilling.inv_modal_sub') }}@if($prefill) {{ __('awsbilling.inv_prefilled') }}@endif</div>
 
             <form method="POST" action="{{ route('admin.aws-accounts.billing.invoice', $account) }}" data-validate>
                 @csrf

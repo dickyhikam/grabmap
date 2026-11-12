@@ -109,4 +109,8 @@ return [
     'secret_hide'   => 'Hide',
     'secret_copy'   => 'Copy',
     'secret_copied' => 'Secret copied.',
+    'bill_fee'     => 'Charge management fee',
+    'bill_fee_d'   => 'Turn off if this account has no management fee. The Billing page hides the fee line.',
+    'bill_vat'     => 'Charge VAT',
+    'bill_vat_d'   => 'Turn off if no VAT is added on top of the AWS bill + fee. AWS\'s own VAT stays in the AWS bill.',
 ];

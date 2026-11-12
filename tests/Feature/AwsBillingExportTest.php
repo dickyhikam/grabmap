@@ -129,6 +129,34 @@ class AwsBillingExportTest extends TestCase
         $this->assertSame(['TOTAL', '', '', '100,00', '9,00', '99,90', '1798000', '161820', '1959820', '215580', '2175400'], $total);
     }
 
+    public function test_account_without_fee_and_vat_bills_only_the_aws_amount(): void
+    {
+        $this->account->forceFill(['bill_management_fee' => false, 'bill_vat' => false])->save();
+
+        // Export: kolom fee/invoice/VAT/total hilang, baris tarif fee & VAT tidak ditulis.
+        $rows = $this->rows($this->csv());
+        $this->assertNull($this->rowStarting($rows, 'Management fee'));
+        $this->assertSame(['TOTAL', '', '', '100,00', '99,90', '1798000'], $this->rowStarting($rows, 'TOTAL'));
+
+        // Halaman: total ke klien = tagihan AWS, tanpa langkah fee & VAT.
+        $this->actingAs($this->admin())->withSession(['admin_locale' => 'id'])
+            ->get(route('admin.aws-accounts.billing', [$this->account, 'month' => $this->month->format('Y-m')]))
+            ->assertOk()
+            ->assertSee('Tagihan AWS, tanpa management fee dan VAT')
+            ->assertSee('Rp 1.798.000')
+            ->assertDontSee('data-f="fee"', false)
+            ->assertDontSee('data-f="vat"', false);
+    }
+
+    public function test_vat_only_account_skips_fee(): void
+    {
+        $this->account->forceFill(['bill_management_fee' => false])->save();
+
+        // 1.798.000 + VAT 11% (197.780) = 1.995.780
+        $total = $this->rowStarting($this->rows($this->csv()), 'TOTAL');
+        $this->assertSame(['TOTAL', '', '', '100,00', '99,90', '1798000', '197780', '1995780'], $total);
+    }
+
     public function test_company_filter_keeps_only_selected_and_totals_them(): void
     {
         $csv = $this->csv(['co' => [$this->kai->id]]);

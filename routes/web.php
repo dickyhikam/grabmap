@@ -263,6 +263,8 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
             // Tagihan per bulan, disusun seperti invoice AWS.
             Route::get('/{awsAccount}/billing', [AwsBillingController::class, 'show'])->name('admin.aws-accounts.billing');
             Route::get('/{awsAccount}/billing/export', [AwsBillingController::class, 'export'])->name('admin.aws-accounts.billing.export');
+            Route::get('/{awsAccount}/billing/invoices/{invoiceId}/pdf', [AwsBillingController::class, 'invoicePdf'])
+                ->where('invoiceId', '[A-Za-z0-9_-]+')->name('admin.aws-accounts.billing.invoice-pdf');
         });
 
         Route::middleware('permission:aws_accounts.create')->group(function () {

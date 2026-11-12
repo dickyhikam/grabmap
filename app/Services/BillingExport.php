@@ -90,9 +90,10 @@ class BillingExport
 
         $level = in_array($request->query('level'), self::LEVELS, true) ? $request->query('level') : 'key';
 
+        $available = self::columnsFor($data);
         $c = $request->query('cols');
-        $cols = is_array($c) ? array_values(array_intersect(self::COLUMNS, $c)) : self::COLUMNS;
-        $cols = $cols ?: self::COLUMNS;
+        $cols = is_array($c) ? array_values(array_intersect($available, $c)) : $available;
+        $cols = $cols ?: $available;
 
         return [
             'companies' => $companies,
@@ -346,14 +347,23 @@ class BillingExport
         $this->row([$this->t('rate_text'), '1 USD = ' . $this->rpText($rate, 2)]);
         $this->row([$this->t('rate_source'), $this->rateSource()]);
         $this->row([$this->t('rate_formula'), $this->t('rate_formula_v')]);
-        $this->row([$this->t('fee'), $split['percent'] !== null
-            ? $this->t('fee_v', ['pct' => $this->pct($split['percent'])])
-            : $this->t('fee_mixed')]);
-        if (collect($split['rows'])->contains(fn ($r) => ($r['min'] ?? 0) > 0)) {
-            $this->row([$this->t('fee_min'), $this->t('fee_min_v')]);
+        // Fee/VAT yang dimatikan di akun tidak ditulis sama sekali.
+        $hasFee = $split['has_fee'] ?? true;
+        $hasVat = $split['has_vat'] ?? true;
+        if ($hasFee) {
+            $this->row([$this->t('fee'), $split['percent'] !== null
+                ? $this->t('fee_v', ['pct' => $this->pct($split['percent'])])
+                : $this->t('fee_mixed')]);
+            if (collect($split['rows'])->contains(fn ($r) => ($r['min'] ?? 0) > 0)) {
+                $this->row([$this->t('fee_min'), $this->t('fee_min_v')]);
+            }
         }
-        $this->row([$this->t('vat'), $this->t('vat_v', ['pct' => $vatPct])]);
-        $this->row([$this->t('total_formula'), $this->t('total_formula_v')]);
+        if ($hasVat) {
+            $this->row([$this->t('vat'), $this->t('vat_v', ['pct' => $vatPct])]);
+        }
+        if ($hasFee && $hasVat) {
+            $this->row([$this->t('total_formula'), $this->t('total_formula_v')]);
+        }
         $this->row([$this->t('rounding'), $this->t('rounding_v')]);
         $this->row([]);
 
@@ -514,6 +524,22 @@ class BillingExport
     }
 
     // ---------------------------------------------------------------- bantu
+
+    /**
+     * Kolom yang masuk akal untuk akun ini: tanpa management fee, kolom fee dan
+     * "invoice" (= tagihan + fee) hilang; tanpa VAT, kolom VAT hilang; tanpa
+     * keduanya, total sama dengan tagihan AWS sehingga ikut hilang.
+     *
+     * @return array<int, string>
+     */
+    public static function columnsFor(array $data): array
+    {
+        $fee = $data['split']['has_fee'] ?? true;
+        $vat = $data['split']['has_vat'] ?? true;
+        $drop = array_merge($fee ? [] : ['fee', 'invoice'], $vat ? [] : ['vat'], ($fee || $vat) ? [] : ['total']);
+
+        return array_values(array_diff(self::COLUMNS, $drop));
+    }
 
     private function rateSource(): string
     {

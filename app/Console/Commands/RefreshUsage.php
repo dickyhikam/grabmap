@@ -63,6 +63,15 @@ class RefreshUsage extends Command
             $costs['ok']
                 ? $this->info("{$account->name}: biaya per service {$costs['months']} bulan")
                 : $this->warn("{$account->name}: biaya per service gagal — {$costs['error']}");
+
+            // Status invoice resmi (Issued/Pending, jatuh tempo). Gagal izin tidak
+            // menggagalkan perintah; halaman Tagihan menampilkan petunjuknya.
+            $inv = $service->syncInvoiceSummaries(
+                now()->startOfMonth()->subMonthsNoOverflow(self::COST_HISTORY_MONTHS)->format('Y-m-01'),
+            );
+            $inv['ok']
+                ? $this->info("{$account->name}: {$inv['invoices']} invoice AWS")
+                : $this->warn("{$account->name}: invoice AWS gagal — {$inv['error']}");
         }
 
         foreach (CompanyApiKey::with('awsAccount')->get() as $key) {

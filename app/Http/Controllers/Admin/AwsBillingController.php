@@ -8,6 +8,7 @@ use App\Models\AwsAccount;
 use App\Models\AwsBillingShare;
 use App\Models\AwsBillingSplit;
 use App\Models\AwsInvoice;
+use App\Models\AwsInvoiceSummary;
 use App\Models\AwsServiceCostMonthly;
 use App\Models\AwsUsageTypeDaily;
 use App\Models\CompanyApiKey;
@@ -194,9 +195,22 @@ class AwsBillingController extends Controller
             ->whereDate('month', $start->format('Y-m-d'))
             ->first();
 
+        // Invoice resmi dari AWS Invoicing API. Selama admin belum mengisi invoice
+        // manual, angka resmi inilah yang dipakai: total IDR AWS dihitung dari
+        // rincian sebelum dibulatkan, jadi USD bulat × kurs bisa meleset puluhan rupiah.
+        $awsInvoices = AwsInvoiceSummary::forMonth($accountId, $start);
+        $awsMain = $awsInvoices->first(fn ($i) => !$i->isCreditMemo());
+        $invoiceSource = $invoice ? 'manual' : null;
+        if (!$invoice && ($official = $awsMain?->asInvoice())) {
+            $invoice = $official;
+            $invoiceSource = 'aws';
+        }
+
         $storedRate = ExchangeRate::forPeriod($end->format('Y-m-d'));
-        $rate = $invoice?->rate() ?? ($storedRate ? (float) $storedRate->rate : null);
-        $rateSource = $invoice ? 'invoice' : ($storedRate ? 'table' : null);
+        $rate = $invoiceSource === 'aws'
+            ? ($awsMain->exchange_rate ?: $invoice->rate())
+            : ($invoice?->rate() ?? ($storedRate ? (float) $storedRate->rate : null));
+        $rateSource = $invoiceSource === 'aws' ? 'aws' : ($invoice ? 'invoice' : ($storedRate ? 'table' : null));
 
         $reconcile = null;
         if ($invoice && $hasServices) {
@@ -271,6 +285,9 @@ class AwsBillingController extends Controller
             'taxRate'      => $effectiveTaxRate,
             'total'        => $total,
             'invoice'      => $invoice,
+            'invoiceSource'=> $invoiceSource,
+            'awsInvoices'  => $awsInvoices,
+            'billStatus'   => $this->billStatus($awsAccount, $start, $awsInvoices),
             'rate'         => $rate,
             'rateSource'   => $rateSource,
             'storedRate'   => $storedRate,
@@ -280,6 +297,49 @@ class AwsBillingController extends Controller
             'complete'     => $complete,
             'keys'         => $keys,
         ];
+    }
+
+    /**
+     * Unduh PDF invoice resmi AWS: minta URL bertanda tangan saat diklik lalu
+     * alihkan ke sana. Hanya invoice yang tercatat untuk akun ini.
+     */
+    public function invoicePdf(Request $request, AwsAccount $awsAccount, string $invoiceId)
+    {
+        $summary = AwsInvoiceSummary::where('aws_account_id', $awsAccount->id)->where('invoice_id', $invoiceId)->firstOrFail();
+
+        $pdf = AwsLocationService::forAccount($awsAccount)->invoicePdfUrl($summary->invoice_id);
+        if ($pdf['url']) {
+            return redirect()->away($pdf['url']);
+        }
+
+        return redirect()
+            ->route('admin.aws-accounts.billing', [$awsAccount, 'month' => $summary->billing_month->format('Y-m')])
+            ->with('error', $pdf['denied'] ? __('awsbilling.bs_pdf_denied') : __('awsbilling.bs_pdf_failed', ['error' => $pdf['error']]));
+    }
+
+    /**
+     * Status tagihan bulan itu menurut AWS Invoicing API:
+     * issued  = invoice resmi sudah terbit;
+     * pending = bulan berjalan atau baru tutup, invoice belum terbit (masih estimasi);
+     * none    = sudah lama tutup tapi tidak ada invoice (biasanya bukan payer account);
+     * denied  = izin invoicing:ListInvoiceSummaries belum ada;
+     * error   = penarikan gagal karena hal lain;
+     * unknown = belum pernah ditarik.
+     */
+    private function billStatus(AwsAccount $account, Carbon $start, $invoices): string
+    {
+        if ($invoices->contains(fn ($i) => !$i->isCreditMemo())) {
+            return 'issued';
+        }
+        if ($account->invoices_error) {
+            return $account->invoices_error === 'access_denied' ? 'denied' : 'error';
+        }
+        if (!$account->invoices_synced_at) {
+            return 'unknown';
+        }
+
+        // Invoice bulanan AWS terbit beberapa hari setelah bulan tutup.
+        return now()->lt($start->copy()->addMonth()->startOfMonth()->addDays(10)) ? 'pending' : 'none';
     }
 
     /**
@@ -310,6 +370,10 @@ class AwsBillingController extends Controller
         if (!$costs['ok']) {
             $errors[] = 'Cost Explorer: ' . $costs['error'];
         }
+
+        // Status invoice resmi. Izin yang belum ada tidak dihitung sebagai error di
+        // sini — halaman sudah menampilkan petunjuk izinnya sendiri.
+        $service->syncInvoiceSummaries($costFrom->format('Y-m-d'));
 
         $types = $service->syncUsageTypes($start->format('Y-m-d'), $until->format('Y-m-d'));
         if (!$types['ok'] && $costs['ok']) {
@@ -565,6 +629,8 @@ class AwsBillingController extends Controller
                     'total'    => self::invoiceLine($idr, $idr * $pct / 100, $vatRate) + ['usd' => $baseUsd * $share],
                     'percent'  => $monthSplit['percent'],
                     'vat_rate' => $vatRate,
+                    'has_fee'  => $monthSplit['has_fee'],
+                    'has_vat'  => $monthSplit['has_vat'],
                 ];
             }
 
@@ -607,7 +673,8 @@ class AwsBillingController extends Controller
             return null;
         }
 
-        $vatRate = (float) Setting::get('tax_rate', config('aws.tax_rate', 0.11));
+        // VAT dan management fee bisa dimatikan per akun (form edit akun AWS).
+        $vatRate = $account->bill_vat ? (float) Setting::get('tax_rate', config('aws.tax_rate', 0.11)) : 0.0;
         $date = $end->format('Y-m-d');
 
         // Kelompokkan key per perusahaan; key tanpa pemilik jadi kelompok sendiri.
@@ -624,7 +691,9 @@ class AwsBillingController extends Controller
         $hasMinimum = false;
 
         foreach ($groups as $g) {
-            $rule = \App\Models\ServiceCharge::ruleFor($account->id, $g['company_id'], $date);
+            $rule = $account->bill_management_fee
+                ? \App\Models\ServiceCharge::ruleFor($account->id, $g['company_id'], $date)
+                : null;
             $pct = (float) ($rule?->percent ?? 0);
             // Minimum bulanan ikut dipotong sebanding untuk periode sebagian bulan.
             $min = (float) ($rule?->monthly_min_idr ?? 0) * $minFactor;
@@ -669,6 +738,8 @@ class AwsBillingController extends Controller
             'total'    => self::invoiceLine($baseIdr, $totalFee, $vatRate) + ['usd' => $baseUsd],
             'percent'  => $uniform ? $percents[0] : null,
             'vat_rate' => $vatRate,
+            'has_fee'  => (bool) $account->bill_management_fee,
+            'has_vat'  => (bool) $account->bill_vat,
         ];
     }
 

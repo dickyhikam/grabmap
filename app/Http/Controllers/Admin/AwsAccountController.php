@@ -48,6 +48,8 @@ class AwsAccountController extends Controller
             'is_active'         => $request->boolean('is_active', true),
             'is_default'        => false,
             'notes'             => $validated['notes'] ?? null,
+            'bill_management_fee' => $request->boolean('bill_management_fee', true),
+            'bill_vat'          => $request->boolean('bill_vat', true),
         ]);
 
         ServiceCharge::saveFromRequest($request, $account->id);
@@ -113,6 +115,8 @@ class AwsAccountController extends Controller
             'region'         => $validated['region'],
             'is_active'      => $request->boolean('is_active', true),
             'notes'          => $validated['notes'] ?? null,
+            'bill_management_fee' => $request->boolean('bill_management_fee', true),
+            'bill_vat'       => $request->boolean('bill_vat', true),
         ];
 
         // Akun role tidak punya access key; ARN & External ID-nya hanya lewat undangan.

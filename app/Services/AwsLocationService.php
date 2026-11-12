@@ -850,6 +850,127 @@ class AwsLocationService
     }
 
     /**
+     * Tarik ringkasan invoice resmi (AWS Invoicing API, ListInvoiceSummaries) ke
+     * aws_invoice_summaries: nomor invoice, terbit, jatuh tempo, jumlah USD/IDR.
+     * Dipakai halaman Tagihan untuk status Issued/Pending. Status bayar tidak
+     * ada di API ini. Butuh izin invoicing:ListInvoiceSummaries, dan hanya payer
+     * account yang punya invoice.
+     *
+     * @return array{ok: bool, error: ?string, invoices: int}
+     */
+    public function syncInvoiceSummaries(string $fromMonth): array
+    {
+        if (!$this->account?->id) {
+            return ['ok' => false, 'error' => 'no account', 'invoices' => 0];
+        }
+
+        try {
+            $config = ['region' => 'us-east-1'] + $this->clientConfig();
+            $accountId = $this->account->account_number
+                ?: (string) (new \Aws\Sts\StsClient($config))->getCallerIdentity()['Account'];
+
+            $start = \Carbon\Carbon::parse($fromMonth)->startOfMonth()->utc();
+            $months = [];
+            for ($m = $start->copy(); $m->lte(now()); $m->addMonth()) {
+                $months[] = $m->format('Y-m-01');
+            }
+
+            $client = new \Aws\Invoicing\InvoicingClient($config);
+            $rows = [];
+            // TimeInterval dibatasi AWS maksimal satu bulan, jadi tarik per bulan
+            // tagihan (BillingPeriod) — satu panggilan per bulan.
+            foreach ($months as $month) {
+                $period = \Carbon\Carbon::parse($month);
+                $token = null;
+                do {
+                    $res = $client->listInvoiceSummaries(array_filter([
+                        'Selector'  => ['ResourceType' => 'ACCOUNT_ID', 'Value' => $accountId],
+                        'Filter'    => ['BillingPeriod' => ['Month' => (int) $period->month, 'Year' => (int) $period->year]],
+                        'NextToken' => $token,
+                    ]));
+
+                    foreach ($res['InvoiceSummaries'] ?? [] as $s) {
+                        if (empty($s['InvoiceId']) || empty($s['BillingPeriod']['Year'])) {
+                            continue;
+                        }
+                        $amount = fn (string $k) => isset($s[$k]['TotalAmount']) ? (float) $s[$k]['TotalAmount'] : null;
+                        $rows[] = [
+                            'invoice_id'          => (string) $s['InvoiceId'],
+                            'billing_month'       => sprintf('%04d-%02d-01', $s['BillingPeriod']['Year'], $s['BillingPeriod']['Month']),
+                            'invoice_type'        => (string) ($s['InvoiceType'] ?? 'INVOICE'),
+                            'original_invoice_id' => $s['OriginalInvoiceId'] ?? null,
+                            'invoicing_entity'    => isset($s['Entity']['InvoicingEntity']) ? mb_substr($s['Entity']['InvoicingEntity'], 0, 160) : null,
+                            'issued_at'           => isset($s['IssuedDate']) ? \Carbon\Carbon::parse((string) $s['IssuedDate']) : null,
+                            'due_at'              => isset($s['DueDate']) ? \Carbon\Carbon::parse((string) $s['DueDate']) : null,
+                            'base_amount'         => $amount('BaseCurrencyAmount'),
+                            'base_currency'       => $s['BaseCurrencyAmount']['CurrencyCode'] ?? null,
+                            'tax_currency_amount' => $amount('TaxCurrencyAmount'),
+                            'tax_currency'        => $s['TaxCurrencyAmount']['CurrencyCode'] ?? null,
+                            'payment_amount'      => $amount('PaymentCurrencyAmount'),
+                            'payment_currency'    => $s['PaymentCurrencyAmount']['CurrencyCode'] ?? null,
+                            'exchange_rate'       => $this->invoiceIdrRate($s),
+                        ];
+                    }
+
+                    $token = $res['NextToken'] ?? null;
+                } while ($token);
+            }
+
+            \App\Models\AwsInvoiceSummary::store($this->account->id, $rows, $months);
+            $this->account->forceFill(['invoices_synced_at' => now(), 'invoices_error' => null])->save();
+
+            return ['ok' => true, 'error' => null, 'invoices' => count($rows)];
+        } catch (\Throwable $e) {
+            $error = $e instanceof AwsException ? ($e->getAwsErrorMessage() ?: $e->getMessage()) : $e->getMessage();
+            $denied = $e instanceof AwsException && $e->getAwsErrorCode() === 'AccessDeniedException';
+            Log::warning('Invoice sync gagal: ' . $error, ['account' => $this->account->name]);
+            // Kode pendek untuk izin yang belum ada, supaya halaman bisa memberi petunjuk yang jelas.
+            $this->account->forceFill(['invoices_error' => $denied ? 'access_denied' : mb_substr($error, 0, 250)])->save();
+
+            return ['ok' => false, 'error' => $error, 'invoices' => 0];
+        }
+    }
+
+    /** Kurs USD→IDR persis dari invoice AWS (mata uang pajak dulu, lalu mata uang bayar). */
+    private function invoiceIdrRate($summary): ?float
+    {
+        foreach (['TaxCurrencyAmount', 'PaymentCurrencyAmount'] as $k) {
+            $fx = $summary[$k]['CurrencyExchangeDetails'] ?? null;
+            if (($fx['SourceCurrencyCode'] ?? null) === 'USD' && ($fx['TargetCurrencyCode'] ?? null) === 'IDR' && (float) ($fx['Rate'] ?? 0) > 0) {
+                return (float) $fx['Rate'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Link unduh PDF invoice resmi (AWS Invoicing API GetInvoicePDF). AWS memberi
+     * URL S3 bertanda tangan yang kedaluwarsa dalam hitungan menit, jadi diminta
+     * saat diklik, tidak disimpan. Butuh izin invoicing:GetInvoicePDF.
+     *
+     * @return array{url: ?string, error: ?string, denied: bool}
+     */
+    public function invoicePdfUrl(string $invoiceId): array
+    {
+        try {
+            $client = new \Aws\Invoicing\InvoicingClient(['region' => 'us-east-1'] + $this->clientConfig());
+            $url = $client->getInvoicePDF(['InvoiceId' => $invoiceId])['InvoicePDF']['DocumentUrl'] ?? null;
+
+            return ['url' => $url ?: null, 'error' => $url ? null : 'empty url', 'denied' => false];
+        } catch (\Throwable $e) {
+            $error = $e instanceof AwsException ? ($e->getAwsErrorMessage() ?: $e->getMessage()) : $e->getMessage();
+            Log::warning('Invoice PDF gagal: ' . $error, ['account' => $this->account?->name, 'invoice' => $invoiceId]);
+
+            return [
+                'url'    => null,
+                'error'  => $error,
+                'denied' => $e instanceof AwsException && $e->getAwsErrorCode() === 'AccessDeniedException',
+            ];
+        }
+    }
+
+    /**
      * Daftar resource Amazon Location di akun beserta data source-nya — inilah
      * yang menjawab "provider apa yang dipakai". Izin yang belum diberikan
      * dicatat di 'denied', bukan dianggap kosong.
