@@ -568,6 +568,10 @@
             </button>
         @endif
 
+        @if(!$public && $account->claims_enabled)
+            <a href="{{ route('admin.aws-accounts.claims', $account) }}" class="q-pill"><i class="bi bi-send-check"></i> {{ __('awsclaims.btn') }}</a>
+        @endif
+
         @if($canEdit)
             <form method="POST" action="{{ route('admin.aws-accounts.billing.refresh', $account) }}">
                 @csrf

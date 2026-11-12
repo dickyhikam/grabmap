@@ -113,4 +113,6 @@ return [
     'bill_fee_d'   => 'Matikan kalau akun ini tidak dikenai management fee. Halaman Tagihan tidak menampilkan baris fee.',
     'bill_vat'     => 'Tagih VAT',
     'bill_vat_d'   => 'Matikan kalau tidak ada VAT di atas tagihan AWS + fee. PPN dari AWS tetap ikut di tagihan AWS.',
+    'claims_enabled'   => 'Pengajuan tagihan',
+    'claims_enabled_d' => 'Lacak bulan mana yang belum diajukan, sedang diajukan, atau sudah dibayar. Untuk akun yang tagihannya dibayar dulu lalu diganti (mis. lewat kartu kredit).',
 ];

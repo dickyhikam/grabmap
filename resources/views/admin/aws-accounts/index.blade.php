@@ -238,6 +238,12 @@
                         <i class="bi bi-receipt"></i> {{ __('awsbilling.btn') }}
                     </a>
 
+                    @if($account->claims_enabled)
+                        <a href="{{ route('admin.aws-accounts.claims', $account) }}" class="acc-btn">
+                            <i class="bi bi-send-check"></i> {{ __('awsclaims.btn') }}
+                        </a>
+                    @endif
+
                     @can('api_keys.view')
                         <a href="{{ route('admin.api-keys.index', ['account' => $account->getRouteKey()]) }}" class="acc-btn">
                             <i class="bi bi-key"></i> {{ __('awsaccounts.api_keys') }}

@@ -113,4 +113,6 @@ return [
     'bill_fee_d'   => 'Turn off if this account has no management fee. The Billing page hides the fee line.',
     'bill_vat'     => 'Charge VAT',
     'bill_vat_d'   => 'Turn off if no VAT is added on top of the AWS bill + fee. AWS\'s own VAT stays in the AWS bill.',
+    'claims_enabled'   => 'Bill claims',
+    'claims_enabled_d' => 'Track which months are not claimed, claimed, or paid. For accounts whose bills you pay first and get reimbursed for (e.g. by credit card).',
 ];

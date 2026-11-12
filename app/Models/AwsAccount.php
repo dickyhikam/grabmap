@@ -29,7 +29,7 @@ class AwsAccount extends Model
         'resources', 'resources_checked_at', 'usage_types_synced_at', 'usage_types_error',
         'service_costs_synced_at', 'service_costs_error', 'invoices_synced_at', 'invoices_error',
         'region', 'is_active', 'is_default', 'notes', 'last_verified_at',
-        'bill_management_fee', 'bill_vat',
+        'bill_management_fee', 'bill_vat', 'claims_enabled',
     ];
 
     protected $casts = [
@@ -38,6 +38,7 @@ class AwsAccount extends Model
         'is_default'        => 'boolean',
         'bill_management_fee' => 'boolean',
         'bill_vat'          => 'boolean',
+        'claims_enabled'    => 'boolean',
         'last_verified_at'  => 'datetime',
         'resources'         => 'array',
         'resources_checked_at'  => 'datetime',

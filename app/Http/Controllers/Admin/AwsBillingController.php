@@ -318,6 +318,29 @@ class AwsBillingController extends Controller
     }
 
     /**
+     * Daftar dokumen resmi satu invoice (PDF + lampiran) sebagai JSON. URL-nya
+     * sementara, jadi halaman memintanya saat tombol "Dokumen" dibuka lalu
+     * menampilkannya sebagai tautan.
+     */
+    public function invoiceDocuments(AwsAccount $awsAccount, string $invoiceId)
+    {
+        $summary = AwsInvoiceSummary::where('aws_account_id', $awsAccount->id)->where('invoice_id', $invoiceId)->firstOrFail();
+        $pdf = AwsLocationService::forAccount($awsAccount)->invoicePdfUrl($summary->invoice_id);
+
+        if (!$pdf['url']) {
+            return response()->json([
+                'error' => $pdf['denied'] ? __('awsbilling.bs_pdf_denied') : __('awsbilling.bs_pdf_failed', ['error' => $pdf['error']]),
+            ], $pdf['denied'] ? 403 : 502);
+        }
+
+        return response()->json([
+            'invoice'      => $summary->invoice_id,
+            'pdf'          => $pdf['url'],
+            'supplemental' => $pdf['supplemental'],
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
+    /**
      * Status tagihan bulan itu menurut AWS Invoicing API:
      * issued  = invoice resmi sudah terbit;
      * pending = bulan berjalan atau baru tutup, invoice belum terbit (masih estimasi);

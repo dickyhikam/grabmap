@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ApiKeyController;
 use App\Http\Controllers\UsageReportController;
 use App\Http\Controllers\Admin\AwsAccountController;
 use App\Http\Controllers\Admin\AwsBillingController;
+use App\Http\Controllers\Admin\AwsBillClaimController;
 use App\Http\Controllers\Admin\AwsConnectInviteController;
 use App\Http\Controllers\AwsConnectController;
 use App\Http\Controllers\Admin\CostSettingController;
@@ -265,6 +266,13 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
             Route::get('/{awsAccount}/billing/export', [AwsBillingController::class, 'export'])->name('admin.aws-accounts.billing.export');
             Route::get('/{awsAccount}/billing/invoices/{invoiceId}/pdf', [AwsBillingController::class, 'invoicePdf'])
                 ->where('invoiceId', '[A-Za-z0-9_-]+')->name('admin.aws-accounts.billing.invoice-pdf');
+            Route::get('/{awsAccount}/billing/invoices/{invoiceId}/documents', [AwsBillingController::class, 'invoiceDocuments'])
+                ->where('invoiceId', '[A-Za-z0-9_-]+')->name('admin.aws-accounts.billing.invoice-documents');
+            // Pelacak pengajuan penggantian tagihan AWS (aktif per akun).
+            Route::get('/{awsAccount}/claims', [AwsBillClaimController::class, 'index'])->name('admin.aws-accounts.claims');
+            Route::get('/{awsAccount}/claims/{claim}/proof', [AwsBillClaimController::class, 'proof'])->name('admin.aws-accounts.claims.proof');
+            Route::get('/{awsAccount}/claims/{claim}/pdf', [AwsBillClaimController::class, 'pdf'])->name('admin.aws-accounts.claims.pdf');
+            Route::get('/{awsAccount}/claims/{claim}/attachments', [AwsBillClaimController::class, 'attachments'])->name('admin.aws-accounts.claims.attachments');
         });
 
         Route::middleware('permission:aws_accounts.create')->group(function () {
@@ -290,6 +298,10 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
             Route::post('/{awsAccount}/billing/share', [AwsBillingController::class, 'shareEnable'])->name('admin.aws-accounts.billing.share');
             Route::post('/{awsAccount}/billing/share/disable', [AwsBillingController::class, 'shareDisable'])->name('admin.aws-accounts.billing.share.disable');
             Route::post('/{awsAccount}/billing/share/regenerate', [AwsBillingController::class, 'shareRegenerate'])->name('admin.aws-accounts.billing.share.regenerate');
+            Route::post('/{awsAccount}/claims', [AwsBillClaimController::class, 'store'])->name('admin.aws-accounts.claims.store');
+            Route::post('/{awsAccount}/claims/{claim}/paid', [AwsBillClaimController::class, 'markPaid'])->name('admin.aws-accounts.claims.paid');
+            Route::post('/{awsAccount}/claims/{claim}/unpaid', [AwsBillClaimController::class, 'markUnpaid'])->name('admin.aws-accounts.claims.unpaid');
+            Route::delete('/{awsAccount}/claims/{claim}', [AwsBillClaimController::class, 'destroy'])->name('admin.aws-accounts.claims.destroy');
         });
 
         Route::middleware('permission:aws_accounts.delete')->group(function () {

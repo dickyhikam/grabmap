@@ -359,6 +359,15 @@
                     </span>
                     <span class="sw"></span>
                 </label>
+                <label class="sw-row">
+                    <input type="hidden" name="claims_enabled" value="0">
+                    <input type="checkbox" name="claims_enabled" value="1" @checked(old('claims_enabled', $account->claims_enabled ?? false))>
+                    <span class="tx">
+                        <span class="nm d-block">{{ __('awsaccounts.claims_enabled') }}</span>
+                        <span class="ds">{{ __('awsaccounts.claims_enabled_d') }}</span>
+                    </span>
+                    <span class="sw"></span>
+                </label>
             </div>
 
             {{-- Status & catatan --}}

@@ -945,25 +945,32 @@ class AwsLocationService
     }
 
     /**
-     * Link unduh PDF invoice resmi (AWS Invoicing API GetInvoicePDF). AWS memberi
-     * URL S3 bertanda tangan yang kedaluwarsa dalam hitungan menit, jadi diminta
-     * saat diklik, tidak disimpan. Butuh izin invoicing:GetInvoicePDF.
+     * Dokumen resmi invoice (AWS Invoicing API GetInvoicePDF): PDF invoice plus
+     * lampiran (supplemental documents). AWS memberi URL S3 bertanda tangan yang
+     * kedaluwarsa dalam hitungan menit, jadi diminta saat diklik, tidak disimpan.
+     * Butuh izin invoicing:GetInvoicePDF.
      *
-     * @return array{url: ?string, error: ?string, denied: bool}
+     * @return array{url: ?string, supplemental: array<int, string>, error: ?string, denied: bool}
      */
     public function invoicePdfUrl(string $invoiceId): array
     {
         try {
             $client = new \Aws\Invoicing\InvoicingClient(['region' => 'us-east-1'] + $this->clientConfig());
-            $url = $client->getInvoicePDF(['InvoiceId' => $invoiceId])['InvoicePDF']['DocumentUrl'] ?? null;
+            $pdf = $client->getInvoicePDF(['InvoiceId' => $invoiceId])['InvoicePDF'] ?? [];
+            $url = $pdf['DocumentUrl'] ?? null;
+            $supplemental = array_values(array_filter(array_map(
+                fn ($d) => $d['DocumentUrl'] ?? null,
+                $pdf['SupplementalDocuments'] ?? [],
+            )));
 
-            return ['url' => $url ?: null, 'error' => $url ? null : 'empty url', 'denied' => false];
+            return ['url' => $url ?: null, 'supplemental' => $supplemental, 'error' => $url ? null : 'empty url', 'denied' => false];
         } catch (\Throwable $e) {
             $error = $e instanceof AwsException ? ($e->getAwsErrorMessage() ?: $e->getMessage()) : $e->getMessage();
             Log::warning('Invoice PDF gagal: ' . $error, ['account' => $this->account?->name, 'invoice' => $invoiceId]);
 
             return [
                 'url'    => null,
+                'supplemental' => [],
                 'error'  => $error,
                 'denied' => $e instanceof AwsException && $e->getAwsErrorCode() === 'AccessDeniedException',
             ];
