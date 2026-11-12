@@ -15,9 +15,11 @@ use App\Models\ExchangeRate;
 use App\Models\MatrixRouteDaily;
 use App\Models\Setting;
 use App\Services\AwsLocationService;
+use App\Services\BillingExport;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Tagihan satu akun AWS per bulan, disusun seperti PDF invoice AWS: biaya per
@@ -79,6 +81,40 @@ class AwsBillingController extends Controller
         ]);
     }
 
+    /** Export (Excel/CSV) dari halaman Tagihan admin. Pilihan isi datang dari modal Export. */
+    public function export(Request $request, AwsAccount $awsAccount)
+    {
+        return $this->exportResponse($request, $awsAccount);
+    }
+
+    /** Export yang sama dari link publik (hanya-baca, token rahasia). */
+    public function publicExport(Request $request, string $token)
+    {
+        $share = AwsBillingShare::with('account')->where('token', $token)->where('is_active', true)->first();
+        abort_if(!$share || !$share->account, 404);
+
+        $this->applyPublicLocale($request);
+
+        return $this->exportResponse($request, $share->account);
+    }
+
+    private function exportResponse(Request $request, AwsAccount $account)
+    {
+        $rate = (float) str_replace(',', '.', (string) $request->query('rate', ''));
+        $data = $this->billingData($account, $request->query('month'), $rate > 0 ? $rate : null);
+        abort_unless($data['split'] && $data['detail'], 404);
+
+        $export = new BillingExport($data, BillingExport::optionsFrom($request, $data));
+        $name = 'tagihan-aws-' . Str::slug($account->name) . '-' . $data['start']->format('Y-m') . '.' . $export->extension();
+
+        return response($export->render(), 200, [
+            'Content-Type'        => $export->contentType(),
+            'Content-Disposition' => 'attachment; filename="' . $name . '"',
+            'X-Robots-Tag'        => 'noindex, nofollow',
+            'Cache-Control'       => 'private, no-store',
+        ]);
+    }
+
     /** Aktifkan link publik akun ini (buat kalau belum ada). */
     public function shareEnable(Request $request, AwsAccount $awsAccount)
     {
@@ -132,7 +168,7 @@ class AwsBillingController extends Controller
     }
 
     /** Semua angka halaman Tagihan satu akun dan satu bulan — dipakai admin maupun publik. */
-    private function billingData(AwsAccount $awsAccount, ?string $month): array
+    private function billingData(AwsAccount $awsAccount, ?string $month, ?float $simRate = null): array
     {
         [$start, $end] = $this->resolveMonth($month);
         $accountId = $awsAccount->id;
@@ -183,6 +219,17 @@ class AwsBillingController extends Controller
         // kalau belum total aplikasi × kurs (USD dibulatkan 2 desimal seperti AWS).
         $baseUsd = $invoice ? $invoice->total_usd : round($total, 2);
         $baseIdr = $invoice ? $invoice->total_idr : ($rate ? round(round($total, 2) * $rate) : null);
+
+        // Kurs simulasi (export): semua Rupiah dihitung ulang dari USD × kurs itu,
+        // sama dengan penggeser kurs di halaman. Dijepit ±50% dari kurs resmi
+        // supaya angka ketikan yang keliru tidak menghasilkan file ngawur.
+        $officialRate = $baseIdr !== null && $baseUsd > 0 ? $baseIdr / $baseUsd : null;
+        $simulated = false;
+        if ($simRate && $officialRate && abs($simRate - $officialRate) >= 0.005
+            && $simRate >= $officialRate * 0.5 && $simRate <= $officialRate * 1.5) {
+            $baseIdr = round($baseUsd * $simRate);
+            $simulated = true;
+        }
         $split = $baseIdr !== null && $baseUsd > 0
             ? $this->companySplit($awsAccount, $keys, $baseUsd, $baseIdr, $end)
             : null;
@@ -193,7 +240,20 @@ class AwsBillingController extends Controller
             ? $this->periodSplits($awsAccount, $start, $end, $cuts, $usage['daily'], $baseUsd, $baseIdr, $effectiveTaxRate, $split)
             : [];
 
+        // Rincian operasi tiap periode (contoh di modal export & file CSV).
+        // Murni hitungan dari key yang sudah dimuat, tanpa query tambahan.
+        foreach ($periods as &$pp) {
+            $pp['detail'] = $pp['usd'] > 0 && $pp['idr'] > 0
+                ? $this->operationDetail($pp['split'], $pp['keys'], $pp['usd'], $pp['idr'], null)
+                : null;
+        }
+        unset($pp);
+
         return [
+            'baseUsd'      => $baseUsd,
+            'baseIdr'      => $baseIdr,
+            'officialRate' => $officialRate,
+            'simulated'    => $simulated,
             'cuts'         => $cuts,
             'periods'      => $periods,
             'split'        => $split,
@@ -514,6 +574,9 @@ class AwsBillingController extends Controller
                 'share' => $share * 100,
                 'loc'   => $loc,
                 'split' => $split,
+                'keys'  => $keys,
+                'usd'   => $baseUsd * $share,
+                'idr'   => $baseIdr * $share,
             ];
         }
 
@@ -573,6 +636,7 @@ class AwsBillingController extends Controller
             $fee = max($idr * $pct / 100, $min);
 
             $row = self::invoiceLine($idr, $fee, $vatRate) + [
+                'company_id' => $g['company_id'],
                 'name'    => $g['name'],
                 'percent' => $pct,
                 'min'     => $min,
@@ -670,6 +734,7 @@ class AwsBillingController extends Controller
             }
 
             $companies[] = [
+                'company_id' => $row['company_id'] ?? null,
                 'name' => $row['name'],
                 'keys' => $blocks,
                 'usd'  => array_sum(array_column($blocks, 'usd')),

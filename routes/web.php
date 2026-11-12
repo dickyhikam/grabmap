@@ -262,6 +262,7 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
             Route::get('/', [AwsAccountController::class, 'index'])->name('admin.aws-accounts.index');
             // Tagihan per bulan, disusun seperti invoice AWS.
             Route::get('/{awsAccount}/billing', [AwsBillingController::class, 'show'])->name('admin.aws-accounts.billing');
+            Route::get('/{awsAccount}/billing/export', [AwsBillingController::class, 'export'])->name('admin.aws-accounts.billing.export');
         });
 
         Route::middleware('permission:aws_accounts.create')->group(function () {
@@ -435,6 +436,9 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
 Route::get('/billing/{token}', [AwsBillingController::class, 'publicShow'])
     ->middleware('throttle:30,1')
     ->name('aws-billing.public');
+Route::get('/billing/{token}/export', [AwsBillingController::class, 'publicExport'])
+    ->middleware('throttle:10,1')
+    ->name('aws-billing.public.export');
 Route::get('/usage-report/{token}', [UsageReportController::class, 'show'])
     ->middleware('throttle:30,1')
     ->name('usage-report.show');

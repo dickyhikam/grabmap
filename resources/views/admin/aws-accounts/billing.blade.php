@@ -46,38 +46,11 @@
     $vatPct = $split ? $pct($split['vat_rate'] * 100) : $pct($taxRate * 100);
     $openInvoice = $errors->hasAny(['total_usd', 'total_idr', 'invoice_number', 'note']);
 
-    // Teks salin ke spreadsheet: ringkasan gaya lembar Alfa, lalu rincian operasi.
-    $tsvText = '';
-    if ($split && $detail) {
-        $line = fn ($label, $r, $withUsd) => [$label, $withUsd ? number_format($r['usd'], 2, '.', '') : '', round($r['idr']), round($r['fee']), round($r['invoice']), round($r['vat']), round($r['total'])];
-        $t = [['', 'Billing AWS USD', 'Billing AWS IDR', trim('Management Fee ' . $feePct), 'Invoice', "VAT {$vatPct}%", 'Total Invoice']];
-        $t[] = $line('Total Bill AWS ' . $start->translatedFormat('M Y'), $split['total'], true);
-        foreach ($split['rows'] as $r) {
-            $t[] = $line($r['name'] ?? __('awsbilling.unassigned'), $r, false);
-            foreach ($r['keys'] as $k) {
-                $t[] = $line('  ' . $k['name'], $k, false);
-            }
-        }
-        foreach ($periods as $pp) {
-            $t[] = [];
-            $t[] = $line(__('awsbilling.period') . ' ' . $pLabel($pp), $pp['split']['total'], true);
-            foreach ($pp['split']['rows'] as $r) {
-                $t[] = $line('  ' . ($r['name'] ?? __('awsbilling.unassigned')), $r, false);
-            }
-        }
-        $t[] = [];
-        $t[] = [__('awsbilling.company'), 'API key', __('awsbilling.category'), __('awsbilling.operation'), __('awsbilling.requests'), 'USD', 'IDR'];
-        foreach ($detail['companies'] as $co) {
-            foreach ($co['keys'] as $kb) {
-                foreach ($kb['categories'] as $cat) {
-                    foreach ($cat['lines'] as $ln) {
-                        $t[] = [$co['name'] ?? __('awsbilling.unassigned'), $kb['name'], $cat['name'], $ln['op'], $ln['count'], number_format($ln['usd'], 2, '.', ''), round($ln['idr'])];
-                    }
-                }
-            }
-        }
-        $tsvText = implode("\n", array_map(fn ($c) => implode("\t", $c), $t));
-    }
+    // Export CSV tersedia di admin maupun link publik selama rincian Rupiah ada.
+    $canExport = $split && $detail;
+    $exportUrl = $public
+        ? route('aws-billing.public.export', $share->token)
+        : route('admin.aws-accounts.billing.export', $account);
 @endphp
 
 @push('styles')
@@ -115,6 +88,17 @@
     .bl-meta .dot.warn { background: var(--warn-fg); box-shadow: 0 0 0 4px var(--warn-soft); }
     .bl-meta .err { color: var(--danger-fg); }
 
+    .bl-iam { border-radius: 16px; padding: 14px 16px; margin-bottom: 16px; background: var(--danger-soft, rgba(220, 38, 38, 0.08)); color: var(--ink); }
+    .bl-iam-head { display: flex; gap: 10px; align-items: flex-start; font-size: 0.78rem; line-height: 1.55; }
+    .bl-iam-head > i { color: var(--danger-fg); font-size: 1rem; margin-top: 1px; }
+    .bl-iam-head b { display: block; color: var(--danger-fg); }
+    .bl-iam-head span { color: var(--muted); }
+    .bl-iam-code { display: flex; gap: 10px; align-items: flex-start; margin-top: 10px; }
+    .bl-iam-code textarea {
+        flex: 1; min-width: 0; resize: none; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+        background: var(--card); color: var(--ink); font: 0.72rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    @media (max-width: 600px) { .bl-iam-code { flex-direction: column; } }
     .bl-note {
         display: flex; gap: 10px; align-items: flex-start;
         border-radius: 16px; padding: 12px 14px; margin-bottom: 16px;
@@ -392,6 +376,7 @@
     .gm-modal.open .gm-modal-card { transform: none; opacity: 1; }
     .gm-modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.05rem; }
     .gm-modal-sub { font-size: 0.76rem; color: var(--muted); margin: 4px 0 18px; line-height: 1.5; }
+    .ex-card .gm-modal-sub { margin-bottom: 14px; }
     .form-field { margin-bottom: 14px; }
     .form-label-sm { display: block; font-size: 0.72rem; font-weight: 700; color: var(--muted); margin-bottom: 7px; }
     .form-label-sm .opt { font-weight: 600; color: var(--faint); }
@@ -411,6 +396,102 @@
     @media (max-width: 520px) { .f-row { grid-template-columns: 1fr; } }
     .btn-row { display: flex; gap: 10px; margin-top: 6px; }
     .btn-row > * { flex: 1; }
+    /* ---------- Modal export CSV (admin & publik) ---------- */
+    .ex-card { max-width: 1040px; max-height: 88vh; overflow-y: auto; scrollbar-width: thin; }
+    /* Dua kolom: pilihan di kiri, contoh file + kurs + tombol di kanan (menempel saat digulir). */
+    .ex-layout { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: 24px; align-items: start; }
+    .ex-side { position: sticky; top: 0; min-width: 0; }
+    .ex-side .ex-prev { margin-bottom: 12px; }
+    .ex-side .ex-rate { margin-bottom: 12px; }
+    @media (max-width: 900px) {
+        .ex-card { max-width: 540px; }
+        .ex-layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+        .ex-side { position: static; }
+    }
+    .ex-modal { padding-top: 3vh; }
+    .ex-group { border: 0; padding: 0; margin: 0 0 12px; min-width: 0; }
+    .ex-group legend {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+        width: 100%; padding: 0; margin-bottom: 8px; font-size: 0.72rem; font-weight: 700; color: var(--muted);
+    }
+    .ex-group input[type=checkbox] { accent-color: var(--green); width: 16px; height: 16px; margin: 0; flex-shrink: 0; }
+    .ex-list { border: 1px solid var(--line); border-radius: 14px; max-height: 188px; overflow-y: auto; padding: 4px; margin-top: 6px; scrollbar-width: thin; }
+    .ex-check { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; cursor: pointer; font-size: 0.8rem; color: var(--ink); }
+    .ex-check:hover { background: var(--surface); }
+    .ex-check .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ex-check small { color: var(--muted); font-size: 0.72rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ex-all { background: var(--surface); font-weight: 700; }
+
+    .ex-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ex-chip { position: relative; }
+    .ex-chip input, .ex-seg input { position: absolute; opacity: 0; pointer-events: none; }
+    .ex-chip span {
+        display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px;
+        border: 1px solid var(--line); background: var(--card); color: var(--ink);
+        font-size: 0.76rem; font-weight: 600; cursor: pointer; transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+    .ex-chip span::before {
+        content: ''; width: 14px; height: 14px; border-radius: 4px; box-sizing: border-box; flex-shrink: 0;
+        border: 1.5px solid var(--faint); font-size: 10px; line-height: 12px; text-align: center; font-weight: 900;
+    }
+    .ex-chip input:checked + span { border-color: var(--green); background: var(--green-soft); color: var(--green-text); }
+    .ex-chip input:checked + span::before { content: '✓'; color: #fff; background: var(--green); border-color: var(--green); }
+    .ex-chip input:focus-visible + span, .ex-seg input:focus-visible + span { box-shadow: 0 0 0 3px var(--green-soft); }
+
+    .ex-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; background: var(--surface); border-radius: 14px; padding: 4px; }
+    .ex-seg label { position: relative; min-width: 0; }
+    .ex-seg label > span {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+        min-height: 36px; padding: 6px 6px; border-radius: 10px; line-height: 1.25;
+        font-size: 0.76rem; font-weight: 700; color: var(--muted); cursor: pointer; transition: background 0.15s, color 0.15s;
+    }
+    .ex-type-l { display: inline-flex; align-items: center; gap: 6px; }
+    .ex-type-l i { font-size: 0.9rem; }
+    .ex-seg label > span small { font-size: 0.66rem; font-weight: 500; color: var(--faint); margin-top: 2px; }
+    .ex-seg input:checked + span { background: var(--card); color: var(--ink); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); }
+    @media (max-width: 480px) { .ex-seg { grid-auto-flow: row; } }
+
+    .ex-presets { display: flex; gap: 4px; flex-wrap: wrap; }
+    .ex-presets button {
+        border: 0; background: var(--surface); color: var(--muted); font: inherit; font-size: 0.68rem; font-weight: 700;
+        padding: 4px 10px; border-radius: 999px; cursor: pointer;
+    }
+    .ex-presets button.on { background: var(--green-soft); color: var(--green-text); }
+
+    .ex-rate { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: var(--surface); margin-bottom: 16px; font-size: 0.78rem; color: var(--ink); }
+    .ex-rate > i { color: var(--green-text); font-size: 1rem; margin-top: 1px; }
+    .ex-rate b { font-variant-numeric: tabular-nums; }
+    .ex-rate small { display: block; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+    .ex-tag { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: var(--warn-soft); color: var(--warn-fg); font-size: 0.66rem; font-weight: 700; }
+    .ex-err { color: var(--danger-fg); font-size: 0.72rem; margin-top: 6px; }
+    .ex-btn {
+        height: 44px; border-radius: 999px; border: 0; font: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--surface); color: var(--ink);
+    }
+    .ex-btn.primary { background: var(--green); color: #fff; box-shadow: 0 6px 18px rgba(0, 177, 79, 0.28); }
+    .ex-btn.primary:hover { filter: brightness(0.95); }
+    .ex-pretty .ex-chip span { padding: 4px 10px; font-size: 0.7rem; }
+    .ex-hint { font-size: 0.7rem; line-height: 1.4; color: var(--muted); margin-top: 5px; }
+
+    /* Pratinjau isi file */
+    .ex-prev { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 16px; }
+    .ex-prev-head { display: flex; justify-content: space-between; gap: 8px; padding: 9px 12px; background: var(--surface); font-size: 0.72rem; font-weight: 700; color: var(--muted); }
+    .ex-fmt-badge { padding: 2px 9px; border-radius: 999px; background: var(--card); color: var(--ink); font-weight: 700; }
+    .ex-fmt-badge.flash { animation: exFlash 0.9s ease; }
+    @keyframes exFlash { 0%, 40% { background: var(--green); color: #fff; } 100% { background: var(--card); color: var(--ink); } }
+    .ex-prev-scroll { overflow-x: auto; scrollbar-width: thin; }
+    .ex-prev table { border-collapse: collapse; width: 100%; font-size: 0.7rem; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ink); }
+    .ex-prev th, .ex-prev td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+    .ex-prev th { font-weight: 700; color: var(--muted); }
+    .ex-prev td.n, .ex-prev th.n { text-align: right; }
+    .ex-prev tr.ex-r-sec td { font-weight: 800; color: var(--green-text); }
+    .ex-prev tr.ex-r-key td { color: var(--muted); }
+    .ex-prev tr.ex-r-op td { color: var(--faint); font-size: 0.66rem; }
+    .ex-prev tr.ex-r-tot td { font-weight: 800; }
+    .ex-prev-note { display: flex; gap: 6px; padding: 7px 12px; font-size: 0.7rem; color: var(--muted); border-bottom: 1px solid var(--line); }
+    .ex-prev-raw { padding: 8px 12px; background: var(--surface); font-size: 0.68rem; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; }
+    .ex-prev-raw .lbl { color: var(--muted); font-weight: 700; margin-right: 6px; }
+    .ex-prev-raw code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); background: none; }
 @endpush
 
 @section('content')
@@ -442,6 +523,13 @@
             @endif
         </div>
 
+        {{-- Export ada di admin maupun link publik. --}}
+        @if($canExport)
+            <button type="button" class="q-pill" data-open-modal="exportModal">
+                <i class="bi bi-download"></i> {{ __('awsbilling.export') }}
+            </button>
+        @endif
+
         @if($canEdit)
             <form method="POST" action="{{ route('admin.aws-accounts.billing.refresh', $account) }}">
                 @csrf
@@ -472,6 +560,30 @@
         <span class="err" title="{{ $syncError }}"><i class="bi bi-exclamation-triangle-fill"></i> {{ \Illuminate\Support\Str::limit(__('awsbilling.sync_error', ['error' => $syncError]), 80) }}</span>
     @endif
 </div>
+
+{{-- AWS menolak karena izin IAM kurang: sebutkan user & izinnya, beri policy siap salin. --}}
+@if($syncError && !$public && preg_match('/User: (arn:\S+) is not authorized to perform: ([a-z0-9-]+:[A-Za-z0-9]+)/', $syncError, $denied))
+    @php
+        $deniedUser = \Illuminate\Support\Str::afterLast($denied[1], '/');
+        $deniedPolicy = json_encode([
+            'Version'   => '2012-10-17',
+            'Statement' => [['Effect' => 'Allow', 'Action' => [$denied[2]], 'Resource' => '*']],
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    @endphp
+    <div class="bl-iam">
+        <div class="bl-iam-head">
+            <i class="bi bi-shield-lock-fill"></i>
+            <div>
+                <b>{{ __('awsbilling.iam_title', ['user' => $deniedUser, 'action' => $denied[2]]) }}</b>
+                <span>{{ __('awsbilling.iam_body', ['user' => $deniedUser]) }}</span>
+            </div>
+        </div>
+        <div class="bl-iam-code">
+            <textarea id="iamPolicy" readonly rows="{{ substr_count($deniedPolicy, "\n") + 1 }}" spellcheck="false">{{ $deniedPolicy }}</textarea>
+            <button type="button" class="q-pill" data-copy-text="iamPolicy" data-copied="{{ __('awsbilling.iam_copied') }}"><i class="bi bi-clipboard"></i> {{ __('awsbilling.iam_copy') }}</button>
+        </div>
+    </div>
+@endif
 
 @if(!$hasServices)
     <div class="bl-note"><i class="bi bi-info-circle-fill"></i><span>{{ __('awsbilling.no_services_note') }}</span></div>
@@ -657,11 +769,6 @@
         <div class="sec-title">{{ __('awsbilling.co_title') }}</div>
         <div class="sec-sub">{{ $invoice ? __('awsbilling.co_sub_invoice') : __('awsbilling.co_sub_app') }}</div>
     </div>
-    @if($tsvText)
-        <button type="button" class="q-pill" data-copy-tsv="billTsv" data-no-loader>
-            <i class="bi bi-clipboard"></i> {{ __('awsbilling.copy') }}
-        </button>
-    @endif
 </div>
 
 @if($split && $detail)
@@ -903,8 +1010,225 @@
     </div>
 </details>
 
-@if($tsvText)
-    <textarea id="billTsv" hidden>{{ $tsvText }}</textarea>
+
+{{-- Modal export CSV — admin dan link publik sama. --}}
+@if($canExport)
+    @php
+        $exCols = ['usd', 'aws', 'fee', 'invoice', 'vat', 'total'];
+        $exPresets = [
+            'all' => $exCols,
+            'aws' => ['usd', 'aws'],
+            'fee' => ['fee', 'vat'],
+        ];
+        // Judul kolom sama persis dengan di file (fee membawa persennya kalau seragam).
+        $exColLabel = fn ($c) => $c === 'fee' && $split['percent'] !== null
+            ? __('awsbilling.csv_col_fee_pct', ['fee' => $pct($split['percent'])])
+            : __('awsbilling.csv_col_' . $c, ['pct' => $vatPct]);
+
+        // Pratinjau: angka asli halaman ini, dibentuk ulang di browser sesuai pilihan.
+        $exNums = fn ($r) => array_intersect_key($r, array_flip(['usd', 'idr', 'fee', 'invoice', 'vat', 'total']));
+        // Baris operasi (yang dipakai saja), bentuknya sama dengan tabel operasi di file.
+        $exOps = function (?array $det) {
+            $out = [];
+            foreach ($det['companies'] ?? [] as $co) {
+                foreach ($co['keys'] as $kb) {
+                    foreach ($kb['categories'] as $cat) {
+                        foreach ($cat['lines'] as $ln) {
+                            if ($ln['count'] > 0) {
+                                $out[] = ['id' => (int) ($co['company_id'] ?? 0), 'name' => $co['name'] ?? __('awsbilling.unassigned'),
+                                    'key' => $kb['name'], 'cat' => $cat['name'], 'op' => $ln['op'], 'n' => $ln['count'], 'usd' => $ln['usd'], 'keyUsd' => $kb['usd']];
+                            }
+                        }
+                    }
+                }
+            }
+            return $out;
+        };
+        $exSec = fn ($label, $sp, $det) => [
+            'ops'   => $exOps($det),
+            'label' => $label,
+            'pct'   => $sp['percent'],
+            'total' => $exNums($sp['total']),
+            'rows'  => array_map(fn ($r) => [
+                'id'    => (int) ($r['company_id'] ?? 0),
+                'name'  => $r['name'] ?? __('awsbilling.unassigned'),
+                'share' => $r['share'],
+                'pct'   => $r['percent'],
+                'v'     => $exNums($r),
+                'keys'  => array_map(fn ($k) => ['name' => $k['name'], 'share' => $k['share'], 'v' => $exNums($k)], $r['keys'] ?? []),
+            ], $sp['rows']),
+        ];
+        $exSections = ['month' => $exSec(__('awsbilling.csv_sec_month', ['range' => $start->format('j') . '–' . $end->translatedFormat('j M Y')]), $split, $detail)];
+        foreach ($periods as $i => $pp) {
+            $exSections[(string) $i] = $exSec(__('awsbilling.csv_sec_period', [
+                'range' => $pp['start']->format('j') . '–' . $pp['end']->translatedFormat('j M Y'),
+                'share' => $pct($pp['share']),
+            ]), $pp['split'], $pp['detail'] ?? null);
+        }
+        $exData = [
+            'sections' => $exSections,
+            'cols'     => collect($exCols)->mapWithKeys(fn ($c) => [$c => $exColLabel($c)]),
+            'L'        => collect(['h_level', 'h_company', 'h_key', 'h_share', 'h_fee_pct', 'lv_company', 'lv_key', 'lv_total', 'lv_total_sel',
+                'lv_op', 'h_category', 'h_operation', 'h_requests'])
+                ->mapWithKeys(fn ($k) => [$k => __('awsbilling.csv_' . $k)]),
+            'hints'    => collect(['company', 'key', 'op'])->mapWithKeys(fn ($k) => [$k => __('awsbilling.export_hint_level_' . $k)]),
+            'more'     => __('awsbilling.export_preview_more'),
+            'fmt'      => collect(['id', 'intl'])->mapWithKeys(fn ($f) => [$f => 'CSV · ' . __('awsbilling.export_fmt_' . $f) . ' · ' . __('awsbilling.export_fmt_' . $f . '_hint')])
+                ->put('xlsx', __('awsbilling.export_type_xlsx') . ' · Rp 1.234 · $1,23'),
+            'dl'       => ['xlsx' => __('awsbilling.export_download_xlsx'), 'csv' => __('awsbilling.export_download')],
+        ];
+    @endphp
+    <script type="application/json" id="exData">{!! json_encode($exData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) !!}</script>
+    <div class="gm-modal ex-modal" id="exportModal" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+        <div class="gm-modal-card ex-card">
+            <div class="gm-modal-title" id="exportTitle">{{ __('awsbilling.export_title', ['month' => $start->translatedFormat('F Y')]) }}</div>
+            <div class="gm-modal-sub">{{ __('awsbilling.export_sub') }}</div>
+
+            <form method="GET" action="{{ $exportUrl }}" id="exportForm" data-no-loader>
+                <input type="hidden" name="month" value="{{ $monthQ }}">
+                @if($public)<input type="hidden" name="lang" value="{{ app()->getLocale() }}">@endif
+                <input type="hidden" name="rate" value="" id="exRate" disabled>
+
+                <div class="ex-layout">
+                <div class="ex-opts">
+                {{-- Perusahaan --}}
+                <fieldset class="ex-group" data-need-one>
+                    <legend>{{ __('awsbilling.export_companies') }}</legend>
+                    <label class="ex-check ex-all">
+                        <input type="checkbox" id="exAll" checked>
+                        <span class="n">{{ __('awsbilling.export_all') }}</span>
+                        <small>{{ count($split['rows']) }}</small>
+                    </label>
+                    <div class="ex-list">
+                        @foreach($split['rows'] as $row)
+                            <label class="ex-check">
+                                <input type="checkbox" name="co[]" value="{{ (int) ($row['company_id'] ?? 0) }}" checked data-co>
+                                <span class="n">{{ $row['name'] ?? __('awsbilling.unassigned') }}</span>
+                                <small>{{ $rp($row['total']) }}</small>
+                            </label>
+                        @endforeach
+                    </div>
+                    <div class="ex-hint">{{ __('awsbilling.export_hint_companies') }}</div>
+                    <div class="ex-err" hidden>{{ __('awsbilling.export_pick_one') }}</div>
+                </fieldset>
+
+                {{-- Periode (hanya kalau bulannya dipecah) --}}
+                @if($hasPeriods)
+                    <fieldset class="ex-group" data-need-one>
+                        <legend>{{ __('awsbilling.export_periods') }}</legend>
+                        <div class="ex-chips">
+                            <label class="ex-chip"><input type="checkbox" name="per[]" value="month" checked><span>{{ __('awsbilling.export_full_month') }}</span></label>
+                            @foreach($periods as $i => $pp)
+                                <label class="ex-chip"><input type="checkbox" name="per[]" value="{{ $i }}" checked><span>{{ $pLabel($pp) }}</span></label>
+                            @endforeach
+                        </div>
+                        <div class="ex-hint">{{ __('awsbilling.export_hint_periods') }}</div>
+                        <div class="ex-err" hidden>{{ __('awsbilling.export_pick_one') }}</div>
+                    </fieldset>
+                @else
+                    <input type="hidden" name="per[]" value="month">
+                @endif
+
+                {{-- Tingkat rincian --}}
+                <fieldset class="ex-group">
+                    <legend>{{ __('awsbilling.export_level') }}</legend>
+                    <div class="ex-seg">
+                        @foreach(['company', 'key', 'op'] as $lv)
+                            <label><input type="radio" name="level" value="{{ $lv }}" @checked($lv === 'key')><span>{{ __('awsbilling.export_level_' . $lv) }}</span></label>
+                        @endforeach
+                    </div>
+                    <div class="ex-hint" id="exLevelHint">{{ __('awsbilling.export_hint_level_key') }}</div>
+                </fieldset>
+
+                {{-- Kolom --}}
+                <fieldset class="ex-group" data-need-one>
+                    <legend>
+                        <span>{{ __('awsbilling.export_cols') }}</span>
+                        <span class="ex-presets">
+                            @foreach($exPresets as $key => $cols)
+                                <button type="button" data-preset="{{ implode(',', $cols) }}">{{ __('awsbilling.export_preset_' . $key) }}</button>
+                            @endforeach
+                        </span>
+                    </legend>
+                    <div class="ex-chips">
+                        @foreach($exCols as $c)
+                            <label class="ex-chip"><input type="checkbox" name="cols[]" value="{{ $c }}" checked><span>{{ $exColLabel($c) }}</span></label>
+                        @endforeach
+                    </div>
+                    <div class="ex-hint">{{ __('awsbilling.export_hint_cols', ['pct' => $vatPct]) }}</div>
+                    <div class="ex-err" hidden>{{ __('awsbilling.export_pick_one') }}</div>
+                </fieldset>
+
+
+                {{-- Format angka — hanya CSV; Excel menyimpan angka asli berformat Rp/$ --}}
+                <fieldset class="ex-group" id="exFmtGroup" hidden>
+                    <legend>
+                        <span>{{ __('awsbilling.export_format') }}</span>
+                        <span class="ex-pretty">
+                            <input type="hidden" name="pretty" value="0">
+                            <label class="ex-chip"><input type="checkbox" name="pretty" value="1" checked><span>{{ __('awsbilling.export_pretty') }}</span></label>
+                        </span>
+                    </legend>
+                    <div class="ex-seg">
+                        @foreach(['id', 'intl'] as $f)
+                            <label>
+                                <input type="radio" name="fmt" value="{{ $f }}" @checked($f === 'id')>
+                                <span>{{ __('awsbilling.export_fmt_' . $f) }}<small>{{ __('awsbilling.export_fmt_' . $f . '_hint') }}</small></span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <div class="ex-hint">{{ __('awsbilling.export_pretty_hint') }}</div>
+                </fieldset>
+                </div>{{-- /ex-opts --}}
+
+                <div class="ex-side">
+                {{-- Jenis file --}}
+                <fieldset class="ex-group">
+                    <legend>{{ __('awsbilling.export_type') }}</legend>
+                    <div class="ex-seg">
+                        @foreach(['xlsx' => 'bi-file-earmark-spreadsheet', 'csv' => 'bi-filetype-csv'] as $tp => $icon)
+                            <label>
+                                <input type="radio" name="type" value="{{ $tp }}" @checked($tp === 'xlsx')>
+                                <span><span class="ex-type-l"><i class="bi {{ $icon }}"></i> {{ __('awsbilling.export_type_' . $tp) }}</span><small>{{ __('awsbilling.export_type_' . $tp . '_hint') }}</small></span>
+                            </label>
+                        @endforeach
+                    </div>
+                </fieldset>
+
+                {{-- Contoh isi file: ikut berubah setiap pilihan diganti --}}
+                <div class="ex-prev">
+                    <div class="ex-prev-head">
+                        <span><i class="bi bi-eye"></i> {{ __('awsbilling.export_preview') }}</span>
+                        <span class="ex-fmt-badge" id="exFmtBadge"></span>
+                    </div>
+                    <div class="ex-prev-scroll"><table id="exPrevTable"></table></div>
+                    <div class="ex-prev-note" id="exPrevNote" hidden></div>
+                    <div class="ex-prev-note" id="exPrevSim" hidden><i class="bi bi-exclamation-triangle"></i> {{ __('awsbilling.export_preview_sim') }}</div>
+                    <div class="ex-prev-raw" id="exPrevRawBox">
+                        <span class="lbl">{{ __('awsbilling.export_preview_raw') }}</span>
+                        <code id="exPrevRaw"></code>
+                    </div>
+                </div>
+
+                {{-- Kurs yang akan tertulis di file --}}
+                <div class="ex-rate">
+                    <i class="bi bi-currency-exchange"></i>
+                    <div>
+                        <b>{{ __('awsbilling.export_rate') }}: 1 USD = <span id="exRateText">Rp {{ number_format($detail['rate'], 2, ',', '.') }}</span></b>
+                        <span class="ex-tag" id="exRateTag" hidden>{{ __('awsbilling.export_rate_sim') }}</span>
+                        <small>{{ __('awsbilling.export_rate_note') }}</small>
+                    </div>
+                </div>
+
+                <div class="btn-row">
+                    <button type="button" class="ex-btn" data-close>{{ __('ui.cancel') }}</button>
+                    <button type="submit" class="ex-btn primary"><i class="bi bi-download"></i> <span id="exDlLabel">{{ __('awsbilling.export_download_xlsx') }}</span></button>
+                </div>
+                </div>{{-- /ex-side --}}
+                </div>{{-- /ex-layout --}}
+            </form>
+        </div>
+    </div>
 @endif
 
 {{-- Modal isi / ubah invoice --}}
@@ -1058,20 +1382,9 @@
         document.querySelectorAll('[data-copy-text]').forEach((btn) => btn.addEventListener('click', () => {
             const el = document.getElementById(btn.dataset.copyText);
             Promise.resolve(copy(el.value))
-                .then(() => toast(@json(__('awsbilling.share_copied')), 'ok'))
+                .then(() => toast(btn.dataset.copied || @json(__('awsbilling.share_copied')), 'ok'))
                 .catch(() => toast(@json(__('awsbilling.copy_failed')), 'bad'));
         }));
-
-        // Salin ringkasan + rincian sebagai TSV, langsung bisa ditempel ke Sheets / Excel.
-        document.querySelectorAll('[data-copy-tsv]').forEach((btn) => {
-            const src = document.getElementById(btn.dataset.copyTsv);
-            if (!src) return;
-            btn.addEventListener('click', () => {
-                Promise.resolve(copy(src.value))
-                    .then(() => toast(@json(__('awsbilling.copied')), 'ok'))
-                    .catch(() => toast(@json(__('awsbilling.copy_failed')), 'bad'));
-            });
-        });
 
         // Simulasi kurs: semua angka Rupiah dihitung ulang di browser dari nilai
         // dasar (kurs invoice). Tidak disimpan; tombol salin tetap memakai kurs asli.
@@ -1140,6 +1453,7 @@
             // sampai 2 desimal dan boleh di luar rentang slider.
             const apply = (r, from) => {
                 rate = r;
+                fx.dataset.current = r;
                 store(r);
                 const t = compute(r);
                 const on = Math.abs(r - base) >= 0.005;
@@ -1249,6 +1563,203 @@
         }));
         modals.forEach((m) => m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('[data-close]')) closeAll(); }));
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); });
+        // ---- Modal export CSV
+        const exForm = document.getElementById('exportForm');
+        if (exForm) {
+            const exAll = document.getElementById('exAll');
+            const cos = [...exForm.querySelectorAll('[data-co]')];
+            const colInputs = [...exForm.querySelectorAll('input[name="cols[]"]')];
+            const presets = [...exForm.querySelectorAll('[data-preset]')];
+
+            const syncAll = () => {
+                const n = cos.filter((c) => c.checked).length;
+                exAll.checked = n === cos.length;
+                exAll.indeterminate = n > 0 && n < cos.length;
+                renderPreview();
+            };
+
+            // ---- Pratinjau: bentuk baris persis seperti BillingExport di server.
+            const exData = JSON.parse(document.getElementById('exData').textContent);
+            const L = exData.L;
+            const FIELD = { usd: 'usd', aws: 'idr', fee: 'fee', invoice: 'invoice', vat: 'vat', total: 'total' };
+            const MAX_LINES = 5;
+            function renderPreview() {
+                const fd = new FormData(exForm);
+                const per = fd.getAll('per[]');
+                const sec = exData.sections[per[0] ?? 'month'] || exData.sections.month;
+                const level = fd.get('level') || 'key';
+                const cols = fd.getAll('cols[]');
+                const xlsx = (fd.get('type') || 'xlsx') === 'xlsx';
+                const intl = !xlsx && fd.get('fmt') === 'intl';
+                document.getElementById('exFmtGroup').hidden = xlsx;
+                document.getElementById('exPrevRawBox').hidden = xlsx;
+                document.getElementById('exDlLabel').textContent = exData.dl[xlsx ? 'xlsx' : 'csv'];
+                const ids = fd.getAll('co[]').map(Number);
+                const allSel = ids.length === sec.rows.length;
+                const withPct = cols.includes('fee');
+                const withOps = level === 'op';
+                const maxLines = withOps ? 8 : MAX_LINES;
+
+                const pretty = xlsx || fd.getAll('pretty').pop() === '1';
+                // Sama dengan BillingExport::numText(): "Rp 826.085", "$97.31", "90.000" saat
+                // pretty aktif; tanpa itu angka polos tanpa pemisah ribuan.
+                const num = (v, d, kind) => {
+                    let x = Number(Number(v || 0).toFixed(d));
+                    if (x === 0) x = 0;
+                    let [i, f] = Math.abs(x).toFixed(d).split('.');
+                    if (pretty) i = i.replace(/\B(?=(\d{3})+(?!\d))/g, intl ? ',' : '.');
+                    let out = i + (f ? (intl ? '.' : ',') + f : '');
+                    if (pretty && kind === 'idr') out = 'Rp ' + out;
+                    if (pretty && kind === 'usd') out = '$' + out;
+                    return (x < 0 ? '-' : '') + out;
+                };
+                const vals = (v) => cols.map((c) => num(v[FIELD[c]], c === 'usd' ? 2 : 0, c === 'usd' ? 'usd' : 'idr'));
+                const scale = (v, f) => Object.fromEntries(Object.entries(v).map(([k, x]) => [k, x * f]));
+                const ops = (sec.ops || []).filter((o) => ids.includes(o.id));
+                const reqOf = (list) => num(list.reduce((a, o) => a + o.n, 0), 0, 'count');
+                // Sama dengan BillingExport: kolom operasi hanya ada di tingkat "+ Per operasi".
+                const line = (lv, co, key, opCells, share, pct, v) => [
+                    lv, co, key, ...(withOps ? opCells : []), num(share, 2), ...(withPct ? [pct] : []), ...vals(v),
+                ];
+
+                const head = [L.h_level, L.h_company, L.h_key,
+                    ...(withOps ? [L.h_category, L.h_operation, L.h_requests] : []),
+                    L.h_share, ...(withPct ? [L.h_fee_pct] : []), ...cols.map((c) => exData.cols[c])];
+                const body = [];
+                let hidden = 0;
+                const push = (l) => (body.length < maxLines ? body.push(l) : hidden++);
+
+                sec.rows.filter((r) => ids.includes(r.id)).forEach((r) => {
+                    const coOps = ops.filter((o) => o.id === r.id);
+                    push(['ex-r-co', line(L.lv_company, r.name, '', ['', '', reqOf(coOps)], r.share, num(r.pct, 2), r.v)]);
+                    if (level === 'company') return;
+                    r.keys.forEach((k) => {
+                        const kOps = coOps.filter((o) => o.key === k.name);
+                        push(['ex-r-key', line(L.lv_key, r.name, k.name, ['', '', reqOf(kOps)], k.share, '', k.v)]);
+                        if (!withOps) return;
+                        kOps.forEach((o) => {
+                            const f = o.keyUsd > 0 ? o.usd / o.keyUsd : 0;
+                            push(['ex-r-op', line(L.lv_op, r.name, k.name, [o.cat, o.op, num(o.n, 0, 'count')], k.share * f, '', scale(k.v, f))]);
+                        });
+                    });
+                });
+
+                let total;
+                if (allSel) {
+                    total = line(L.lv_total, '', '', ['', '', reqOf(ops)], 100, sec.pct !== null ? num(sec.pct, 2) : '', sec.total);
+                } else {
+                    const sum = { usd: 0, idr: 0, fee: 0, invoice: 0, vat: 0, total: 0 };
+                    let share = 0;
+                    sec.rows.filter((r) => ids.includes(r.id)).forEach((r) => {
+                        share += r.share;
+                        Object.keys(sum).forEach((k) => { sum[k] += Number(r.v[k] || 0); });
+                    });
+                    total = line(L.lv_total_sel, '', '', ['', '', reqOf(ops)], share, '', sum);
+                }
+
+                const table = document.getElementById('exPrevTable');
+                table.replaceChildren();
+                const numFrom = withOps ? 5 : 3;
+                const add = (cells, cls, tag = 'td') => {
+                    const row = document.createElement('tr');
+                    if (cls) row.className = cls;
+                    cells.forEach((c, i) => {
+                        const cell = document.createElement(tag);
+                        cell.textContent = c;
+                        if (i >= numFrom) cell.className = 'n';
+                        row.appendChild(cell);
+                    });
+                    table.appendChild(row);
+                };
+                const t = document.createElement('tr');
+                t.className = 'ex-r-sec';
+                const tc = document.createElement('td');
+                tc.colSpan = head.length;
+                tc.textContent = '▶ ' + sec.label;
+                t.appendChild(tc);
+                table.appendChild(t);
+                add(head, '', 'th');
+                body.forEach(([cls, cells]) => add(cells, cls));
+                add(total, 'ex-r-tot');
+
+                const note = document.getElementById('exPrevNote');
+                note.hidden = hidden === 0;
+                note.textContent = exData.more.replace(':n', hidden);
+                document.getElementById('exLevelHint').textContent = exData.hints[level];
+
+                // Format aktif tertulis di kepala contoh; menyala sebentar saat diganti.
+                const badge = document.getElementById('exFmtBadge');
+                const fmtKey = xlsx ? 'xlsx' : (intl ? 'intl' : 'id');
+                if (badge.dataset.fmt && badge.dataset.fmt !== fmtKey) {
+                    badge.classList.remove('flash');
+                    void badge.offsetWidth;
+                    badge.classList.add('flash');
+                }
+                badge.dataset.fmt = fmtKey;
+                badge.textContent = exData.fmt[fmtKey];
+
+                // Satu baris mentah, persis seperti di file (aturan kutip fputcsv).
+                const sep = intl ? ',' : ';';
+                const first = body[0] ? body[0][1] : total;
+                document.getElementById('exPrevRaw').textContent = first
+                    .map((c) => (/[\s"]/.test(c) || c.includes(sep) ? '"' + c.replace(/"/g, '""') + '"' : c))
+                    .join(sep);
+            }
+
+            exAll.addEventListener('change', () => { cos.forEach((c) => { c.checked = exAll.checked; }); syncAll(); });
+            cos.forEach((c) => c.addEventListener('change', syncAll));
+
+            // Tombol cepat kolom menyala kalau pilihan sekarang persis sama.
+            const markPreset = () => {
+                const now = colInputs.filter((i) => i.checked).map((i) => i.value).join(',');
+                presets.forEach((b) => b.classList.toggle('on', b.dataset.preset === now));
+                renderPreview();
+            };
+            presets.forEach((b) => b.addEventListener('click', () => {
+                const want = b.dataset.preset.split(',');
+                colInputs.forEach((i) => { i.checked = want.includes(i.value); });
+                markPreset();
+            }));
+            colInputs.forEach((i) => i.addEventListener('change', markPreset));
+            exForm.querySelectorAll('input[name="per[]"], input[name="level"], input[name="fmt"], input[name="pretty"], input[name="type"]')
+                .forEach((i) => i.addEventListener('change', renderPreview));
+            markPreset();
+
+            // Kurs: ikut penggeser kurs di halaman. Kurs simulasi dikirim ke server
+            // dan ditandai jelas di file; kurs resmi tidak perlu dikirim.
+            const fxEl = document.querySelector('.fx');
+            const rateIn = document.getElementById('exRate');
+            const syncRate = () => {
+                if (!fxEl) return;
+                const base = parseFloat(fxEl.dataset.base);
+                const cur = parseFloat(fxEl.dataset.current || fxEl.dataset.base);
+                const sim = Math.abs(cur - base) >= 0.005;
+                document.getElementById('exRateText').textContent = 'Rp ' + cur.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('exRateTag').hidden = !sim;
+                document.getElementById('exPrevSim').hidden = !sim;
+                rateIn.disabled = !sim;
+                rateIn.value = sim ? cur.toFixed(2) : '';
+            };
+            document.querySelectorAll('[data-open-modal="exportModal"]').forEach((b) => b.addEventListener('click', syncRate));
+
+            exForm.addEventListener('submit', (e) => {
+                // Unduhan, bukan pindah halaman: dibuat lewat URL supaya loader tidak tertahan.
+                e.preventDefault();
+                let ok = true;
+                exForm.querySelectorAll('[data-need-one]').forEach((g) => {
+                    const any = [...g.querySelectorAll('input[type=checkbox][name]')].some((i) => i.checked);
+                    g.querySelector('.ex-err').hidden = any;
+                    ok = ok && any;
+                });
+                if (!ok) return;
+
+                syncRate();
+                const url = new URL(exForm.action);
+                new FormData(exForm).forEach((v, k) => url.searchParams.append(k, v));
+                window.location.href = url.toString();
+                closeAll();
+            });
+        }
     })();
 </script>
 @endpush
