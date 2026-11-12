@@ -95,8 +95,18 @@
     .mstep a:hover { background: var(--green); color: #fff; }
     .mstep span.dis { color: var(--faint); }
     .mstep select { border: none; background: transparent; color: var(--ink); font-weight: 700; font-size: 0.84rem; padding: 0 6px; min-width: 150px; }
-    .mstep .gm-select { min-width: 160px; }
-    .mstep .gm-select-btn { background: transparent !important; border-color: transparent !important; box-shadow: none !important; font-weight: 700; }
+    /* Dropdown bulan memakai komponen bertema (partials/gm-select), dibuat
+       menyatu dengan pil panah kiri-kanan: tanpa kotak, setinggi tombolnya. */
+    .mstep .gm-select { min-width: 164px; }
+    .mstep .gm-select-btn {
+        height: 36px; border-radius: 999px; padding: 0 28px;
+        justify-content: center; font-weight: 700; font-size: 0.84rem;
+        background: transparent; border-color: transparent; box-shadow: none;
+    }
+    .mstep .gm-select-btn:hover { background: var(--surface); border-color: transparent; }
+    .mstep .gm-select.open > .gm-select-btn { background: var(--surface); border-color: transparent; box-shadow: none; }
+    .mstep .gm-select-panel { left: 50%; transform: translate(-50%, -6px) scale(0.98); min-width: 190px; }
+    .mstep .gm-select.open .gm-select-panel { transform: translate(-50%, 0); }
 
     .bl-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; margin: -6px 0 18px; font-size: 0.76rem; color: var(--muted); }
     .bl-meta span { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; min-width: 0; }
@@ -987,13 +997,13 @@
 
             @if($shareOn)
                 <div class="sh-link">
-                    <input type="text" readonly value="{{ $share->url() }}" id="shareUrl" onclick="this.select()">
+                    <input type="text" readonly value="{{ $share->url($monthQ) }}" id="shareUrl" onclick="this.select()">
                     <button type="button" class="btn-solid" data-copy-text="shareUrl"><i class="bi bi-clipboard"></i> {{ __('awsbilling.share_copy') }}</button>
                 </div>
                 <div class="sh-stats">
                     <span><i class="bi bi-eye"></i> {{ trans_choice('awsbilling.share_views', $share->view_count, ['n' => $share->view_count]) }}</span>
                     <span>{{ $share->last_viewed_at ? __('awsbilling.share_last_view', ['ago' => $share->last_viewed_at->diffForHumans()]) : __('awsbilling.share_never_viewed') }}</span>
-                    <a href="{{ $share->url() }}" target="_blank" rel="noopener">{{ __('awsbilling.share_open') }} <i class="bi bi-box-arrow-up-right"></i></a>
+                    <a href="{{ $share->url($monthQ) }}" target="_blank" rel="noopener">{{ __('awsbilling.share_open') }} <i class="bi bi-box-arrow-up-right"></i></a>
                 </div>
                 <div class="sh-warn"><i class="bi bi-shield-exclamation"></i><span>{{ __('awsbilling.share_warn') }}</span></div>
                 <div class="btn-row">

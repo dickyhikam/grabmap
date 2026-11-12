@@ -28,9 +28,18 @@ class AwsBillingShare extends Model
         return Str::random(48);
     }
 
-    public function url(): string
+    /**
+     * Link publik. Bulan yang sedang dilihat ikut dibawa (opsional) supaya
+     * pembaca mendarat di bulan yang sama dengan yang dibagikan admin — tanpa
+     * itu halaman publik membuka bulan bawaan (bulan lalu), yang bisa belum
+     * punya invoice atau potongan periode.
+     */
+    public function url(?string $month = null): string
     {
-        return route('aws-billing.public', $this->token);
+        return route('aws-billing.public', array_filter([
+            'token' => $this->token,
+            'month' => $month,
+        ]));
     }
 
     /** Catat kunjungan tanpa menyentuh updated_at (itu penanda perubahan link). */

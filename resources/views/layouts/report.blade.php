@@ -456,6 +456,8 @@
             font-weight: 600;
         }
 
+        @include('partials.gm-select-css')
+
         @stack('styles')
     </style>
 </head>
@@ -522,6 +524,12 @@
                 paint(mode);
             }));
         })();
+    </script>
+
+    <script>
+        {{-- Dropdown bertema yang sama dengan panel admin: halaman publik ikut
+             memakainya supaya <select> tidak jatuh ke tampilan bawaan sistem. --}}
+        @include('partials.gm-select-js')
     </script>
 
     @stack('scripts')
