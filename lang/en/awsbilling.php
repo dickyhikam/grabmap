@@ -298,4 +298,18 @@ return [
     'hero_sub_vat'      => 'AWS bill + VAT',
     'hero_sub_aws'      => 'AWS bill, no management fee or VAT',
     'flow_vat_sub_nofee'=> 'on bill',
+
+    // Newer management fee rate than this month's
+    'fee_stale_title'   => 'A newer management fee rate exists',
+    'fee_stale_body'    => 'This month uses the rate in effect on :date (end of month). The rate changed after that:',
+    'fee_since'         => 'effective :date',
+    'fee_no_company'    => 'Keys without a company',
+    'fee_preview_btn'   => 'Preview with latest rate',
+    'fee_preview_off'   => 'Back to saved rate',
+    'fee_preview_on'    => 'Previewing the latest management fee rate',
+    'fee_preview_on_d'  => 'Figures on this page (and exports) use the latest rate. Nothing has been saved.',
+    'fee_apply_btn'     => 'Use latest rate for this month',
+    'fee_apply_confirm' => 'Save the latest rate effective :date? Earlier months stay the same, and bill claims already saved are not changed.',
+    'fee_applied'       => 'The latest management fee rate now applies to this month.',
+    'fee_nothing'       => 'This month already uses the latest rate.',
 ];

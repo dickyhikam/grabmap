@@ -306,4 +306,18 @@ return [
     'hero_sub_vat'      => 'Tagihan AWS + VAT',
     'hero_sub_aws'      => 'Tagihan AWS, tanpa management fee dan VAT',
     'flow_vat_sub_nofee'=> 'dari tagihan',
+
+    // Tarif management fee yang lebih baru dari tarif bulan ini
+    'fee_stale_title'   => 'Ada tarif management fee yang lebih baru',
+    'fee_stale_body'    => 'Bulan ini memakai tarif yang berlaku per :date (akhir bulan). Sesudah itu tarifnya diubah:',
+    'fee_since'         => 'berlaku mulai :date',
+    'fee_no_company'    => 'Key tanpa perusahaan',
+    'fee_preview_btn'   => 'Lihat dengan tarif terbaru',
+    'fee_preview_off'   => 'Kembali ke tarif tersimpan',
+    'fee_preview_on'    => 'Pratinjau tarif management fee terbaru',
+    'fee_preview_on_d'  => 'Angka di halaman ini (dan export) memakai tarif terbaru. Belum ada yang disimpan.',
+    'fee_apply_btn'     => 'Pakai tarif terbaru untuk bulan ini',
+    'fee_apply_confirm' => 'Simpan tarif terbaru mulai :date? Bulan-bulan sebelumnya tidak berubah, dan pengajuan tagihan yang sudah tersimpan juga tidak ikut berubah.',
+    'fee_applied'       => 'Tarif management fee terbaru sudah dipakai untuk bulan ini.',
+    'fee_nothing'       => 'Tarif bulan ini sudah sama dengan tarif terbaru.',
 ];

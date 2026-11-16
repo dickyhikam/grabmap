@@ -295,6 +295,7 @@ Route::middleware(['auth', 'verified', 'admin.locale'])->group(function () {
             Route::post('/{awsAccount}/billing/refresh', [AwsBillingController::class, 'refresh'])->name('admin.aws-accounts.billing.refresh');
             Route::post('/{awsAccount}/billing/invoice', [AwsBillingController::class, 'storeInvoice'])->name('admin.aws-accounts.billing.invoice');
             Route::post('/{awsAccount}/billing/periods', [AwsBillingController::class, 'storePeriods'])->name('admin.aws-accounts.billing.periods');
+            Route::post('/{awsAccount}/billing/fee-latest', [AwsBillingController::class, 'applyLatestFee'])->name('admin.aws-accounts.billing.fee-latest');
             Route::post('/{awsAccount}/billing/share', [AwsBillingController::class, 'shareEnable'])->name('admin.aws-accounts.billing.share');
             Route::post('/{awsAccount}/billing/share/disable', [AwsBillingController::class, 'shareDisable'])->name('admin.aws-accounts.billing.share.disable');
             Route::post('/{awsAccount}/billing/share/regenerate', [AwsBillingController::class, 'shareRegenerate'])->name('admin.aws-accounts.billing.share.regenerate');

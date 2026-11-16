@@ -78,6 +78,74 @@ class ServiceCharge extends Model
             ->first();
     }
 
+    /** Baris tarif yang berlaku di satu cakupan saja (akun, atau perusahaan), tanpa jatuh ke tarif akun. */
+    public static function scopeRuleAt(?int $accountId, ?int $companyId, string $date): ?self
+    {
+        return static::query()
+            ->when($companyId,
+                fn ($q) => $q->where('company_id', $companyId),
+                fn ($q) => $q->where('aws_account_id', $accountId)->whereNull('company_id'))
+            ->whereDate('effective_from', '<=', $date)
+            ->orderByDesc('effective_from')->orderByDesc('id')
+            ->first();
+    }
+
+    /** Dua aturan sama nilainya? null dan baris "ikut akun" dianggap sama. */
+    public static function sameValues(?self $a, ?self $b): bool
+    {
+        $norm = fn (?self $r) => $r && $r->percent !== null
+            ? [round((float) $r->percent, 3), round((float) $r->monthly_min_idr, 2)]
+            : null;
+
+        return $norm($a) === $norm($b);
+    }
+
+    /**
+     * Tarif yang dipakai satu periode tagihan dibanding tarif terbaru (hari ini).
+     * Tarif periode = yang berlaku di tanggal akhir periode, jadi tarif yang
+     * dibuat belakangan (mis. 19% → 9%) tidak ikut ke bulan lama. Mengembalikan:
+     *  - companies: per perusahaan yang tarif efektifnya berubah (dipakai vs terbaru)
+     *  - scopes: cakupan (akun / tarif khusus perusahaan) yang perlu dicatat ulang
+     *    supaya periode ini ikut tarif terbaru.
+     *
+     * @param  array<int, array{company_id: ?int, name: ?string}>  $groups
+     */
+    public static function staleFor(int $accountId, array $groups, string $periodStart, string $periodEnd, ?string $today = null): array
+    {
+        $today ??= now()->wib()->toDateString();
+        if ($today <= $periodEnd) {
+            return ['companies' => [], 'scopes' => []];
+        }
+
+        $companies = [];
+        foreach ($groups as $g) {
+            $used = static::ruleFor($accountId, $g['company_id'], $periodEnd);
+            $latest = static::ruleFor($accountId, $g['company_id'], $today);
+            if (!static::sameValues($used, $latest)) {
+                $companies[] = ['company_id' => $g['company_id'], 'name' => $g['name'], 'used' => $used, 'latest' => $latest];
+            }
+        }
+
+        $scopes = [];
+        if ($companies) {
+            $ids = array_values(array_unique(array_filter(array_column($groups, 'company_id'))));
+            foreach (array_merge([null], $ids) as $companyId) {
+                $used = static::scopeRuleAt($accountId, $companyId, $periodEnd);
+                $latest = static::scopeRuleAt($accountId, $companyId, $today);
+                if (!static::sameValues($used, $latest)) {
+                    // Tanggal catat: awal periode, atau tanggal baris yang sedang
+                    // dipakai kalau lebih baru — supaya baris baru menang darinya.
+                    $from = $used && $used->effective_from->toDateString() > $periodStart
+                        ? $used->effective_from->toDateString()
+                        : $periodStart;
+                    $scopes[] = ['company_id' => $companyId, 'latest' => $latest, 'from' => $from];
+                }
+            }
+        }
+
+        return ['companies' => $companies, 'scopes' => $scopes];
+    }
+
     /** Perusahaan pemilik satu API key — lewat daftar key perusahaan, lalu key utama lama. */
     public static function companyIdForKey(?int $accountId, string $keyName): ?int
     {

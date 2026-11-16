@@ -56,8 +56,16 @@ class AwsBillingController extends Controller
      */
     private const COST_HISTORY_MONTHS = 12;
 
+    /**
+     * Pratinjau "pakai tarif management fee terbaru": tarif dicari di tanggal
+     * hari ini, bukan tanggal akhir bulan. Tidak menyimpan apa pun.
+     */
+    private bool $feeLatest = false;
+
     public function show(Request $request, AwsAccount $awsAccount)
     {
+        $this->feeLatest = $request->query('fee') === 'latest';
+
         return view('admin.aws-accounts.billing', $this->billingData($awsAccount, $request->query('month')) + [
             'public' => false,
             'share'  => AwsBillingShare::where('aws_account_id', $awsAccount->id)->first(),
@@ -101,6 +109,8 @@ class AwsBillingController extends Controller
 
     private function exportResponse(Request $request, AwsAccount $account)
     {
+        // Pratinjau tarif terbaru hanya untuk admin; link publik selalu tarif tersimpan.
+        $this->feeLatest = $request->routeIs('admin.*') && $request->query('fee') === 'latest';
         $rate = (float) str_replace(',', '.', (string) $request->query('rate', ''));
         $data = $this->billingData($account, $request->query('month'), $rate > 0 ? $rate : null);
         abort_unless($data['split'] && $data['detail'], 404);
@@ -247,6 +257,18 @@ class AwsBillingController extends Controller
         $split = $baseIdr !== null && $baseUsd > 0
             ? $this->companySplit($awsAccount, $keys, $baseUsd, $baseIdr, $end)
             : null;
+        // Tarif management fee yang lebih baru dari tarif bulan ini (mis. sempat
+        // 19% lalu dibetulkan jadi 9% dengan tanggal berlaku sesudah bulan ini).
+        $feeStale = ['companies' => [], 'scopes' => []];
+        if ($split && $awsAccount->bill_management_fee) {
+            $feeStale = \App\Models\ServiceCharge::staleFor(
+                $accountId,
+                array_map(fn ($r) => ['company_id' => $r['company_id'], 'name' => $r['name']], $split['rows']),
+                $start->format('Y-m-d'),
+                $end->format('Y-m-d'),
+            );
+        }
+
         $detail = $split ? $this->operationDetail($split, $keys, $baseUsd, $baseIdr, $hasServices && !$taxEstimated ? $tax : null) : null;
 
         $cuts = AwsBillingSplit::cutsFor($accountId, $start);
@@ -296,6 +318,8 @@ class AwsBillingController extends Controller
             'monthClosed'  => $monthClosed,
             'complete'     => $complete,
             'keys'         => $keys,
+            'feeStale'     => $feeStale,
+            'feeLatest'    => $this->feeLatest,
         ];
     }
 
@@ -460,6 +484,42 @@ class AwsBillingController extends Controller
         return redirect()
             ->route('admin.aws-accounts.billing', [$awsAccount, 'month' => $start->format('Y-m')])
             ->with('success', $cuts ? __('awsbilling.periods_saved', ['n' => count($cuts) + 1]) : __('awsbilling.periods_cleared'));
+    }
+
+    /**
+     * Catat tarif management fee terbaru untuk bulan ini dan sesudahnya. Riwayat
+     * lama tidak dihapus: baris baru dibuat mulai awal bulan (atau tanggal baris
+     * yang sedang dipakai, yang lalu dikoreksi), jadi bulan sebelumnya tetap.
+     * Pengajuan tagihan yang sudah tersimpan tidak ikut berubah.
+     */
+    public function applyLatestFee(Request $request, AwsAccount $awsAccount)
+    {
+        $data = $request->validate(['month' => ['required', 'date_format:Y-m']]);
+        [$start] = $this->resolveMonth($data['month']);
+
+        $billing = $this->billingData($awsAccount, $start->format('Y-m'));
+        $scopes = $billing['feeStale']['scopes'];
+        $by = optional($request->user())->name ?? 'admin';
+
+        DB::transaction(function () use ($scopes, $awsAccount, $by) {
+            foreach ($scopes as $sc) {
+                $latest = $sc['latest'];
+                // Akun tanpa tarif sama sekali = 0%; perusahaan tanpa tarif = ikut akun.
+                $percent = $latest?->percent ?? ($sc['company_id'] ? null : 0.0);
+                \App\Models\ServiceCharge::record(
+                    $awsAccount->id,
+                    $sc['company_id'],
+                    $percent,
+                    $percent === null ? null : (float) ($latest?->monthly_min_idr ?? 0),
+                    $sc['from'],
+                    $by,
+                );
+            }
+        });
+
+        return redirect()
+            ->route('admin.aws-accounts.billing', [$awsAccount, 'month' => $start->format('Y-m')])
+            ->with('success', $scopes ? __('awsbilling.fee_applied') : __('awsbilling.fee_nothing'));
     }
 
     public function storeInvoice(Request $request, AwsAccount $awsAccount)
@@ -698,7 +758,7 @@ class AwsBillingController extends Controller
 
         // VAT dan management fee bisa dimatikan per akun (form edit akun AWS).
         $vatRate = $account->bill_vat ? (float) Setting::get('tax_rate', config('aws.tax_rate', 0.11)) : 0.0;
-        $date = $end->format('Y-m-d');
+        $ruleDate = $this->feeLatest ? now()->wib()->toDateString() : $end->format('Y-m-d');
 
         // Kelompokkan key per perusahaan; key tanpa pemilik jadi kelompok sendiri.
         $groups = [];
@@ -715,7 +775,7 @@ class AwsBillingController extends Controller
 
         foreach ($groups as $g) {
             $rule = $account->bill_management_fee
-                ? \App\Models\ServiceCharge::ruleFor($account->id, $g['company_id'], $date)
+                ? \App\Models\ServiceCharge::ruleFor($account->id, $g['company_id'], $ruleDate)
                 : null;
             $pct = (float) ($rule?->percent ?? 0);
             // Minimum bulanan ikut dipotong sebanding untuk periode sebagian bulan.

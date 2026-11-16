@@ -122,6 +122,18 @@
         font-size: 0.78rem; line-height: 1.55; background: var(--warn-soft); color: var(--warn-fg);
     }
 
+    /* ---------- Tarif management fee yang lebih baru ---------- */
+    .bl-fee { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+    .bl-fee > i { margin-top: 2px; }
+    .bl-fee-body { flex: 1 1 320px; min-width: 0; }
+    .bl-fee-body b { display: block; }
+    .bl-fee-list { margin: 6px 0 0; padding: 0; list-style: none; }
+    .bl-fee-list li { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+    .bl-fee-list s { opacity: 0.7; }
+    .bl-fee-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .bl-fee-acts form { margin: 0; }
+    .bl-fee-acts .q-pill { font-size: 0.74rem; }
+
     /* ---------- Hero: total invoice ke klien ---------- */
     .bl-top { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; margin-bottom: 22px; }
     @media (max-width: 1000px) { .bl-top { grid-template-columns: minmax(0, 1fr); } }
@@ -631,6 +643,56 @@
     <div class="bl-note"><i class="bi bi-info-circle-fill"></i><span>{{ __('awsbilling.no_services_note') }}</span></div>
 @elseif($monthClosed && $lastDataDay && $lastDataDay->format('Y-m-d') < $end->format('Y-m-d'))
     <div class="bl-note"><i class="bi bi-hourglass-split"></i><span>{{ __('awsbilling.partial_note', ['date' => $lastDataDay->translatedFormat('d M Y')]) }}</span></div>
+@endif
+
+{{-- Tarif management fee yang dibuat sesudah bulan ini (mis. 19% dibetulkan jadi 9%). Admin saja. --}}
+@if(!$public && ($feeLatest || $feeStale['companies']))
+    @php
+        $feeRule = fn ($r) => $r && $r->percent !== null
+            ? $pct($r->percent) . '%' . ((float) $r->monthly_min_idr > 0 ? ' · min ' . $rp($r->monthly_min_idr) : '')
+            : '0%';
+        $feeSince = fn ($r) => $r ? __('awsbilling.fee_since', ['date' => $r->effective_from->translatedFormat('d M Y')]) : '';
+        $feeFrom = collect($feeStale['scopes'])->min('from');
+    @endphp
+    <div class="bl-note bl-fee">
+        <i class="bi {{ $feeLatest ? 'bi-eye-fill' : 'bi-percent' }}"></i>
+        <div class="bl-fee-body">
+            @if($feeLatest)
+                <b>{{ __('awsbilling.fee_preview_on') }}</b>
+                <span>{{ __('awsbilling.fee_preview_on_d') }}</span>
+            @else
+                <b>{{ __('awsbilling.fee_stale_title') }}</b>
+                <span>{{ __('awsbilling.fee_stale_body', ['date' => $end->translatedFormat('d M Y')]) }}</span>
+            @endif
+            @if($feeStale['companies'])
+                <ul class="bl-fee-list">
+                    @foreach($feeStale['companies'] as $fc)
+                        <li>
+                            <span>{{ $fc['name'] ?? __('awsbilling.fee_no_company') }}:</span>
+                            <span><s title="{{ $feeSince($fc['used']) }}">{{ $feeRule($fc['used']) }}</s> → <b style="display:inline" title="{{ $feeSince($fc['latest']) }}">{{ $feeRule($fc['latest']) }}</b></span>
+                            <small>({{ $feeSince($fc['latest']) }})</small>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </div>
+        <div class="bl-fee-acts">
+            @if($feeLatest)
+                <a href="{{ $billUrl($monthQ) }}" class="q-pill"><i class="bi bi-arrow-counterclockwise"></i> {{ __('awsbilling.fee_preview_off') }}</a>
+            @else
+                <a href="{{ route('admin.aws-accounts.billing', [$account, 'month' => $monthQ, 'fee' => 'latest']) }}" class="q-pill"><i class="bi bi-eye"></i> {{ __('awsbilling.fee_preview_btn') }}</a>
+            @endif
+            @if($canEdit && $feeStale['scopes'])
+                <form method="POST" action="{{ route('admin.aws-accounts.billing.fee-latest', $account) }}"
+                      onsubmit="return confirm(this.dataset.msg)"
+                      data-msg="{{ __('awsbilling.fee_apply_confirm', ['date' => \Carbon\Carbon::parse($feeFrom)->translatedFormat('d M Y')]) }}">
+                    @csrf
+                    <input type="hidden" name="month" value="{{ $monthQ }}">
+                    <button type="submit" class="q-pill q-pill-green"><i class="bi bi-check2-circle"></i> {{ __('awsbilling.fee_apply_btn') }}</button>
+                </form>
+            @endif
+        </div>
+    </div>
 @endif
 
 <div class="bl-top">
@@ -1183,6 +1245,7 @@
                 <input type="hidden" name="month" value="{{ $monthQ }}">
                 @if($public)<input type="hidden" name="lang" value="{{ app()->getLocale() }}">@endif
                 <input type="hidden" name="rate" value="" id="exRate" disabled>
+                @if(!$public && $feeLatest)<input type="hidden" name="fee" value="latest">@endif
 
                 <div class="ex-layout">
                 <div class="ex-opts">
