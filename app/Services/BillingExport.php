@@ -37,6 +37,7 @@ class BillingExport
     /** Kolom export → kunci angka di baris rincian per perusahaan. */
     private const FIELD = ['usd' => 'usd', 'aws' => 'idr', 'fee' => 'fee', 'invoice' => 'invoice', 'vat' => 'vat', 'total' => 'total'];
 
+    private const BRAND = 'GrabMaps';
     private const GREEN = 'FF00B14F';
     private const GREEN_SOFT = 'FFE8F8EF';
     private const GREEN_TEXT = 'FF009640';
@@ -70,13 +71,17 @@ class BillingExport
      * Pilihan dari modal Export. Nilai yang tidak dikenal dibuang; pilihan
      * kosong kembali ke bawaan, jadi file tidak pernah kosong tanpa sebab.
      */
-    public static function optionsFrom(Request $request, array $data): array
+    public static function optionsFrom(Request $request, array $data, bool $otherMonth = false): array
     {
         $ids = array_map(fn ($r) => (int) ($r['company_id'] ?? 0), $data['split']['rows']);
 
         $co = $request->query('co');
         $companies = is_array($co) ? array_values(array_intersect($ids, array_map('intval', $co))) : $ids;
-        $companies = $companies ?: $ids;
+        // Bulan lain di export banyak bulan: perusahaan terpilih bisa saja tidak
+        // memakai apa pun di bulan itu, jadi daftar kosong tetap kosong.
+        if (!$otherMonth) {
+            $companies = $companies ?: $ids;
+        }
 
         $periodKeys = ['month'];
         if (count($data['periods']) > 1) {
@@ -85,7 +90,18 @@ class BillingExport
             }
         }
         $per = $request->query('per');
-        $periods = is_array($per) ? array_values(array_intersect($periodKeys, array_map('strval', $per))) : ['month'];
+        if ($otherMonth) {
+            // Indeks periode di modal milik bulan yang sedang dibuka. Bulan lain:
+            // "Sebulan penuh" kalau dicentang, ditambah semua periode pecahannya
+            // kalau "Periode pecahan bulan lain" (per[]=split) dicentang.
+            $per = is_array($per) ? array_map('strval', $per) : ['month'];
+            $periods = in_array('month', $per, true) ? ['month'] : [];
+            if (in_array('split', $per, true)) {
+                $periods = array_merge($periods, array_slice($periodKeys, 1));
+            }
+        } else {
+            $periods = is_array($per) ? array_values(array_intersect($periodKeys, array_map('strval', $per))) : ['month'];
+        }
         $periods = $periods ?: ['month'];
 
         $level = in_array($request->query('level'), self::LEVELS, true) ? $request->query('level') : 'key';
@@ -97,7 +113,17 @@ class BillingExport
 
         return [
             'companies' => $companies,
-            'all'       => count($companies) === count($ids),
+            'all'       => !is_array($co) || count($companies) === count($ids),
+            // Versi untuk klien: tanpa angka tingkat akun (total invoice AWS,
+            // porsi dari akun, perusahaan lain) dan tanpa catatan internal.
+            'client'    => $request->query('client') === '1',
+            // Nama perusahaan yang dicentang (hanya milik akun ini), untuk kepala versi klien.
+            'picked_names' => is_array($co)
+                ? \App\Models\Company::whereIn('id', array_map('intval', $co))
+                    ->where(fn ($q) => $q->where('aws_account_id', $data['account']->id)
+                        ->orWhereHas('apiKeys', fn ($k) => $k->where('aws_account_id', $data['account']->id)))
+                    ->orderBy('name')->pluck('name')->all()
+                : [],
             'periods'   => $periods,
             'level'     => $level,
             'cols'      => $cols,
@@ -127,10 +153,42 @@ class BillingExport
 
     public function render(): string
     {
-        $this->out = [];
-        $this->build();
+        return self::renderMany([['month' => $this->data['start'], 'export' => $this]]);
+    }
 
-        return $this->opt['type'] === 'csv' ? $this->toCsv() : $this->toXlsx();
+    /**
+     * Satu file untuk beberapa bulan. Excel: tab "Ringkasan" (satu baris per
+     * bulan) lalu satu tab per bulan dengan isi persis seperti export sebulan.
+     * CSV: ringkasan lalu tiap bulan berurutan dalam satu file. Satu bulan saja
+     * = file sebulan biasa, tanpa ringkasan.
+     *
+     * @param  array<int, array{month: Carbon, export: ?self}>  $items  urut bulan; export null = belum ada data
+     */
+    public static function renderMany(array $items): string
+    {
+        $exports = array_values(array_filter(array_column($items, 'export')));
+        $first = $exports[0];
+
+        $sheets = [];
+        if (count($items) > 1) {
+            $first->out = [];
+            $first->summary($items);
+            $sheets[] = ['title' => $first->t('summary_tab'), 'rows' => $first->out];
+        }
+        foreach ($exports as $e) {
+            $e->out = [];
+            $e->build();
+            $sheets[] = ['title' => $e->data['start']->translatedFormat('M Y'), 'rows' => $e->out];
+        }
+
+        // Kalimat penutup formal di akhir setiap tab.
+        foreach ($sheets as &$sh) {
+            $sh['rows'][] = ['style' => '', 'cells' => []];
+            $sh['rows'][] = ['style' => 'foot', 'cells' => [$first->t('footer')]];
+        }
+        unset($sh);
+
+        return $first->opt['type'] === 'csv' ? $first->toCsv($sheets) : $first->toXlsx($sheets, $items);
     }
 
     private function build(): void
@@ -140,14 +198,18 @@ class BillingExport
         foreach ($this->opt['periods'] as $p) {
             if ($p === 'month') {
                 $this->section(
-                    $this->t('sec_month', ['range' => $this->range($this->data['start'], $this->data['end'])]),
+                    $this->cutoff()
+                        ? $this->t('sec_running', ['range' => $this->range($this->data['start'], $this->cutoff())])
+                        : $this->t('sec_month', ['range' => $this->range($this->data['start'], $this->data['end'])]),
                     $this->data['split'],
                     $this->data['detail'],
                 );
             } else {
                 $pp = $this->data['periods'][(int) $p];
                 $this->section(
-                    $this->t('sec_period', ['range' => $this->range($pp['start'], $pp['end']), 'share' => $this->pct($pp['share'])]),
+                    $this->isClient()
+                        ? $this->t('sec_period_client', ['range' => $this->range($pp['start'], $pp['end'])])
+                        : $this->t('sec_period', ['range' => $this->range($pp['start'], $pp['end']), 'share' => $this->pct($pp['share'])]),
                     $pp['split'],
                     $pp['detail'] ?? null,
                 );
@@ -158,10 +220,20 @@ class BillingExport
 
     // ---------------------------------------------------------------- CSV
 
-    private function toCsv(): string
+    private function toCsv(array $sheets): string
     {
+        $rows = [];
+        foreach ($sheets as $i => $s) {
+            // Pemisah antarbulan: dua baris kosong.
+            if ($i > 0) {
+                $rows[] = ['style' => '', 'cells' => []];
+                $rows[] = ['style' => '', 'cells' => []];
+            }
+            array_push($rows, ...$s['rows']);
+        }
+
         $fh = fopen('php://temp', 'r+');
-        foreach ($this->out as $row) {
+        foreach ($rows as $row) {
             $cells = array_map(
                 fn ($c) => is_array($c) ? $this->numText($c) : self::safeCell((string) $c),
                 $row['cells'],
@@ -178,28 +250,57 @@ class BillingExport
 
     // ---------------------------------------------------------------- Excel
 
-    private function toXlsx(): string
+    private function toXlsx(array $sheets, array $items): string
     {
+        $months = count($items) > 1
+            ? $items[0]['month']->translatedFormat('M Y') . ' – ' . end($items)['month']->translatedFormat('M Y')
+            : $this->data['start']->translatedFormat('F Y');
+
         $book = new Spreadsheet();
         $book->getProperties()
-            ->setCreator('GrabMaps')
-            ->setTitle($this->t('title') . ' · ' . $this->data['account']->name . ' · ' . $this->data['start']->translatedFormat('F Y'));
+            ->setCreator(self::BRAND)
+            ->setLastModifiedBy(self::BRAND)
+            ->setCompany(self::BRAND)
+            ->setTitle($this->t('title') . ($this->isClient() ? '' : ' · ' . $this->data['account']->name) . ' · ' . $months);
         $book->getDefaultStyle()->getFont()->setName('Arial')->setSize(10);
 
-        $sheet = $book->getActiveSheet();
-        $sheet->setTitle(mb_substr($this->data['start']->translatedFormat('M Y'), 0, 31));
+        $used = [];
+        foreach ($sheets as $i => $s) {
+            $sheet = $i === 0 ? $book->getActiveSheet() : $book->createSheet();
+            // Nama tab: tanpa karakter terlarang Excel, maks. 31 huruf, tidak kembar.
+            $title = mb_substr(trim(preg_replace('/[\[\]:*?\/\\\\]/', ' ', $s['title'])), 0, 28) ?: 'Sheet';
+            $name = $title;
+            for ($n = 2; isset($used[mb_strtolower($name)]); $n++) {
+                $name = $title . ' ' . $n;
+            }
+            $used[mb_strtolower($name)] = true;
+            $sheet->setTitle($name);
+            $this->fillSheet($sheet, $s['rows']);
+        }
+        $book->setActiveSheetIndex(0);
+
+        ob_start();
+        (new Xlsx($book))->save('php://output');
+        $bin = ob_get_clean();
+        $book->disconnectWorksheets();
+
+        return $bin;
+    }
+
+    private function fillSheet($sheet, array $rows): void
+    {
         $sheet->setShowGridlines(false);
 
         // Lebar tabel terlebar: dipakai untuk pita judul bagian.
         $tableStyles = ['th', 'co', 'key', 'op', 'tot'];
         $width = max(2, ...array_map(
             fn ($r) => in_array($r['style'], $tableStyles, true) ? count($r['cells']) : 2,
-            $this->out,
+            $rows,
         ));
         $last = Coordinate::stringFromColumnIndex($width);
 
         $colLen = [];
-        foreach ($this->out as $i => $row) {
+        foreach ($rows as $i => $row) {
             $r = $i + 1;
             foreach ($row['cells'] as $c => $cell) {
                 $addr = Coordinate::stringFromColumnIndex($c + 1) . $r;
@@ -216,12 +317,24 @@ class BillingExport
                 }
 
                 // Lebar kolom dari isi tabel (+ label info di kolom A).
-                if (in_array($row['style'], $tableStyles, true) || ($c === 0 && $row['style'] === 'kv')) {
+                // Angka di blok info ikut dihitung: angka tidak meluber ke sel sebelah
+                // seperti teks, jadi kolomnya harus cukup lebar (mis. kurs).
+                if (in_array($row['style'], $tableStyles, true) || ($c === 0 && $row['style'] === 'kv')
+                    || ($row['style'] === 'kv' && is_array($cell))) {
                     $len = mb_strlen(is_array($cell) ? $this->numText($cell, true) : (string) $cell);
                     $colLen[$c] = max($colLen[$c] ?? 0, $len);
                 }
             }
             $this->styleRow($sheet, $row['style'], $r, $last, count($row['cells']));
+            // Kop: logo lengkap "GrabMaps" sebagai satu gambar, sel dikosongkan.
+            // Jangan logo + teks di sel yang sama: Google Sheets mengabaikan indent
+            // sel, jadi teksnya tertimpa logo.
+            if ($row['style'] === 'brand' && is_file($logo = public_path('logo.png'))) {
+                $sheet->setCellValueExplicit("A{$r}", null, DataType::TYPE_NULL);
+                $img = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+                $img->setName(self::BRAND)->setDescription(self::BRAND)->setPath($logo)->setHeight(26)
+                    ->setCoordinates("A{$r}")->setOffsetX(2)->setOffsetY(6)->setWorksheet($sheet);
+            }
         }
 
         foreach ($colLen as $c => $len) {
@@ -232,14 +345,11 @@ class BillingExport
         $sheet->getPageSetup()
             ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
             ->setFitToWidth(1)->setFitToHeight(0);
+        // Kepala & kaki halaman saat dicetak / disimpan PDF.
+        $sheet->getHeaderFooter()
+            ->setOddHeader('&L&"Arial,Bold"&K00B14F' . self::BRAND . '&R&"Arial"&8' . $this->t('title'))
+            ->setOddFooter('&L&"Arial"&8' . $this->t('footer') . '&R&"Arial"&8' . $this->t('print_page'));
         $sheet->setSelectedCell('A1');
-
-        ob_start();
-        (new Xlsx($book))->save('php://output');
-        $bin = ob_get_clean();
-        $book->disconnectWorksheets();
-
-        return $bin;
     }
 
     private function styleRow($sheet, string $style, int $r, string $last, int $cells): void
@@ -251,6 +361,21 @@ class BillingExport
         $line = fn ($range, $side = 'bottom', $color = self::LINE, $kind = Border::BORDER_THIN) => $sheet->getStyle($range)->getBorders()->{'get' . ucfirst($side)}()->setBorderStyle($kind)->getColor()->setARGB($color);
 
         switch ($style) {
+            case 'brand':
+                // Cadangan kalau file logo tidak ada: teks "GrabMaps" saja.
+                $font("A{$r}")->setBold(true)->setSize(18)->getColor()->setARGB(self::GREEN);
+                $sheet->getStyle("A{$r}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+                $sheet->getRowDimension($r)->setRowHeight(36);
+                break;
+            case 'brand_sub':
+                $font("A{$r}")->setSize(9)->getColor()->setARGB(self::MUTED);
+                $line($row, 'bottom', self::GREEN, Border::BORDER_MEDIUM);
+                $sheet->getRowDimension($r)->setRowHeight(18);
+                break;
+            case 'foot':
+                $font("A{$r}")->setItalic(true)->setSize(9)->getColor()->setARGB(self::MUTED);
+                $line($row, 'top', self::LINE);
+                break;
             case 'title':
                 $font("A{$r}")->setBold(true)->setSize(16)->getColor()->setARGB(self::GREEN_TEXT);
                 $sheet->getRowDimension($r)->setRowHeight(26);
@@ -309,6 +434,14 @@ class BillingExport
 
     // ---------------------------------------------------------------- bagian
 
+    /** Kop dokumen: logo + GrabMaps, subjudul layanan, garis hijau (Excel). */
+    private function letterhead(): void
+    {
+        $this->row([self::BRAND], 'brand');
+        $this->row([$this->t('brand_sub')], 'brand_sub');
+        $this->row([]);
+    }
+
     private function header(): void
     {
         $d = $this->data;
@@ -323,18 +456,27 @@ class BillingExport
         }
 
         $periodLabels = array_map(fn ($p) => $p === 'month'
-            ? $this->t('full_month', ['range' => $this->range($d['start'], $d['end'])])
+            ? ($this->cutoff()
+                ? $this->t('running_upto', ['range' => $this->range($d['start'], $this->cutoff())])
+                : $this->t('full_month', ['range' => $this->range($d['start'], $d['end'])]))
             : $this->range($d['periods'][(int) $p]['start'], $d['periods'][(int) $p]['end']), $o['periods']);
 
-        $status = $d['complete'] ? 'complete' : (!$d['monthClosed'] ? 'running' : 'partial');
-
+        $this->letterhead();
         $this->row([$this->t('title')], 'title');
-        $this->row([$this->t('account'), $d['account']->name]);
+        if (!$this->isClient()) {
+            $this->row([$this->t('account'), $d['account']->name]);
+        }
         $this->row([$this->t('month'), $d['start']->translatedFormat('F Y')]);
         $this->row([$this->t('periods'), implode('; ', $periodLabels)]);
-        $this->row([$this->t('companies'), $o['all'] ? $this->t('companies_all', ['n' => count($names)]) : implode('; ', $names)]);
+        if ($this->isClient()) {
+            // Klien: selalu nama perusahaan yang dipilih, juga di bulan tanpa pemakaian.
+            $names = $o['picked_names'] ?: $names;
+        }
+        $this->row([$this->t('companies'), $o['all'] && !$this->isClient()
+            ? $this->t('companies_all', ['n' => count($names)])
+            : (implode('; ', $names) ?: '—')]);
         $this->row([$this->t('detail'), $this->t('level_' . $o['level'])]);
-        $this->row([$this->t('status'), __('awsbilling.status_' . $status)]);
+        $this->row([$this->t('status'), $this->statusText()]);
         $this->row([$this->t('generated'), now()->wib()->translatedFormat('d M Y, H:i') . ' WIB']);
         $this->row([]);
 
@@ -347,34 +489,51 @@ class BillingExport
         $this->row([$this->t('rate_text'), '1 USD = ' . $this->rpText($rate, 2)]);
         $this->row([$this->t('rate_source'), $this->rateSource()]);
         $this->row([$this->t('rate_formula'), $this->t('rate_formula_v')]);
-        // Fee/VAT yang dimatikan di akun tidak ditulis sama sekali.
-        $hasFee = $split['has_fee'] ?? true;
-        $hasVat = $split['has_vat'] ?? true;
+        // Fee/VAT yang dimatikan di akun, atau kolomnya tidak dicentang, tidak
+        // ikut dihitung dan tidak disebut sama sekali.
+        $hasFee = ($split['has_fee'] ?? true) && $this->countsFee();
+        $hasVat = ($split['has_vat'] ?? true) && $this->countsVat();
         if ($hasFee) {
-            $this->row([$this->t('fee'), $split['percent'] !== null
-                ? $this->t('fee_v', ['pct' => $this->pct($split['percent'])])
+            $feePct = $this->feePct();
+            $this->row([$this->t('fee'), $feePct !== null
+                ? $this->t('fee_v', ['pct' => $this->pct($feePct)])
                 : $this->t('fee_mixed')]);
-            if (collect($split['rows'])->contains(fn ($r) => ($r['min'] ?? 0) > 0)) {
-                $this->row([$this->t('fee_min'), $this->t('fee_min_v')]);
+            // Minimum fee: versi klien hanya melihat minimum perusahaan yang dipilih.
+            $mins = array_unique(array_filter(array_map(
+                fn ($r) => (float) ($r['min'] ?? 0),
+                $this->isClient() ? $this->selectedRows($split) : $split['rows'],
+            )));
+            if ($mins) {
+                $this->row([$this->t('fee_min'), $this->isClient() && count($mins) === 1
+                    ? $this->t('fee_min_client_v', ['min' => $this->rpText(reset($mins), 0)])
+                    : $this->t('fee_min_v')]);
             }
         }
         if ($hasVat) {
-            $this->row([$this->t('vat'), $this->t('vat_v', ['pct' => $vatPct])]);
+            $this->row([$this->t('vat'), $this->t($hasFee ? 'vat_v' : 'vat_v_aws', ['pct' => $vatPct])]);
         }
-        if ($hasFee && $hasVat) {
-            $this->row([$this->t('total_formula'), $this->t('total_formula_v')]);
+        if (in_array('total', $o['cols'], true)) {
+            $this->row([$this->t('total_formula'), $this->totalFormula()]);
         }
-        $this->row([$this->t('rounding'), $this->t('rounding_v')]);
+        $this->row([$this->t('rounding'), $this->t($this->isClient() ? 'rounding_client_v' : 'rounding_v')]);
         $this->row([]);
 
         // ---- Keterangan kolom yang ikut di file ini.
         $this->row([$this->t('cols_head')], 'head');
-        $this->row([$this->t('h_share'), $this->t('col_share_v')]);
+        if (!$this->isClient()) {
+            $this->row([$this->t('h_share'), $this->t('col_share_v')]);
+        }
         if (in_array('fee', $o['cols'], true)) {
             $this->row([$this->t('h_fee_pct'), $this->t('col_fee_pct_v')]);
         }
         foreach ($o['cols'] as $c) {
-            $this->row([$this->colLabel($c), $this->t('col_' . $c . '_v', ['pct' => $vatPct])]);
+            $desc = match (true) {
+                $c === 'invoice' && !$hasFee => $this->t('col_invoice_v_nofee'),
+                $c === 'vat' && !$hasFee     => $this->t('vat_v_aws', ['pct' => $vatPct]),
+                $c === 'total'               => $this->t('col_total_v_f', ['formula' => $this->totalFormula()]),
+                default                      => $this->t('col_' . $c . '_v', ['pct' => $vatPct]),
+            };
+            $this->row([$this->colLabel($c), $desc]);
         }
         if ($o['level'] === 'op') {
             $this->row([$this->t('h_requests'), $this->t('col_requests_v')]);
@@ -385,9 +544,12 @@ class BillingExport
 
     private function section(string $title, array $split, ?array $detail): void
     {
+        $split = $this->adjustSplit($split);
         $o = $this->opt;
         $withPct = in_array('fee', $o['cols'], true);
         $withOps = $o['level'] === 'op';
+        // Porsi (%) = bagian dari total akun: tidak untuk klien.
+        $withShare = !$this->isClient();
         $ops = $withOps ? $this->opsIndex($detail) : [];
 
         $rows = array_values(array_filter(
@@ -399,7 +561,7 @@ class BillingExport
         $line = fn (string $lv, string $co, string $key, array $opCells, float $share, string|array $pct, array $v) => array_merge(
             [$lv, $co, $key],
             $withOps ? $opCells : [],
-            [$this->num($share, 2)],
+            $withShare ? [$this->num($share, 2)] : [],
             $withPct ? [$pct] : [],
             $this->values($v),
         );
@@ -414,7 +576,9 @@ class BillingExport
         if ($withOps) {
             array_push($head, $this->t('h_category'), $this->t('h_operation'), $this->t('h_requests'));
         }
-        $head[] = $this->t('h_share');
+        if ($withShare) {
+            $head[] = $this->t('h_share');
+        }
         if ($withPct) {
             $head[] = $this->t('h_fee_pct');
         }
@@ -452,20 +616,12 @@ class BillingExport
             $this->row([$this->t('no_usage')], 'note');
         }
 
-        // Semua perusahaan: total dari baris total halaman (sama persis dengan layar).
-        // Sebagian: jumlah baris yang dipilih saja.
+        $total = $this->selectedTotal($split);
         if ($o['all']) {
-            $total = $split['total'] + ['share' => count($split['rows']) ? 100 : 0];
             $label = $this->t('lv_total');
             $pct = $split['percent'] !== null ? $this->num($split['percent'], 2) : '';
         } else {
-            $total = ['share' => 0];
-            foreach ($rows as $r) {
-                foreach (['share', ...array_values(self::FIELD)] as $f) {
-                    $total[$f] = ($total[$f] ?? 0) + ($r[$f] ?? 0);
-                }
-            }
-            $label = $this->t('lv_total_sel');
+            $label = $this->t($this->isClient() ? 'lv_total' : 'lv_total_sel');
             $pct = '';
         }
         $totalReq = $this->num(array_sum(array_map(
@@ -474,11 +630,223 @@ class BillingExport
         )), 0, 'count');
         $this->row($line($label, '', '', ['', '', $totalReq], $total['share'], $pct, $total), 'tot');
 
-        if ($withOps && $o['all'] && $detail) {
+        // Jembatan ke Billing AWS = angka tingkat akun: tidak pernah untuk klien.
+        if ($withOps && $o['all'] && $detail && !$this->isClient()) {
             $this->bridge($detail);
         }
 
         $this->row([]);
+    }
+
+    private function isClient(): bool
+    {
+        return (bool) ($this->opt['client'] ?? false);
+    }
+
+    /** @return array<int, array> baris perusahaan yang dipilih */
+    private function selectedRows(array $split): array
+    {
+        return array_values(array_filter(
+            $split['rows'],
+            fn ($r) => in_array((int) ($r['company_id'] ?? 0), $this->opt['companies'], true),
+        ));
+    }
+
+    /**
+     * Persen fee untuk judul kolom & kepala file. Internal: tarif seragam akun.
+     * Klien: tarif perusahaan yang dipilih (kalau sama semua), tanpa melihat
+     * tarif perusahaan lain.
+     */
+    private function feePct(): ?float
+    {
+        if (!$this->isClient()) {
+            return $this->data['split']['percent'];
+        }
+        $p = array_unique(array_map(fn ($r) => (float) $r['percent'], $this->selectedRows($this->data['split'])));
+
+        return count($p) === 1 ? reset($p) : null;
+    }
+
+    private function countsFee(): bool
+    {
+        return in_array('fee', $this->opt['cols'], true);
+    }
+
+    private function countsVat(): bool
+    {
+        return in_array('vat', $this->opt['cols'], true);
+    }
+
+    /**
+     * Kolom Management fee / VAT yang tidak dicentang juga tidak dihitung:
+     * Invoice = Billing AWS + fee (kalau dicentang), VAT = tarif × Invoice itu
+     * (kalau dicentang, dibulatkan per baris seperti halaman), Total = Invoice +
+     * VAT. Baris API key tetap sebanding baris perusahaannya, baris total
+     * dihitung dari totalnya sendiri — sama dengan cara halaman menghitung.
+     */
+    private function adjustSplit(array $split): array
+    {
+        $withFee = $this->countsFee();
+        $rate = $this->countsVat() ? (float) $split['vat_rate'] : 0.0;
+        if ($withFee && $this->countsVat()) {
+            return $split;
+        }
+
+        $line = function (array $v) use ($withFee, $rate) {
+            $fee = $withFee ? (float) ($v['fee'] ?? 0) : 0.0;
+            $invoice = (float) ($v['idr'] ?? 0) + $fee;
+            $vat = round($invoice * $rate);
+
+            return ['fee' => $fee, 'invoice' => $invoice, 'vat' => $vat, 'total' => $invoice + $vat] + $v;
+        };
+
+        foreach ($split['rows'] as &$r) {
+            $idr = (float) ($r['idr'] ?? 0);
+            $r = $line($r);
+            foreach ($r['keys'] as &$k) {
+                $f = $idr > 0 ? $k['idr'] / $idr : 0.0;
+                foreach (['fee', 'invoice', 'vat', 'total'] as $x) {
+                    $k[$x] = $r[$x] * $f;
+                }
+            }
+            unset($k);
+        }
+        unset($r);
+        $split['total'] = $line($split['total']);
+
+        return $split;
+    }
+
+    /** "Billing AWS (IDR) + Management fee + VAT" — hanya komponen yang dihitung. */
+    private function totalFormula(): string
+    {
+        $parts = [$this->t('col_aws')];
+        if ($this->countsFee() && ($this->data['split']['has_fee'] ?? true)) {
+            $parts[] = $this->t('fee');
+        }
+        if ($this->countsVat() && ($this->data['split']['has_vat'] ?? true)) {
+            $parts[] = $this->t('vat');
+        }
+
+        return implode(' + ', $parts);
+    }
+
+    /**
+     * Baris total: semua perusahaan → baris total halaman (sama persis dengan
+     * layar); sebagian → jumlah perusahaan yang dipilih saja.
+     */
+    private function selectedTotal(array $split): array
+    {
+        if ($this->opt['all']) {
+            return $split['total'] + ['share' => count($split['rows']) ? 100 : 0];
+        }
+
+        $total = ['share' => 0];
+        foreach ($split['rows'] as $r) {
+            if (!in_array((int) ($r['company_id'] ?? 0), $this->opt['companies'], true)) {
+                continue;
+            }
+            foreach (['share', ...array_values(self::FIELD)] as $f) {
+                $total[$f] = ($total[$f] ?? 0) + ($r[$f] ?? 0);
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * Tab Ringkasan export banyak bulan: satu baris per bulan dengan kurs bulan
+     * itu sendiri (kurs tiap bulan bisa beda, jadi Rupiah tiap bulan dihitung
+     * dengan kursnya masing-masing), lalu TOTAL.
+     *
+     * @param  array<int, array{month: Carbon, export: ?self}>  $items
+     */
+    private function summary(array $items): void
+    {
+        $exports = array_values(array_filter(array_column($items, 'export')));
+
+        $names = [];
+        foreach ($exports as $e) {
+            foreach ($e->data['split']['rows'] as $r) {
+                if (in_array((int) ($r['company_id'] ?? 0), $e->opt['companies'], true)) {
+                    $names[$r['name'] ?? __('awsbilling.unassigned')] = true;
+                }
+            }
+        }
+        $all = collect($exports)->every(fn ($e) => $e->opt['all']);
+
+        $this->letterhead();
+        $this->row([$this->t('title')], 'title');
+        if (!$this->isClient()) {
+            $this->row([$this->t('account'), $this->data['account']->name]);
+        }
+        $this->row([$this->t('months'), $this->t('months_v', [
+            'from' => $items[0]['month']->translatedFormat('F Y'),
+            'to'   => end($items)['month']->translatedFormat('F Y'),
+            'n'    => count($items),
+        ])]);
+        if ($this->isClient() && $this->opt['picked_names']) {
+            $names = array_flip($this->opt['picked_names']);
+        }
+        $this->row([$this->t('companies'), $all && !$this->isClient() ? $this->t('companies_all_months') : (implode('; ', array_keys($names)) ?: '—')]);
+        $this->row([$this->t('detail'), $this->t('level_' . $this->opt['level'])]);
+        $this->row([$this->t('generated'), now()->wib()->translatedFormat('d M Y, H:i') . ' WIB']);
+        $this->row([]);
+
+        $this->row([$this->t('sum_head')], 'head');
+        $head = [$this->t('h_month'), $this->t('status'), $this->t('h_rate'), $this->t('rate_source')];
+        foreach ($this->opt['cols'] as $c) {
+            // Persen fee bisa berubah antarbulan: judul kolomnya tanpa persen.
+            $head[] = $c === 'fee' ? $this->t('col_fee') : $this->colLabel($c);
+        }
+        $this->row($head, 'th');
+
+        $sum = [];
+        foreach ($items as $it) {
+            $label = $it['month']->translatedFormat('F Y');
+            $e = $it['export'];
+            if ($e && $e->cutoff()) {
+                $label = $this->t('sum_upto', ['month' => $label, 'range' => $this->range($e->data['start'], $e->cutoff())]);
+            }
+            if (!$e) {
+                $this->row([$label, $this->t('sum_nodata')], 'key');
+                continue;
+            }
+            $tot = $e->selectedTotal($e->adjustSplit($e->data['split']));
+            foreach (self::FIELD as $f) {
+                $sum[$f] = ($sum[$f] ?? 0) + (float) ($tot[$f] ?? 0);
+            }
+            $this->row(array_merge(
+                [$label, $e->statusText(), $this->num($e->data['detail']['rate'], 2, 'idr'), $e->rateSource()],
+                $this->values($tot),
+            ), 'key');
+        }
+        $this->row(array_merge([$all || $this->isClient() ? $this->t('lv_total') : $this->t('lv_total_sel'), '', '', ''], $this->values($sum)), 'tot');
+        $this->row([]);
+        $this->row([$this->t('sum_note_rate')], 'note');
+        $this->row([$this->t('sum_note_tabs')], 'note');
+    }
+
+    /** Akhir data bulan berjalan (akhir kemarin, UTC); null untuk bulan yang sudah tutup. */
+    private function cutoff(): ?Carbon
+    {
+        return $this->data['cutoff'] ?? null;
+    }
+
+    private function statusText(): string
+    {
+        $d = $this->data;
+
+        // Bulan berjalan: sebut persis sampai kapan dihitung. Hari tagihan AWS
+        // memakai UTC, jadi akhir hari UTC = pukul 06.59 WIB keesokan harinya.
+        if ($cut = $this->cutoff()) {
+            return $this->t('status_cut', [
+                'date' => $cut->translatedFormat('j M Y'),
+                'wib'  => $cut->copy()->endOfDay()->setTimezone('Asia/Jakarta')->translatedFormat('j M Y, H.i'),
+            ]);
+        }
+
+        return __('awsbilling.status_' . ($d['complete'] ? 'complete' : (!$d['monthClosed'] ? 'running' : 'partial')));
     }
 
     /**
@@ -545,6 +913,17 @@ class BillingExport
     {
         $d = $this->data;
 
+        // Klien: asal kurs tanpa total invoice akun (dari situ pemakaian
+        // perusahaan lain bisa ditebak).
+        if ($this->isClient()) {
+            return match (true) {
+                $d['simulated']           => $this->t('src_client_sim'),
+                (bool) $d['invoice']      => $this->t('src_client_invoice', ['month' => $d['start']->translatedFormat('F Y')]),
+                (bool) $d['storedRate']   => $this->t('src_client_table', ['date' => Carbon::parse($d['storedRate']->rate_date)->translatedFormat('d M Y')]),
+                default                   => $this->t('src_none'),
+            };
+        }
+
         if ($d['simulated']) {
             return $this->t('src_sim', ['official' => $this->rpText($d['officialRate'], 2)]);
         }
@@ -573,7 +952,7 @@ class BillingExport
     private function colLabel(string $c): string
     {
         // Fee seragam: persennya ditulis di judul kolom. Tarif campuran: lihat kolom "Fee (%)".
-        $fee = $this->data['split']['percent'];
+        $fee = $this->feePct();
         if ($c === 'fee' && $fee !== null) {
             return $this->t('col_fee_pct', ['fee' => $this->pct($fee)]);
         }

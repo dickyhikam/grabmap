@@ -66,8 +66,12 @@ class AwsBillingController extends Controller
     {
         $this->feeLatest = $request->query('fee') === 'latest';
 
-        return view('admin.aws-accounts.billing', $this->billingData($awsAccount, $request->query('month')) + [
-            'public' => false,
+        $data = $this->billingData($awsAccount, $request->query('month'));
+
+        return view('admin.aws-accounts.billing', $data + [
+            'ex'       => $this->cutRunningMonth($awsAccount, $data),
+            'exMonths' => $this->exportMonthInfo($awsAccount),
+            'public'   => false,
             'share'  => AwsBillingShare::where('aws_account_id', $awsAccount->id)->first(),
         ]);
     }
@@ -84,8 +88,12 @@ class AwsBillingController extends Controller
         $this->applyPublicLocale($request);
         $share->recordView();
 
-        return view('admin.aws-accounts.billing', $this->billingData($share->account, $request->query('month')) + [
-            'public' => true,
+        $data = $this->billingData($share->account, $request->query('month'));
+
+        return view('admin.aws-accounts.billing', $data + [
+            'ex'       => $this->cutRunningMonth($share->account, $data),
+            'exMonths' => $this->exportMonthInfo($share->account),
+            'public'   => true,
             'share'  => $share,
         ]);
     }
@@ -113,17 +121,161 @@ class AwsBillingController extends Controller
         $this->feeLatest = $request->routeIs('admin.*') && $request->query('fee') === 'latest';
         $rate = (float) str_replace(',', '.', (string) $request->query('rate', ''));
         $data = $this->billingData($account, $request->query('month'), $rate > 0 ? $rate : null);
-        abort_unless($data['split'] && $data['detail'], 404);
+        $base = $data['start']->format('Y-m');
+        $data = $this->cutRunningMonth($account, $data);
 
-        $export = new BillingExport($data, BillingExport::optionsFrom($request, $data));
-        $name = 'tagihan-aws-' . Str::slug($account->name) . '-' . $data['start']->format('Y-m') . '.' . $export->extension();
+        // Banyak bulan (?months[]=2026-09&months[]=2026-10): tiap bulan dihitung
+        // utuh seperti halamannya sendiri — kurs, invoice, fee & periode bulan itu.
+        // Kurs simulasi dari penggeser hanya berlaku untuk bulan yang sedang dibuka.
+        $items = [];
+        foreach ($this->exportMonths($request, $base) as $ym) {
+            $d = $ym === $base ? $data : $this->cutRunningMonth($account, $this->billingData($account, $ym));
+            $ok = $d['split'] && $d['detail'];
+            $items[] = [
+                'month'  => $d['start'],
+                'export' => $ok ? new BillingExport($d, BillingExport::optionsFrom($request, $d, $ym !== $base)) : null,
+            ];
+        }
+        $exports = array_values(array_filter(array_column($items, 'export')));
+        abort_unless($exports, 404);
+        $export = $exports[0];
 
-        return response($export->render(), 200, [
+        $first = $items[0]['month']->format('Y-m');
+        $last = end($items)['month']->format('Y-m');
+        // Versi klien: nama file memakai nama perusahaan, bukan nama akun AWS.
+        $who = $account->name;
+        if ($request->query('client') === '1' && is_array($request->query('co'))) {
+            $picked = array_map('intval', $request->query('co'));
+            $names = collect($data['split']['rows'] ?? [])->filter(fn ($r) => in_array((int) ($r['company_id'] ?? 0), $picked, true))->pluck('name')->filter();
+            $who = $names->count() === 1 ? $names->first() : $who;
+        }
+        $name = 'tagihan-aws-' . Str::slug($who) . '-' . ($first === $last ? $first : $first . '-sd-' . $last) . '.' . $export->extension();
+
+        return response(BillingExport::renderMany($items), 200, [
             'Content-Type'        => $export->contentType(),
             'Content-Disposition' => 'attachment; filename="' . $name . '"',
             'X-Robots-Tag'        => 'noindex, nofollow',
             'Cache-Control'       => 'private, no-store',
         ]);
+    }
+
+    /**
+     * Bulan yang diekspor, urut dari yang terlama. Hanya bulan yang ada di
+     * pilihan halaman (12 bulan terakhir); tanpa ?months[] = bulan yang dibuka.
+     *
+     * @return array<int, string>  Y-m
+     */
+    private function exportMonths(Request $request, string $base): array
+    {
+        $valid = array_map(fn (Carbon $m) => $m->format('Y-m'), $this->monthOptions());
+        $want = $request->query('months');
+        $months = is_array($want) ? array_values(array_intersect($valid, array_map('strval', $want))) : [];
+        $months = $months ?: [$base];
+        sort($months);
+
+        return $months;
+    }
+
+    /**
+     * Bulan berjalan untuk export: dipotong sampai akhir kemarin (UTC, hari
+     * tagihan AWS). Data hari ini belum lengkap (Cost Explorer & CloudWatch
+     * masih berjalan), jadi tidak dihitung. Caranya sama dengan "Pecah periode":
+     * porsi 1–kemarin = biaya Location harian 1–kemarin ÷ biaya bulan berjalan,
+     * PPN & biaya kecil ikut sebanding, pembagian ke perusahaan memakai
+     * pemakaian API key tanggal itu saja. Periode yang dibuat admin di bulan
+     * ini dipotong di tanggal yang sama. Bulan yang sudah tutup tidak diubah.
+     *
+     * Tanggal 1 (belum ada hari utuh): split/detail null, export bulan itu kosong.
+     */
+    private function cutRunningMonth(AwsAccount $account, array $data): array
+    {
+        if ($data['monthClosed'] || !$data['split']) {
+            return $data + ['cutoff' => null];
+        }
+
+        $yesterday = now()->utc()->startOfDay()->subDay();
+        if ($yesterday->lt($data['start'])) {
+            return array_merge($data, ['split' => null, 'detail' => null, 'periods' => [], 'cutoff' => null]);
+        }
+
+        $day = (int) $yesterday->day;
+        $args = [$data['usage']['daily'], $data['baseUsd'], $data['baseIdr'], $data['taxRate'], $data['split']];
+        $withDetail = function (array $pp) {
+            $pp['detail'] = $pp['usd'] > 0 && $pp['idr'] > 0
+                ? $this->operationDetail($pp['split'], $pp['keys'], $pp['usd'], $pp['idr'], null)
+                : null;
+
+            return $pp;
+        };
+
+        // 1 → kemarin sebagai satu bagian; sisanya (hari ini dst.) dibuang.
+        $upto = $withDetail($this->periodSplits($account, $data['start'], $data['end'], [$day], ...$args)[0]);
+
+        $periods = [];
+        $cuts = array_values(array_filter($data['cuts'], fn ($c) => $c < $day));
+        if ($cuts) {
+            $periods = $this->periodSplits($account, $data['start'], $data['end'], [...$cuts, $day], ...$args);
+            array_pop($periods);
+            // Porsi periode dihitung terhadap bagian 1–kemarin, bukan bulan penuh.
+            $periods = array_map($withDetail, $periods);
+            foreach ($periods as &$pp) {
+                $pp['share'] = $upto['share'] > 0 ? $pp['share'] / $upto['share'] * 100 : 0;
+            }
+            unset($pp);
+        }
+
+        return array_merge($data, [
+            'split'   => $upto['split'],
+            'detail'  => $upto['detail'],
+            'periods' => $periods,
+            'baseUsd' => $upto['usd'],
+            'baseIdr' => $upto['idr'],
+            'cutoff'  => $upto['end'],
+        ]);
+    }
+
+    /**
+     * Ringkasan ringan tiap bulan pilihan untuk modal Export banyak bulan:
+     * kurs yang akan tertulis di file (urutan sama dengan billingData:
+     * invoice manual → invoice resmi AWS → tabel Kurs & Pajak) dan periode
+     * pecahannya. Tanpa menghitung tagihan, supaya halaman tetap ringan.
+     *
+     * @return array<string, array{label: string, rate: ?float, src: ?string, periods: array<int, string>}>
+     */
+    private function exportMonthInfo(AwsAccount $account): array
+    {
+        $today = now()->utc()->startOfDay();
+        $out = [];
+
+        foreach ($this->monthOptions() as $m) {
+            $end = $m->copy()->endOfMonth()->startOfDay();
+
+            $invoice = AwsInvoice::where('aws_account_id', $account->id)->whereDate('month', $m->format('Y-m-d'))->first();
+            $src = $invoice ? 'invoice' : null;
+            if (!$invoice && ($official = AwsInvoiceSummary::forMonth($account->id, $m)->first(fn ($i) => !$i->isCreditMemo())?->asInvoice())) {
+                [$invoice, $src] = [$official, 'aws'];
+            }
+            $rate = $invoice?->rate();
+            if ($rate === null && ($stored = ExchangeRate::forPeriod($end->format('Y-m-d')))) {
+                [$rate, $src] = [(float) $stored->rate, 'table'];
+            }
+
+            // Periode pecahan; bulan berjalan dipotong sampai kemarin seperti di file.
+            $last = $today->gt($end) ? $end : $today->copy()->subDay();
+            $periods = [];
+            if ($last->gte($m)) {
+                $cuts = array_values(array_filter(AwsBillingSplit::cutsFor($account->id, $m), fn ($c) => $c < $last->day));
+                $from = 1;
+                foreach ($cuts ? [...$cuts, $last->day] : [] as $to) {
+                    $periods[] = $from . '–' . $m->copy()->day($to)->translatedFormat('j M');
+                    $from = $to + 1;
+                }
+            }
+
+            $out[$m->format('Y-m')] = ['label' => $m->translatedFormat('M Y'), 'rate' => $rate, 'src' => $src, 'periods' => $periods];
+        }
+
+        return $out;
     }
 
     /** Aktifkan link publik akun ini (buat kalau belum ada). */

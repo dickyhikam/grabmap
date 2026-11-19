@@ -64,7 +64,14 @@
     $showBill = !$public || in_array($billStatus, ['issued', 'pending'], true);
 
     // Export CSV tersedia di admin maupun link publik selama rincian Rupiah ada.
-    $canExport = $split && $detail;
+    // Angka export: bulan berjalan dipotong sampai akhir kemarin (lihat
+    // AwsBillingController::cutRunningMonth), jadi modal memakai angka yang sama.
+    $ex ??= null;
+    $exSplit = $ex ? $ex['split'] : $split;
+    $exDetail = $ex ? $ex['detail'] : $detail;
+    $exPeriods = $ex ? $ex['periods'] : $periods;
+    $exCut = $ex['cutoff'] ?? null;
+    $canExport = $exSplit && $exDetail;
     $exportUrl = $public
         ? route('aws-billing.public.export', $share->token)
         : route('admin.aws-accounts.billing.export', $account);
@@ -471,6 +478,17 @@
     .ex-check .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .ex-check small { color: var(--muted); font-size: 0.72rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .ex-all { background: var(--surface); font-weight: 700; }
+    .ex-per-list { margin-top: 8px; font-size: 0.74rem; color: var(--muted); line-height: 1.5; }
+    .ex-per-list b { color: var(--ink); font-weight: 600; }
+    .ex-rate-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: 0.78rem; }
+    .ex-rate-list li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 8px; border-radius: 8px; background: var(--card); }
+    .ex-rate-list li b { font-variant-numeric: tabular-nums; }
+    .ex-rate-list li small { color: var(--muted); font-size: 0.7rem; }
+    .ex-running { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 12px; padding: 9px 12px; border-radius: 10px; background: var(--green-soft); color: var(--green-text); font-size: 0.78rem; font-weight: 600; }
+    .ex-client { margin-top: 8px; border: 1px dashed var(--line); font-weight: 600; }
+    .ex-client .n i { color: var(--green-text); margin-right: 4px; }
+    .ex-client:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+    .ex-client:has(input:checked) { border-style: solid; border-color: var(--green); background: var(--green-soft); }
 
     .ex-chips { display: flex; flex-wrap: wrap; gap: 6px; }
     .ex-chip { position: relative; }
@@ -1171,15 +1189,15 @@
 {{-- Modal export CSV — admin dan link publik sama. --}}
 @if($canExport)
     @php
-        $exCols = \App\Services\BillingExport::columnsFor(['split' => $split]);
+        $exCols = \App\Services\BillingExport::columnsFor(['split' => $exSplit]);
         $exPresets = array_filter([
             'all' => $exCols,
             'aws' => ['usd', 'aws'],
             'fee' => array_values(array_intersect(['fee', 'vat'], $exCols)) ?: null,
         ]);
         // Judul kolom sama persis dengan di file (fee membawa persennya kalau seragam).
-        $exColLabel = fn ($c) => $c === 'fee' && $split['percent'] !== null
-            ? __('awsbilling.csv_col_fee_pct', ['fee' => $pct($split['percent'])])
+        $exColLabel = fn ($c) => $c === 'fee' && $exSplit['percent'] !== null
+            ? __('awsbilling.csv_col_fee_pct', ['fee' => $pct($exSplit['percent'])])
             : __('awsbilling.csv_col_' . $c, ['pct' => $vatPct]);
 
         // Pratinjau: angka asli halaman ini, dibentuk ulang di browser sesuai pilihan.
@@ -1205,6 +1223,7 @@
             'ops'   => $exOps($det),
             'label' => $label,
             'pct'   => $sp['percent'],
+            'vat'   => $sp['vat_rate'],
             'total' => $exNums($sp['total']),
             'rows'  => array_map(fn ($r) => [
                 'id'    => (int) ($r['company_id'] ?? 0),
@@ -1215,12 +1234,17 @@
                 'keys'  => array_map(fn ($k) => ['name' => $k['name'], 'share' => $k['share'], 'v' => $exNums($k)], $r['keys'] ?? []),
             ], $sp['rows']),
         ];
-        $exSections = ['month' => $exSec(__('awsbilling.csv_sec_month', ['range' => $start->format('j') . '–' . $end->translatedFormat('j M Y')]), $split, $detail)];
-        foreach ($periods as $i => $pp) {
+        $exSections = ['month' => $exSec($exCut
+            ? __('awsbilling.csv_sec_running', ['range' => $start->format('j') . '–' . $exCut->translatedFormat('j M Y')])
+            : __('awsbilling.csv_sec_month', ['range' => $start->format('j') . '–' . $end->translatedFormat('j M Y')]), $exSplit, $exDetail)];
+        foreach ($exPeriods as $i => $pp) {
             $exSections[(string) $i] = $exSec(__('awsbilling.csv_sec_period', [
                 'range' => $pp['start']->format('j') . '–' . $pp['end']->translatedFormat('j M Y'),
                 'share' => $pct($pp['share']),
-            ]), $pp['split'], $pp['detail'] ?? null);
+            ]), $pp['split'], $pp['detail'] ?? null) + [
+                // Versi klien: tanpa porsi periode dari tagihan akun.
+                'labelClient' => __('awsbilling.csv_sec_period_client', ['range' => $pp['start']->format('j') . '–' . $pp['end']->translatedFormat('j M Y')]),
+            ];
         }
         $exData = [
             'sections' => $exSections,
@@ -1233,6 +1257,17 @@
             'fmt'      => collect(['id', 'intl'])->mapWithKeys(fn ($f) => [$f => 'CSV · ' . __('awsbilling.export_fmt_' . $f) . ' · ' . __('awsbilling.export_fmt_' . $f . '_hint')])
                 ->put('xlsx', __('awsbilling.export_type_xlsx') . ' · Rp 1.234 · $1,23'),
             'dl'       => ['xlsx' => __('awsbilling.export_download_xlsx'), 'csv' => __('awsbilling.export_download')],
+            'dlN'      => __('awsbilling.export_download_n'),
+            // Per bulan pilihan: kurs yang akan tertulis & periode pecahannya.
+            'base'     => $monthQ,
+            'months'   => collect($exMonths ?? [])->map(fn ($m) => $m + ['srcLabel' => $m['src'] ? __('awsbilling.export_src_' . $m['src']) : null]),
+            'rateAll'  => __('awsbilling.export_rate_all'),
+            'rateNone' => __('awsbilling.export_rate_none'),
+            'rateNoteN'=> __('awsbilling.export_rate_note_n'),
+            'monthsNote' => [
+                'xlsx' => __('awsbilling.export_preview_months', ['month' => $start->translatedFormat('F Y')]),
+                'csv'  => __('awsbilling.export_preview_months_csv', ['month' => $start->translatedFormat('F Y')]),
+            ],
         ];
     @endphp
     <script type="application/json" id="exData">{!! json_encode($exData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) !!}</script>
@@ -1240,6 +1275,9 @@
         <div class="gm-modal-card ex-card">
             <div class="gm-modal-title" id="exportTitle">{{ __('awsbilling.export_title', ['month' => $start->translatedFormat('F Y')]) }}</div>
             <div class="gm-modal-sub">{{ __('awsbilling.export_sub') }}</div>
+            @if($exCut)
+                <div class="ex-running"><i class="bi bi-clock-history"></i> {{ __('awsbilling.export_running_note', ['date' => $exCut->translatedFormat('j M Y')]) }}</div>
+            @endif
 
             <form method="GET" action="{{ $exportUrl }}" id="exportForm" data-no-loader>
                 <input type="hidden" name="month" value="{{ $monthQ }}">
@@ -1249,16 +1287,37 @@
 
                 <div class="ex-layout">
                 <div class="ex-opts">
+                {{-- Bulan: lebih dari satu = satu tab per bulan (+ tab Ringkasan) --}}
+                @php $exMonths = collect($monthOptions)->map(fn ($m) => $m->format('Y-m'))->values(); @endphp
+                <fieldset class="ex-group" data-need-one id="exMonthsGroup">
+                    <legend>
+                        <span>{{ __('awsbilling.export_months') }}</span>
+                        <span class="ex-presets">
+                            <button type="button" data-months="{{ $monthQ }}">{{ __('awsbilling.export_months_this') }}</button>
+                            <button type="button" data-months="{{ $exMonths->take(3)->implode(',') }}">{{ __('awsbilling.export_months_last3') }}</button>
+                            <button type="button" data-months="{{ $exMonths->take(6)->implode(',') }}">{{ __('awsbilling.export_months_last6') }}</button>
+                            <button type="button" data-months="{{ $exMonths->implode(',') }}">{{ __('awsbilling.export_months_all') }}</button>
+                        </span>
+                    </legend>
+                    <div class="ex-chips">
+                        @foreach($monthOptions as $opt)
+                            <label class="ex-chip"><input type="checkbox" name="months[]" value="{{ $opt->format('Y-m') }}" @checked($opt->format('Y-m') === $monthQ)><span>{{ $opt->translatedFormat('M Y') }}</span></label>
+                        @endforeach
+                    </div>
+                    <div class="ex-hint">{{ __('awsbilling.export_hint_months') }}</div>
+                    <div class="ex-err" hidden>{{ __('awsbilling.export_pick_one') }}</div>
+                </fieldset>
+
                 {{-- Perusahaan --}}
                 <fieldset class="ex-group" data-need-one>
                     <legend>{{ __('awsbilling.export_companies') }}</legend>
                     <label class="ex-check ex-all">
                         <input type="checkbox" id="exAll" checked>
                         <span class="n">{{ __('awsbilling.export_all') }}</span>
-                        <small>{{ count($split['rows']) }}</small>
+                        <small>{{ count($exSplit['rows']) }}</small>
                     </label>
                     <div class="ex-list">
-                        @foreach($split['rows'] as $row)
+                        @foreach($exSplit['rows'] as $row)
                             <label class="ex-check">
                                 <input type="checkbox" name="co[]" value="{{ (int) ($row['company_id'] ?? 0) }}" checked data-co>
                                 <span class="n">{{ $row['name'] ?? __('awsbilling.unassigned') }}</span>
@@ -1268,24 +1327,32 @@
                     </div>
                     <div class="ex-hint">{{ __('awsbilling.export_hint_companies') }}</div>
                     <div class="ex-err" hidden>{{ __('awsbilling.export_pick_one') }}</div>
+                    {{-- Versi klien: hanya bisa kalau sebagian perusahaan dipilih --}}
+                    <label class="ex-check ex-client">
+                        <input type="checkbox" name="client" value="1" id="exClient" disabled>
+                        <span class="n"><i class="bi bi-person-badge"></i> {{ __('awsbilling.export_client') }}</span>
+                    </label>
+                    <div class="ex-hint">{{ __('awsbilling.export_client_hint') }}</div>
                 </fieldset>
 
-                {{-- Periode (hanya kalau bulannya dipecah) --}}
-                @if($hasPeriods)
-                    <fieldset class="ex-group" data-need-one>
-                        <legend>{{ __('awsbilling.export_periods') }}</legend>
-                        <div class="ex-chips">
-                            <label class="ex-chip"><input type="checkbox" name="per[]" value="month" checked><span>{{ __('awsbilling.export_full_month') }}</span></label>
-                            @foreach($periods as $i => $pp)
+                {{-- Periode: muncul kalau bulan ini, atau bulan lain yang dipilih, dipecah.
+                     Chip periode bulan ini persis; bulan lain lewat satu chip "split". --}}
+                @php $exBaseSplit = count($exPeriods) > 1; @endphp
+                <fieldset class="ex-group" data-need-one id="exPerGroup" @if(!$exBaseSplit) hidden @endif>
+                    <legend>{{ __('awsbilling.export_periods') }}</legend>
+                    <div class="ex-chips">
+                        <label class="ex-chip"><input type="checkbox" name="per[]" value="month" checked id="exPerMonth"><span>{{ __('awsbilling.export_full_month') }}</span></label>
+                        @if($exBaseSplit)
+                            @foreach($exPeriods as $i => $pp)
                                 <label class="ex-chip"><input type="checkbox" name="per[]" value="{{ $i }}" checked><span>{{ $pLabel($pp) }}</span></label>
                             @endforeach
-                        </div>
-                        <div class="ex-hint">{{ __('awsbilling.export_hint_periods') }}</div>
-                        <div class="ex-err" hidden>{{ __('awsbilling.export_pick_one') }}</div>
-                    </fieldset>
-                @else
-                    <input type="hidden" name="per[]" value="month">
-                @endif
+                        @endif
+                        <label class="ex-chip" id="exPerOtherChip" hidden><input type="checkbox" name="per[]" value="split" checked disabled id="exPerOther"><span>{{ __('awsbilling.export_periods_other') }}</span></label>
+                    </div>
+                    <div class="ex-per-list" id="exPerList" hidden></div>
+                    <div class="ex-hint">{{ __('awsbilling.export_hint_periods') }}</div>
+                    <div class="ex-err" hidden>{{ __('awsbilling.export_pick_one') }}</div>
+                </fieldset>
 
                 {{-- Tingkat rincian --}}
                 <fieldset class="ex-group">
@@ -1361,6 +1428,7 @@
                     </div>
                     <div class="ex-prev-scroll"><table id="exPrevTable"></table></div>
                     <div class="ex-prev-note" id="exPrevNote" hidden></div>
+                    <div class="ex-prev-note" id="exPrevMonths" hidden><i class="bi bi-calendar3"></i> <span></span></div>
                     <div class="ex-prev-note" id="exPrevSim" hidden><i class="bi bi-exclamation-triangle"></i> {{ __('awsbilling.export_preview_sim') }}</div>
                     <div class="ex-prev-raw" id="exPrevRawBox">
                         <span class="lbl">{{ __('awsbilling.export_preview_raw') }}</span>
@@ -1372,9 +1440,11 @@
                 <div class="ex-rate">
                     <i class="bi bi-currency-exchange"></i>
                     <div>
-                        <b>{{ __('awsbilling.export_rate') }}: 1 USD = <span id="exRateText">Rp {{ number_format($detail['rate'], 2, ',', '.') }}</span></b>
+                        <b id="exRateMain">{{ __('awsbilling.export_rate') }}: 1 USD = <span id="exRateText">Rp {{ number_format($exDetail['rate'], 2, ',', '.') }}</span></b>
                         <span class="ex-tag" id="exRateTag" hidden>{{ __('awsbilling.export_rate_sim') }}</span>
-                        <small>{{ __('awsbilling.export_rate_note') }}</small>
+                        <small id="exRateNote">{{ __('awsbilling.export_rate_note') }}</small>
+                        {{-- Banyak bulan: kurs tiap bulan sendiri-sendiri --}}
+                        <ul class="ex-rate-list" id="exRateList" hidden></ul>
                     </div>
                 </div>
 
@@ -1725,6 +1795,7 @@
         const exForm = document.getElementById('exportForm');
         if (exForm) {
             const exAll = document.getElementById('exAll');
+            const exClient = document.getElementById('exClient');
             const cos = [...exForm.querySelectorAll('[data-co]')];
             const colInputs = [...exForm.querySelectorAll('input[name="cols[]"]')];
             const presets = [...exForm.querySelectorAll('[data-preset]')];
@@ -1733,6 +1804,9 @@
                 const n = cos.filter((c) => c.checked).length;
                 exAll.checked = n === cos.length;
                 exAll.indeterminate = n > 0 && n < cos.length;
+                // Versi klien hanya masuk akal untuk sebagian perusahaan.
+                exClient.disabled = n === 0 || n === cos.length;
+                if (exClient.disabled) exClient.checked = false;
                 renderPreview();
             };
 
@@ -1741,7 +1815,61 @@
             const L = exData.L;
             const FIELD = { usd: 'usd', aws: 'idr', fee: 'fee', invoice: 'invoice', vat: 'vat', total: 'total' };
             const MAX_LINES = 5;
+            // ---- Banyak bulan: periode pecahan bulan lain & kurs tiap bulan.
+            const BASE_SPLIT = [...exForm.querySelectorAll('input[name="per[]"]')].some((i) => /^\d+$/.test(i.value));
+            const rateNoteEl = document.getElementById('exRateNote');
+            const rateNoteOne = rateNoteEl.textContent;
+            const rpRate = (v) => 'Rp ' + Number(v).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            function syncMonths() {
+                const picked = [...exForm.querySelectorAll('input[name="months[]"]')].filter((i) => i.checked).map((i) => i.value).sort();
+                const info = (m) => exData.months[m] || { label: m, rate: null, src: null, periods: [] };
+
+                // Periode: bulan lain yang dipecah ikut lewat satu chip "split".
+                const others = picked.filter((m) => m !== exData.base && info(m).periods.length);
+                const otherIn = document.getElementById('exPerOther');
+                document.getElementById('exPerOtherChip').hidden = !others.length;
+                otherIn.disabled = !others.length;
+                const list = document.getElementById('exPerList');
+                list.hidden = !others.length;
+                list.replaceChildren(...others.map((m) => {
+                    const d = document.createElement('div');
+                    const b = document.createElement('b');
+                    b.textContent = info(m).label + ': ';
+                    d.append(b, info(m).periods.join(' · '));
+                    return d;
+                }));
+                const group = document.getElementById('exPerGroup');
+                group.hidden = !(BASE_SPLIT || others.length);
+                if (group.hidden) document.getElementById('exPerMonth').checked = true;
+
+                // Kurs: satu bulan = satu baris seperti biasa; banyak bulan = daftar per bulan.
+                const multi = picked.length > 1;
+                document.getElementById('exRateMain').hidden = multi;
+                rateNoteEl.textContent = multi ? exData.rateNoteN : rateNoteOne;
+                const ul = document.getElementById('exRateList');
+                ul.hidden = !multi;
+                const fx = document.querySelector('.fx');
+                const cur = fx ? parseFloat(fx.dataset.current || fx.dataset.base) : null;
+                const sim = fx ? Math.abs(cur - parseFloat(fx.dataset.base)) >= 0.005 : false;
+                ul.replaceChildren(...picked.map((m) => {
+                    const it = info(m);
+                    const rate = m === exData.base && cur ? cur : it.rate;
+                    const li = document.createElement('li');
+                    const left = document.createElement('span');
+                    left.textContent = it.label;
+                    const right = document.createElement('span');
+                    const b = document.createElement('b');
+                    b.textContent = rate ? rpRate(rate) : exData.rateNone;
+                    const small = document.createElement('small');
+                    small.textContent = [it.srcLabel, m === exData.base && sim ? document.getElementById('exRateTag').textContent : null].filter(Boolean).map((t) => ' · ' + t).join('');
+                    right.append(b, small);
+                    li.append(left, right);
+                    return li;
+                }));
+            }
+
             function renderPreview() {
+                syncMonths();
                 const fd = new FormData(exForm);
                 const per = fd.getAll('per[]');
                 const sec = exData.sections[per[0] ?? 'month'] || exData.sections.month;
@@ -1751,11 +1879,21 @@
                 const intl = !xlsx && fd.get('fmt') === 'intl';
                 document.getElementById('exFmtGroup').hidden = xlsx;
                 document.getElementById('exPrevRawBox').hidden = xlsx;
-                document.getElementById('exDlLabel').textContent = exData.dl[xlsx ? 'xlsx' : 'csv'];
+                // Banyak bulan: label tombol menyebut jumlahnya, contoh tetap dari bulan ini.
+                const nMonths = fd.getAll('months[]').length;
+                const dl = exData.dl[xlsx ? 'xlsx' : 'csv'];
+                document.getElementById('exDlLabel').textContent = nMonths > 1 ? exData.dlN.replace(':label', dl).replace(':n', nMonths) : dl;
+                const mNote = document.getElementById('exPrevMonths');
+                mNote.hidden = nMonths < 2;
+                mNote.querySelector('span').textContent = exData.monthsNote[xlsx ? 'xlsx' : 'csv'].replace(':n', nMonths);
+                const nowMonths = fd.getAll('months[]').join(',');
+                exForm.querySelectorAll('[data-months]').forEach((b) => b.classList.toggle('on', b.dataset.months === nowMonths));
                 const ids = fd.getAll('co[]').map(Number);
                 const allSel = ids.length === sec.rows.length;
                 const withPct = cols.includes('fee');
                 const withOps = level === 'op';
+                // Sama dengan BillingExport: versi klien tanpa kolom Porsi (%).
+                const client = fd.get('client') === '1';
                 const maxLines = withOps ? 8 : MAX_LINES;
 
                 const pretty = xlsx || fd.getAll('pretty').pop() === '1';
@@ -1777,42 +1915,64 @@
                 const reqOf = (list) => num(list.reduce((a, o) => a + o.n, 0), 0, 'count');
                 // Sama dengan BillingExport: kolom operasi hanya ada di tingkat "+ Per operasi".
                 const line = (lv, co, key, opCells, share, pct, v) => [
-                    lv, co, key, ...(withOps ? opCells : []), num(share, 2), ...(withPct ? [pct] : []), ...vals(v),
+                    lv, co, key, ...(withOps ? opCells : []), ...(client ? [] : [num(share, 2)]), ...(withPct ? [pct] : []), ...vals(v),
                 ];
 
                 const head = [L.h_level, L.h_company, L.h_key,
                     ...(withOps ? [L.h_category, L.h_operation, L.h_requests] : []),
-                    L.h_share, ...(withPct ? [L.h_fee_pct] : []), ...cols.map((c) => exData.cols[c])];
+                    ...(client ? [] : [L.h_share]), ...(withPct ? [L.h_fee_pct] : []), ...cols.map((c) => exData.cols[c])];
                 const body = [];
                 let hidden = 0;
                 const push = (l) => (body.length < maxLines ? body.push(l) : hidden++);
 
+                // Sama dengan BillingExport::adjustSplit(): fee/VAT yang tidak dicentang
+                // tidak dihitung. Invoice = Billing AWS + fee, VAT = tarif × Invoice
+                // (dibulatkan per baris), Total = Invoice + VAT; key sebanding perusahaannya.
+                const withFee = cols.includes('fee');
+                const vatRate = cols.includes('vat') ? Number(sec.vat || 0) : 0;
+                const exact = withFee && cols.includes('vat');
+                const adj = (v) => {
+                    if (exact) return v;
+                    const fee = withFee ? Number(v.fee || 0) : 0;
+                    const invoice = Number(v.idr || 0) + fee;
+                    const vat = Math.round(invoice * vatRate);
+                    return { ...v, fee, invoice, vat, total: invoice + vat };
+                };
+                const adjKey = (kv, rv, rAdj) => {
+                    if (exact) return kv;
+                    const f = rv.idr > 0 ? kv.idr / rv.idr : 0;
+                    return { ...kv, fee: rAdj.fee * f, invoice: rAdj.invoice * f, vat: rAdj.vat * f, total: rAdj.total * f };
+                };
+
                 sec.rows.filter((r) => ids.includes(r.id)).forEach((r) => {
                     const coOps = ops.filter((o) => o.id === r.id);
-                    push(['ex-r-co', line(L.lv_company, r.name, '', ['', '', reqOf(coOps)], r.share, num(r.pct, 2), r.v)]);
+                    const rv = adj(r.v);
+                    push(['ex-r-co', line(L.lv_company, r.name, '', ['', '', reqOf(coOps)], r.share, num(r.pct, 2), rv)]);
                     if (level === 'company') return;
                     r.keys.forEach((k) => {
                         const kOps = coOps.filter((o) => o.key === k.name);
-                        push(['ex-r-key', line(L.lv_key, r.name, k.name, ['', '', reqOf(kOps)], k.share, '', k.v)]);
+                        const kv = adjKey(k.v, r.v, rv);
+                        push(['ex-r-key', line(L.lv_key, r.name, k.name, ['', '', reqOf(kOps)], k.share, '', kv)]);
                         if (!withOps) return;
                         kOps.forEach((o) => {
                             const f = o.keyUsd > 0 ? o.usd / o.keyUsd : 0;
-                            push(['ex-r-op', line(L.lv_op, r.name, k.name, [o.cat, o.op, num(o.n, 0, 'count')], k.share * f, '', scale(k.v, f))]);
+                            push(['ex-r-op', line(L.lv_op, r.name, k.name, [o.cat, o.op, num(o.n, 0, 'count')], k.share * f, '', scale(kv, f))]);
                         });
                     });
                 });
 
                 let total;
                 if (allSel) {
-                    total = line(L.lv_total, '', '', ['', '', reqOf(ops)], 100, sec.pct !== null ? num(sec.pct, 2) : '', sec.total);
+                    total = line(L.lv_total, '', '', ['', '', reqOf(ops)], 100, sec.pct !== null ? num(sec.pct, 2) : '', adj(sec.total));
                 } else {
                     const sum = { usd: 0, idr: 0, fee: 0, invoice: 0, vat: 0, total: 0 };
                     let share = 0;
                     sec.rows.filter((r) => ids.includes(r.id)).forEach((r) => {
                         share += r.share;
-                        Object.keys(sum).forEach((k) => { sum[k] += Number(r.v[k] || 0); });
+                        const rv = adj(r.v);
+                        Object.keys(sum).forEach((k) => { sum[k] += Number(rv[k] || 0); });
                     });
-                    total = line(L.lv_total_sel, '', '', ['', '', reqOf(ops)], share, '', sum);
+                    total = line(client ? L.lv_total : L.lv_total_sel, '', '', ['', '', reqOf(ops)], share, '', sum);
                 }
 
                 const table = document.getElementById('exPrevTable');
@@ -1833,7 +1993,7 @@
                 t.className = 'ex-r-sec';
                 const tc = document.createElement('td');
                 tc.colSpan = head.length;
-                tc.textContent = '▶ ' + sec.label;
+                tc.textContent = '▶ ' + (client && sec.labelClient ? sec.labelClient : sec.label);
                 t.appendChild(tc);
                 table.appendChild(t);
                 add(head, '', 'th');
@@ -1879,8 +2039,13 @@
                 markPreset();
             }));
             colInputs.forEach((i) => i.addEventListener('change', markPreset));
-            exForm.querySelectorAll('input[name="per[]"], input[name="level"], input[name="fmt"], input[name="pretty"], input[name="type"]')
+            exForm.querySelectorAll('input[name="per[]"], input[name="level"], input[name="fmt"], input[name="pretty"], input[name="type"], input[name="months[]"], input[name="client"]')
                 .forEach((i) => i.addEventListener('change', renderPreview));
+            exForm.querySelectorAll('[data-months]').forEach((b) => b.addEventListener('click', () => {
+                const want = b.dataset.months.split(',');
+                exForm.querySelectorAll('input[name="months[]"]').forEach((i) => { i.checked = want.includes(i.value); });
+                renderPreview();
+            }));
             markPreset();
 
             // Kurs: ikut penggeser kurs di halaman. Kurs simulasi dikirim ke server
@@ -1897,6 +2062,7 @@
                 document.getElementById('exPrevSim').hidden = !sim;
                 rateIn.disabled = !sim;
                 rateIn.value = sim ? cur.toFixed(2) : '';
+                syncMonths();
             };
             document.querySelectorAll('[data-open-modal="exportModal"]').forEach((b) => b.addEventListener('click', syncRate));
 
@@ -1905,7 +2071,8 @@
                 e.preventDefault();
                 let ok = true;
                 exForm.querySelectorAll('[data-need-one]').forEach((g) => {
-                    const any = [...g.querySelectorAll('input[type=checkbox][name]')].some((i) => i.checked);
+                    if (g.hidden) return;
+                    const any = [...g.querySelectorAll('input[type=checkbox][name]')].some((i) => i.checked && !i.disabled);
                     g.querySelector('.ex-err').hidden = any;
                     ok = ok && any;
                 });
@@ -1913,7 +2080,12 @@
 
                 syncRate();
                 const url = new URL(exForm.action);
-                new FormData(exForm).forEach((v, k) => url.searchParams.append(k, v));
+                // Semua perusahaan dicentang: tidak dikirim satu per satu, supaya di
+                // bulan lain perusahaan yang hanya muncul di bulan itu ikut terbawa.
+                new FormData(exForm).forEach((v, k) => {
+                    if (k === 'co[]' && exAll.checked) return;
+                    url.searchParams.append(k, v);
+                });
                 window.location.href = url.toString();
                 closeAll();
             });
